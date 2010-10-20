@@ -1,0 +1,6 @@
+[submodule "lib/gmp-ocaml"]
+	path = lib/gmp-ocaml
+	url = git@github.com:ytomino/gmp-ocaml.git
+[submodule "lib/unicode-ocaml"]
+	path = lib/unicode-ocaml
+	url = git@github.com:ytomino/unicode-ocaml.git

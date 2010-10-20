@@ -1,0 +1,48 @@
+ifneq ($(ComSpec),)
+EXEEXT=.exe
+RM=del
+RMDIR=rmdir /s /q
+else
+EXEEXT=
+RM=rm
+RMDIR=rm -rf
+ifneq ($(shell rlwrap --version),)
+RLWRAP=rlwrap
+endif
+endif
+
+BUILDDIR=build
+OCAMLMAKE=
+
+SOURCEDIR=../../source
+
+export OCAMLRUNPARAM=b
+
+TEST=test_environment
+
+.PHONY: $(TEST)$(EXEEXT) test interactive clean
+
+$(TEST)$(EXEEXT): $(TEST).ml
+ifneq ($(OCAMLMAKE),)
+	$(OCAMLMAKE) -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+else
+	-ln -s $(SOURCEDIR) .
+	ocamlbuild -X $(BUILDDIR) -I source $(TEST).byte
+	ln -sf $(TEST).byte $(TEST)$(EXEEXT)
+endif
+
+test: $(TEST)$(EXEEXT)
+	./$(TEST)$(EXEEXT)
+
+interactive:
+ifneq ($(OCAMLMAKE),)
+	$(RLWRAP) $(OCAMLMAKE) -interact -g -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(TEST).ml
+endif
+
+clean:
+	-$(RMDIR) build
+	-$(RM) $(TEST)$(EXEEXT)
+ifeq ($(OCAMLMAKE),)
+	-$(RM) source
+	ocamlbuild -clean
+endif

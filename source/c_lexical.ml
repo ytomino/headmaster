@@ -1,0 +1,542 @@
+open Value;;
+
+type language = [`c | `cxx | `objc | `objcxx];;
+
+let cxx (lang: language): bool = (
+	begin match lang with
+	| `c | `objc -> false
+	| `cxx | `objcxx -> true
+	end
+);;
+
+let objc (lang: language): bool = (
+	begin match lang with
+	| `c | `cxx -> false
+	| `objc | `objcxx -> true
+	end
+);;
+
+let snd_of_fst_table list = (
+	let table = Hashtbl.create (List.length list) in
+	List.iter (fun (s, w) -> Hashtbl.add table s w) list;
+	table
+);;
+
+let fst_of_snd_table list = (
+	let table = Hashtbl.create (List.length list) in
+	List.iter (fun (s, w) -> Hashtbl.add table w s) list;
+	table
+);;
+
+(* c *)
+
+type compiler_macro = [
+	| `__DATE__
+	| `__FILE__
+	| `__LINE__
+	| `__STDC__
+	| `__STDC_VERSION__
+	| `__STDC_ISO_10646__
+	| `__STDC_IEC_559__
+	| `__STDC_IEC_559_COMPLEX__
+	| `__TIME__
+	| `__VA_ARGS__];;
+
+type c_reserved_word = [
+	| `AUTO
+	| `BREAK
+	| `CASE
+	| `CHAR
+	| `CONST
+	| `CONTINUE
+	| `DEFAULT
+	| `DO
+	| `DOUBLE
+	| `ELSE
+	| `ENUM
+	| `EXTERN
+	| `FLOAT
+	| `FOR
+	| `GOTO
+	| `IF
+	| `INLINE
+	| `INT
+	| `LONG
+	| `REGISTER
+	| `RESTRICT
+	| `RETURN
+	| `SHORT
+	| `SIGNED
+	| `SIZEOF
+	| `STATIC
+	| `STRUCT
+	| `SWITCH
+	| `TYPEDEF
+	| `UNION
+	| `UNSIGNED
+	| `VOID
+	| `VOLATILE
+	| `WHILE
+	| `_BOOL
+	| `_COMPLEX
+	| `_IMAGINARY
+	| `_PRAGMA
+	| compiler_macro];;
+	
+let c_reserved_word_table: (string * c_reserved_word) list = [
+	"auto", `AUTO;
+	"break", `BREAK;
+	"case", `CASE;
+	"char", `CHAR;
+	"const", `CONST;
+	"continue", `CONTINUE;
+	"default", `DEFAULT;
+	"do", `DO;
+	"double", `DOUBLE;
+	"else", `ELSE;
+	"enum", `ENUM;
+	"extern", `EXTERN;
+	"float", `FLOAT;
+	"for", `FOR;
+	"goto", `GOTO;
+	"if", `IF;
+	"inline", `INLINE;
+	"int", `INT;
+	"long", `LONG;
+	"register", `REGISTER;
+	"restrict", `RESTRICT;
+	"return", `RETURN;
+	"short", `SHORT;
+	"signed", `SIGNED;
+	"sizeof", `SIZEOF;
+	"static", `STATIC;
+	"struct", `STRUCT;
+	"switch", `SWITCH;
+	"typedef", `TYPEDEF;
+	"union", `UNION;
+	"unsigned", `UNSIGNED;
+	"void", `VOID;
+	"volatile", `VOLATILE;
+	"while", `WHILE;
+	"_Bool", `_BOOL;
+	"_Complex", `_COMPLEX;
+	"_Imaginary", `_IMAGINARY;
+	"_Pragma", `_PRAGMA;
+	"__DATE__", `__DATE__;
+	"__FILE__", `__FILE__;
+	"__LINE__", `__LINE__;
+	"__STDC__", `__STDC__;
+	"__STDC_VERSION__", `__STDC_VERSION__;
+	"__STDC_ISO_10646__", `__STDC_ISO_10646__;
+	"__STDC_IEC_559__", `__STDC_IEC_559__;
+	"__STDC_IEC_559_COMPLEX__", `__STDC_IEC_559_COMPLEX__;
+	"__TIME__", `__TIME__;
+	"__VA_ARGS__", `__VA_ARGS__];;
+
+let crw_of_string_table = snd_of_fst_table c_reserved_word_table;;
+
+(* c++ *)
+
+type cxx_only_reserved_word = [
+	| `ASM
+	| `BOOL
+	| `CATCH
+	| `CLASS
+	| `CONST_CAST
+	| `DELETE
+	| `DYNAMIC_CAST
+	| `EXPLICIT
+	| `EXPORT
+	| `FALSE
+	| `FRIEND
+	| `MUTABLE
+	| `NAMESPACE
+	| `NEW
+	| `OPERATOR
+	| `PRIVATE
+	| `PROTECTED
+	| `PUBLIC
+	| `REINTERPRET_CAST
+	| `STATIC_CAST
+	| `TEMPLATE
+	| `THIS
+	| `THROW
+	| `TRY
+	| `TRUE
+	| `TYPEID
+	| `TYPENAME
+	| `USING
+	| `VIRTUAL
+	| `WCHAR_T];;
+
+let cxx_only_reserved_word_table: (string * cxx_only_reserved_word) list = [
+	"asm", `ASM;
+	"bool", `BOOL;
+	"catch", `CATCH;
+	"class", `CLASS;
+	"const_cast", `CONST_CAST;
+	"delete", `DELETE;
+	"dynamic_cast", `DYNAMIC_CAST;
+	"export", `EXPORT;
+	"explicit", `EXPLICIT;
+	"false", `FALSE;
+	"friend", `FRIEND;
+	"mutable", `MUTABLE;
+	"namespace", `NAMESPACE;
+	"new", `NEW;
+	"operator", `OPERATOR;
+	"private", `PRIVATE;
+	"protected", `PROTECTED;
+	"public", `PUBLIC;
+	"reinterpret_cast", `REINTERPRET_CAST;
+	"static_cast", `STATIC_CAST;
+	"template", `TEMPLATE;
+	"this", `THIS;
+	"throw", `THROW;
+	"true", `TRUE;
+	"try", `TRY;
+	"typeid", `TYPEID;
+	"typename", `TYPENAME;
+	"using", `USING;
+	"virtual", `VIRTUAL;
+	"wchar_t", `WCHAR_T];;
+
+type cxx_reserved_word = [c_reserved_word | cxx_only_reserved_word];;
+
+let cxx_reserved_word_table: (string * cxx_reserved_word) list =
+	(c_reserved_word_table :> (string * cxx_reserved_word) list) @
+	(cxx_only_reserved_word_table :> (string * cxx_reserved_word) list);;
+
+let cxxrw_of_string_table = snd_of_fst_table cxx_reserved_word_table;;
+
+(* objective-c *)
+
+type objc_only_reserved_word = [
+	| `BYCOPY
+	| `BYREF
+	| `IN
+	| `INOUT
+	| `ONEWAY
+	| `OUT
+	| `__STRONG
+	| `__WEAK];;
+
+let objc_only_reserved_word_table: (string * objc_only_reserved_word) list = [
+	"bycopy", `BYCOPY;
+	"byref", `BYREF;
+	"in", `IN;
+	"inout", `INOUT;
+	"oneway", `ONEWAY;
+	"out", `OUT;
+	"__strong", `__STRONG;
+	"__weak", `__WEAK];;
+
+type objc_reserved_word = [c_reserved_word | objc_only_reserved_word];;
+
+let objc_reserved_word_table: (string * objc_reserved_word) list =
+	(c_reserved_word_table :> (string * objc_reserved_word) list) @
+	(objc_only_reserved_word_table :> (string * objc_reserved_word) list);;
+
+let objcrw_of_string_table = snd_of_fst_table objc_reserved_word_table;;
+
+type objc_directive = [
+	| `at_CATCH
+	| `at_CLASS
+	| `at_DYNAMIC
+	| `at_ENCODE
+	| `at_END
+	| `at_FINALLY
+	| `at_IMPLEMENTATION
+	| `at_INTERFACE
+	| `at_PRIVATE
+	| `at_PROPERTY
+	| `at_PROTECTED
+	| `at_PROTOCOL
+	| `at_PUBLIC
+	| `at_SELECTOR
+	| `at_SYNCHRONIZED
+	| `at_SYNTHESIZE
+	| `at_THROW
+	| `at_TRY];;
+
+let objc_directive_table = [
+	"catch", `at_CATCH;
+	"class", `at_CLASS;
+	"dynamic", `at_DYNAMIC;
+	"encode", `at_ENCODE;
+	"end", `at_END;
+	"finally", `at_FINALLY;
+	"implementation", `at_IMPLEMENTATION;
+	"interface", `at_INTERFACE;
+	"private", `at_PRIVATE;
+	"property", `at_PROPERTY;
+	"protected", `at_PROTECTED;
+	"protocol", `at_PROTOCOL;
+	"public", `at_PUBLIC;
+	"selector", `at_SELECTOR;
+	"synchronized", `at_SYNCHRONIZED;
+	"synthesize", `at_SYNTHESIZE;
+	"throw", `at_THROW;
+	"try", `at_TRY];;
+
+let string_of_objcdirective_table = fst_of_snd_table objc_directive_table;;
+let objcdirective_of_string_table = snd_of_fst_table objc_directive_table;;
+
+let string_of_objcdirective (s: objc_directive): string = (
+	Hashtbl.find string_of_objcdirective_table s
+);;
+
+let is_objcdirective (s: string): bool = (
+	Hashtbl.mem objcdirective_of_string_table s
+);;
+
+let objcdirective_of_string (s: string): objc_directive = (
+	Hashtbl.find objcdirective_of_string_table s
+);;
+
+(* objective-c++ *)
+
+type objcxx_reserved_word = [c_reserved_word | objc_only_reserved_word | cxx_only_reserved_word];;
+
+let objcxx_reserved_word_table: (string * objcxx_reserved_word) list =
+	(c_reserved_word_table :> (string * objcxx_reserved_word) list) @
+	(objc_reserved_word_table :> (string * objcxx_reserved_word) list) @
+	(cxx_only_reserved_word_table :> (string * objcxx_reserved_word) list);;
+
+let objcxxrw_of_string_table = snd_of_fst_table objcxx_reserved_word_table;;
+
+(* all *)
+
+type reserved_word = objcxx_reserved_word;;
+let reserved_word_table: (string * reserved_word) list = objcxx_reserved_word_table;;
+let string_of_rw_table = fst_of_snd_table reserved_word_table;;
+
+let string_of_rw (s: reserved_word): string = (
+	Hashtbl.find string_of_rw_table s
+);;
+
+let is_rw (lang: language) (s: string): bool = (
+	begin match lang with
+	| `c -> Hashtbl.mem crw_of_string_table s
+	| `cxx -> Hashtbl.mem cxxrw_of_string_table s
+	| `objc -> Hashtbl.mem objcrw_of_string_table s
+	| `objcxx -> Hashtbl.mem objcxxrw_of_string_table s
+	end
+);;
+
+let rw_of_string (lang: language) (s: string): reserved_word = (
+	begin match lang with
+	| `c -> (Hashtbl.find crw_of_string_table s:> reserved_word)
+	| `cxx -> (Hashtbl.find cxxrw_of_string_table s:> reserved_word)
+	| `objc -> (Hashtbl.find objcrw_of_string_table s:> reserved_word)
+	| `objcxx -> (Hashtbl.find objcxxrw_of_string_table s:> reserved_word)
+	end
+);;
+
+(* extended (currently, gcc only) *)
+
+type extended_word = [
+	| `__asm
+	| `__asm__
+	| `__attribute__
+	| `__builtin_constant_p
+	| `__builtin_va_arg
+	| `__builtin_va_copy
+	| `__builtin_va_end
+	| `__builtin_va_list
+	| `__builtin_va_start
+	| `__extension__
+	| `__imag__
+	| `__inline
+	| `__inline__
+	| `__int64
+	| `__real__
+	| `__restrict__
+	| `__typeof__
+	| `__volatile__];;
+
+let extended_word_table = [
+	"__asm", `__asm;
+	"__asm__", `__asm__;
+	"__attribute__", `__attribute__;
+	"__builtin_constant_p", `__builtin_constant_p;
+	"__builtin_va_list", `__builtin_va_list;
+	"__builtin_va_arg", `__builtin_va_arg;
+	"__builtin_va_copy", `__builtin_va_copy;
+	"__builtin_va_end", `__builtin_va_end;
+	"__builtin_va_start", `__builtin_va_start;
+	"__extension__", `__extension__;
+	"__imag__", `__imag__;
+	"__inline", `__inline;
+	"__inline__", `__inline__;
+	"__int64", `__int64;
+	"__real__", `__real__;
+	"__restrict__", `__restrict__;
+	"__typeof__", `__typeof__;
+	"__volatile__", `__volatile__];;
+
+let string_of_ew_table = fst_of_snd_table extended_word_table;;
+let ew_of_string_table = snd_of_fst_table extended_word_table;;
+
+let string_of_ew (s: extended_word): string = (
+	Hashtbl.find string_of_ew_table s
+);;
+
+let is_ew (s: string): bool = (
+	Hashtbl.mem ew_of_string_table s
+);;
+
+let ew_of_string (s: string): extended_word = (
+	Hashtbl.find ew_of_string_table s
+);;
+
+(* preprocessor directives *)
+
+type preprocessor_directive = [
+	| `sharp_DEFINE
+	| `sharp_ELIF
+	| `sharp_ELSE
+	| `sharp_ENDIF
+	| `sharp_ERROR
+	| `sharp_IF
+	| `sharp_IFDEF
+	| `sharp_IFNDEF
+	| `sharp_INCLUDE
+	| `sharp_INCLUDE_NEXT (* extended *)
+	| `sharp_LINE
+	| `sharp_PRAGMA
+	| `sharp_UNDEF
+	| `sharp_WARNING];;
+
+let preprocessor_directive_table = [
+	"define", `sharp_DEFINE;
+	"elif", `sharp_ELIF;
+	"else", `sharp_ELSE;
+	"endif", `sharp_ENDIF;
+	"error", `sharp_ERROR;
+	"if", `sharp_IF;
+	"ifdef", `sharp_IFDEF;
+	"ifndef", `sharp_IFNDEF;
+	"include", `sharp_INCLUDE;
+	"include_next", `sharp_INCLUDE_NEXT;
+	"line", `sharp_LINE;
+	"pragma", `sharp_PRAGMA;
+	"undef", `sharp_UNDEF;
+	"warning", `sharp_WARNING];;
+
+let string_of_ppdirective_table = fst_of_snd_table preprocessor_directive_table;;
+let ppdirective_of_string_table = snd_of_fst_table preprocessor_directive_table;;
+
+let string_of_ppdirective (s: preprocessor_directive): string = (
+	Hashtbl.find string_of_ppdirective_table s
+);;
+
+let is_ppdirective (s: string): bool = (
+	Hashtbl.mem ppdirective_of_string_table s
+);;
+
+let ppdirective_of_string (s: string): preprocessor_directive = (
+	Hashtbl.find ppdirective_of_string_table s
+);;
+
+(* value types *)
+
+type int_prec = [
+	| `signed_char
+	| `unsigned_char
+	| `signed_short
+	| `unsigned_short
+	| `signed_int
+	| `unsigned_int
+	| `signed_long
+	| `unsigned_long
+	| `signed_long_long
+	| `unsigned_long_long];;
+
+type float_prec = [
+	| `float
+	| `double
+	| `long_double];;
+
+type real_prec = [
+	| float_prec
+	| `decimal32 (* gcc's _Decimal32 *)
+	| `decimal64 (* gcc's _Decimal64 *)
+	| `decimal128];; (* gcc's _Decimal128 *)
+
+module LexicalElement (Literals: LiteralsType) = struct
+	open Literals;;
+	
+	type t = [
+		| reserved_word
+		| extended_word
+		| objc_directive
+		| preprocessor_directive
+		| `directive_parameter of string
+		| `end_of_line
+		| `ident of string
+		| `int_literal of int_prec * Integer.t
+		| `float_literal of real_prec * Real.t
+		| `imaginary_literal of float_prec * Real.t
+		| `char_literal of char
+		| `chars_literal of string
+		| `wchar_literal of WideString.elm
+		| `wchars_literal of WideString.t
+		| `objc_string_literal of string (* @"..." *)
+		| `l_paren
+		| `r_paren
+		| `l_bracket (* [ or <: *)
+		| `r_bracket (* ] or :> *)
+		| `l_curly (* { or <% *)
+		| `r_curly (* } or %> *)
+		| `period
+		| `arrow (* -> *)
+		| `increment (* ++ *)
+		| `decrement (* -- *)
+		| `ampersand
+		| `asterisk
+		| `plus
+		| `minus
+		| `tilde
+		| `exclamation
+		| `slash
+		| `percent
+		| `l_shift (* << *)
+		| `r_shift (* >> *)
+		| `lt
+		| `gt
+		| `le (* <= *)
+		| `ge (* >= *)
+		| `eq (* == *)
+		| `ne (* != *)
+		| `caret
+		| `vertical
+		| `and_then (* && *)
+		| `or_else (* || *)
+		| `question
+		| `colon
+		| `semicolon
+		| `varargs (* ... *)
+		| `assign (* = *)
+		| `mul_assign (* *= *)
+		| `div_assign (* /= *)
+		| `rem_assign (* %= *)
+		| `add_assign (* += *)
+		| `sub_assign (* -= *)
+		| `l_shift_assign (* <<= *)
+		| `r_shift_assign (* >>= *)
+		| `and_assign (* &= *)
+		| `xor_assign (* ^= *)
+		| `or_assign (* |= *)
+		| `comma
+		| `sharp (* # or %: *)
+		| `d_sharp (* ## or %:%: *)
+		| `d_colon (* C++ :: *)
+		| `period_ref (* C++ .* *)
+		| `arrow_ref];; (* C++ ->* *)
+	
+end;;
+
+module LexicalElementType (Literals: LiteralsType) = struct
+	module type S = module type of LexicalElement (Literals);;
+end;;
