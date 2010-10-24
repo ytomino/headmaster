@@ -462,7 +462,11 @@ struct
 				let removed = StringMap.remove name predefined in
 				let yr' = lazy (preprocess error lang read in_macro_expr removed StringMap.empty item.df_contents) in
 				begin match yr' with
-				| lazy (`cons (_, `ident replaced, lazy (`nil _))) when StringMap.mem replaced removed ->
+				| lazy (`cons (_, `ident replaced, lazy (`nil _)))
+					when StringMap.mem replaced removed &&
+						(StringMap.find replaced removed).df_has_arguments &&
+						(match xs with lazy (`cons (_, `l_paren, _)) -> true | _ -> false)
+				->
 					(* re-expanding function-macro with following arguments *)
 					(* replace position-info to current *)
 					let yr' = lazy (LazyList.map_a (fun _ -> ps) yr') in
@@ -802,10 +806,17 @@ struct
 			| `ident name when StringMap.mem name macro_arguments ->
 				let yr = StringMap.find name macro_arguments in
 				begin match yr with
-				| lazy (`cons (ps1, (`ident _ as name1), lazy (`nil _))) ->
+				| lazy (`cons (ps1, (`ident replaced as name1), lazy (`nil _))) ->
 					begin match xr with
 					| lazy (`cons (ds_p, `d_sharp, xr)) ->
 						process_d_sharp ps1 name1 ds_p xr
+					| lazy (`cons (_, `l_paren, _))
+						when StringMap.mem replaced predefined &&
+							(StringMap.find replaced predefined).df_has_arguments
+					->
+						(* re-expanding function-macro with following arguments *)
+						preprocess error lang read in_macro_expr predefined macro_arguments (lazy (
+							LazyList.append yr xr))
 					| _ ->
 						LazyList.append yr (lazy (
 							preprocess error lang read in_macro_expr predefined macro_arguments xr))

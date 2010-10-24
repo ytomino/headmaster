@@ -1788,6 +1788,31 @@ struct
 		(source_item: Semantics.named_item)
 		: unit =
 	(
+		let pp_subprogram_alias source_name prototype (source_item: Semantics.function_item) = (
+			pp_print_space ff ();
+			pp_open_box ff indent;
+			let _, args, _, _ = prototype in
+			let local = add_name_mapping_for_arguments args name_mapping in
+			pp_prototype ff ~name_mapping:local ~anonymous_mapping
+				~current ~name:(Some name) prototype;
+			fprintf ff "@ renames %s;" source_name;
+			pp_close_box ff ();
+			begin try
+				let overload = List.assq source_item language_mapping.Semantics.lm_overload in
+				List.iter (fun prototype ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					let _, args, _, _ = prototype in
+					let local = add_name_mapping_for_arguments args name_mapping in
+					pp_prototype ff ~name_mapping:local ~anonymous_mapping
+						~current ~name:(Some name) prototype;
+					fprintf ff "@ renames %s;" source_name;
+					pp_close_box ff ()
+				) overload
+			with Not_found ->
+				()
+			end
+		) in
 		let `named (source_ps, source_name, _, _), _ = source_item in
 		let source_name = ada_name_of current source_ps source_name `namespace name_mapping in
 		begin match source_item with
@@ -1800,29 +1825,7 @@ struct
 		| `named (_, _, `extern _, _), _ as source_item ->
 			begin match source_item with
 			| `named (_, _, `extern ((`function_type prototype, _), _), _), _ as source_item ->
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				let _, args, _, _ = prototype in
-				let local = add_name_mapping_for_arguments args name_mapping in
-				pp_prototype ff ~name_mapping:local ~anonymous_mapping
-					~current ~name:(Some name) prototype;
-				fprintf ff "@ renames %s;" source_name;
-				pp_close_box ff ();
-				begin try
-					let overload = List.assq source_item language_mapping.Semantics.lm_overload in
-					List.iter (fun prototype ->
-						pp_print_space ff ();
-						pp_open_box ff indent;
-						let _, args, _, _ = prototype in
-						let local = add_name_mapping_for_arguments args name_mapping in
-						pp_prototype ff ~name_mapping:local ~anonymous_mapping
-							~current ~name:(Some name) prototype;
-						fprintf ff "@ renames %s;" source_name;
-						pp_close_box ff ()
-					) overload
-				with Not_found ->
-					()
-				end
+				pp_subprogram_alias source_name prototype source_item
 			| `named (_, _, `extern (t, _), _), _ ->
 				pp_print_space ff ();
 				pp_open_box ff indent;
@@ -1837,9 +1840,8 @@ struct
 		| `named (_, _, `function_forward (_, (`function_type _, _)), _), _ ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
 			assert false
-		| `named (_, _, `function_definition _, _), _ ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
+		| `named (_, _, `function_definition (_, (`function_type prototype, _), _), _), _ as source_item ->
+			pp_subprogram_alias source_name prototype source_item
 		| `named (_, _, `defined_operator _, _), _ ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
 			assert false
@@ -2978,8 +2980,21 @@ struct
 		: unit =
 	(
 		let ptrdiff_t = Semantics.find_ptrdiff_t predefined_types in
-		let casts = List.fold_left collect_cast [] items in
-		let casts = List.fold_left (collect_pointer_arithmetic ptrdiff_t) casts items in
+		let items_having_bodies = List.filter (
+			begin fun (item: Semantics.source_item) ->
+				begin match item with
+				| `named (_, _, `function_definition (`extern_inline, _, _), _), _ (* use extern, ignore body *)
+				| `named (_, _, `defined_generic_expression _, _), _ (* unimplemented for translating function macro *)
+				| `named (_, _, `defined_generic_statement _, _), _ ->
+					false
+				| _ ->
+					true
+				end
+			end)
+			items
+		in
+		let casts = List.fold_left collect_cast [] items_having_bodies in
+		let casts = List.fold_left (collect_pointer_arithmetic ptrdiff_t) casts items_having_bodies in
 		let with_packages =
 			let items = (items :> Semantics.all_item list) in
 			let items =
@@ -3033,8 +3048,8 @@ struct
 					) (snd predefined_types);
 					(* derived types of predefined types *)
 					List.iter (fun (item, _) ->
-						pp_derived_types_for_the_type ff ~language_mapping ~name_mapping ~anonymous_mapping:[] ~casts ~current:name
-							(item :> Semantics.type_item) derived_types
+						pp_derived_types_for_the_type ff ~language_mapping ~name_mapping ~anonymous_mapping:[] ~casts
+							~current:name (item :> Semantics.type_item) derived_types
 					) (fst predefined_types)
 				) else (
 					(* casts between types belong to another packages *)
@@ -3069,6 +3084,23 @@ struct
 					) casts
 				);
 				(* items *)
+				let rec extern_exists_before
+					(item: Semantics.function_definition Semantics.with_name Semantics.item)
+					(xs: Semantics.source_item list)
+					: bool =
+				(
+					let `named (_, name, _, _), _ = item in
+					begin match xs with
+					| (`named (_, xname, `extern ((`function_type _, _), _), _), _) :: _ when xname = name ->
+						true
+					| x :: _ when x == (item :> Semantics.source_item) ->
+						false
+					| _ :: xr ->
+						extern_exists_before item xr
+					| [] ->
+						false
+					end
+				) in
 				ignore (
 					List.fold_left (fun anonymous_mapping item ->
 						(* source item *)
@@ -3079,8 +3111,11 @@ struct
 								let anonymous_mapping = (item, hash) :: anonymous_mapping in
 								pp_anonymous_type ff ~name_mapping ~anonymous_mapping ~current:name item;
 								anonymous_mapping
+							| `named (_, _, `function_definition (`extern_inline, _, _), _), _ as item when extern_exists_before item items ->
+								anonymous_mapping
 							| `named _, _ as item ->
-								pp_named ff ~language_mapping ~name_mapping ~anonymous_mapping ~opaque_types ~current:name item;
+								pp_named ff ~language_mapping ~name_mapping ~anonymous_mapping ~opaque_types
+									~current:name item;
 								anonymous_mapping
 							end
 						in
@@ -3088,8 +3123,8 @@ struct
 						begin match item with
 						| #Semantics.anonymous_type, _
 						| `named (_, _, #Semantics.named_type_var, _), _ as t ->
-							pp_derived_types_for_the_type ff ~language_mapping ~name_mapping ~anonymous_mapping ~casts ~current:name
-								(t :> Semantics.type_item) derived_types
+							pp_derived_types_for_the_type ff ~language_mapping ~name_mapping ~anonymous_mapping ~casts
+								~current:name (t :> Semantics.type_item) derived_types
 						| _ ->
 							()
 						end;

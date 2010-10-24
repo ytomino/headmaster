@@ -72,6 +72,112 @@ struct
 		{no_attributes with at_aligned = alignment}
 	);;
 	
+	(* type compatibility *)
+	
+	type compatibility = [`just | `compatible | `error];;
+	
+	let min_compatibility (x: compatibility) (y: compatibility): compatibility = (
+		begin match x, y with
+		| `error, _ | _, `error -> `error
+		| `compatible, _ | _, `compatible -> `compatible
+		| `just, `just -> `just
+		end
+	);;
+	
+	let rec type_ABI_compatibility ~(dest: type_item) ~(source: type_item): compatibility = (
+		if dest == source then `just else
+		begin match dest, source with
+		| _, (`void, _) ->
+			`compatible
+		| ((`char | `signed_char | `unsigned_char), _), ((`char | `signed_char | `unsigned_char), _) ->
+			`compatible
+		| (`pointer dest, _), (`pointer source, _) ->
+			type_ABI_compatibility ~dest ~source
+		| (`const dest, _), (`const source, _) ->
+			type_ABI_compatibility ~dest:(dest :> type_item) ~source:(source :> type_item)
+		| (`const dest, _), _ ->
+			let r2 = type_ABI_compatibility ~dest:(dest :> type_item) ~source in
+			min_compatibility `compatible r2
+		| (`named (_, _, (`typedef dest), _), _), _ ->
+			type_ABI_compatibility ~dest ~source
+		| _, (`named (_, _, (`typedef source), _), _) ->
+			type_ABI_compatibility ~dest ~source
+		| _ ->
+			`error
+		end
+	) and prototype_ABI_compatibility ~(dest: prototype) ~(source: prototype): compatibility = (
+		let d_conv, d_args, d_varargs, d_result = dest in
+		let s_conv, s_args, s_varargs, s_result = source in
+		(* calling convention *)
+		if d_conv <> s_conv then `error else
+		(* arguments *)
+		let result =
+			let rec loop (ds: variable item list) (ss: variable item list) result = (
+				begin match ds, ss with
+				| d :: dr, s :: sr ->
+					let `named (_, _, `variable (d_t, _), _), _ = d in
+					let `named (_, _, `variable (s_t, _), _), _ = s in
+					let r2 = type_ABI_compatibility ~dest:d_t ~source:s_t in
+					if r2 = `error then `error else
+					loop dr sr (min_compatibility r2 result)
+				| [], [] ->
+					result
+				| _ :: _, [] ->
+					if s_varargs = `varargs then `compatible else `error
+				| [], _ :: _ ->
+					`error
+				end
+			) in
+			loop d_args s_args `just
+		in
+		if result = `error then `error else
+		(* varargs *)
+		let result =
+			if d_varargs = s_varargs then result else
+			if d_varargs = `none && s_varargs = `varargs then `compatible else
+			`error
+		in
+		if result = `error then `error else
+		(* result *)
+		let r2 = type_ABI_compatibility ~dest:d_result ~source:s_result in
+		if r2 = `error then (
+			if fst d_result = `void then `compatible else `error
+		) else (
+			min_compatibility r2 result
+		)
+	);;
+	
+	let prototype_eq (left: prototype) (right: prototype): bool = (
+		let d_conv, d_args, d_varargs, d_result = left in
+		let s_conv, s_args, s_varargs, s_result = right in
+		(* calling convention *)
+		if d_conv <> s_conv then false else
+		(* arguments *)
+		let result =
+			let rec loop (ds: variable item list) (ss: variable item list): bool = (
+				begin match ds, ss with
+				| d :: dr, s :: sr ->
+					let `named (_, d_n, `variable (d_t, _), d_attr), _ = d in
+					let `named (_, s_n, `variable (s_t, _), s_attr), _ = s in
+					if d_n <> "" || s_n <> "" then false else (* named parameter is not eq, always *)
+					if d_t != s_t then false else
+					if d_attr <> s_attr then false else
+					loop dr sr
+				| [], [] ->
+					true
+				| _ :: _, [] | [], _ :: _ ->
+					false
+				end
+			) in
+			loop d_args s_args
+		in
+		if not result then false else
+		(* varargs *)
+		if d_varargs <> s_varargs then false else
+		(* result *)
+		d_result == s_result
+	);;
+	
 	(* dependency *)
 	
 	let depending_of_item (x: all_item): named_item list = (
@@ -233,7 +339,7 @@ struct
 						raise Not_found
 					| x :: xr ->
 						begin match x with
-						| `const (u: not_const_type item), _ as x when u = t ->
+						| `const (u: not_const_type item), _ as x when u == t ->
 							(x :> [> const_type] item)
 						| _ ->
 							loop xr
@@ -266,7 +372,7 @@ struct
 						raise Not_found
 					| x :: xr ->
 						begin match x with
-						| `volatile (u: not_qualified_type item), _ as x when u = t ->
+						| `volatile (u: not_qualified_type item), _ as x when u == t ->
 							(x :> [> volatile_type] item)
 						| _ ->
 							loop xr
@@ -309,7 +415,7 @@ struct
 					raise Not_found
 				| x :: xr ->
 					begin match x with
-					| `pointer u, _ as x when u = t ->
+					| `pointer u, _ as x when u == t ->
 						(x :> [> pointer_type] item)
 					| `pointer (`named (_, tag, `opaque_enum, _), _), _ as x
 						when (match t with `named (_, o_tag, `enum _, _), _ -> tag = o_tag | _ -> false)
@@ -353,7 +459,7 @@ struct
 						raise Not_found
 					| x :: xr ->
 						begin match x with
-						| `array (m, u), _ as x when n = m && u = t ->
+						| `array (m, u), _ as x when n = m && u == t ->
 							(x :> [> array_type] item)
 						| _ ->
 							loop xr
@@ -409,7 +515,7 @@ struct
 					raise Not_found
 				| x :: xr ->
 					begin match x with
-					| `restrict u, _ as x when u = t ->
+					| `restrict u, _ as x when u == t ->
 						(x :> [> restrict_type] item)
 					| _ ->
 						loop xr
@@ -425,6 +531,30 @@ struct
 			in
 			new_item, ((new_item :> derived_item) :: xs)
 		end
+	);;
+	
+	let find_function_type (prototype: prototype) (source: source_item list)
+		: function_type item * source_item list =
+	(
+		let rec loop xs = (
+			begin match xs with
+			| x :: xr ->
+				begin match x with
+				| `function_type u, _ as x when prototype_eq u prototype ->
+					x, source
+				| _ ->
+					loop xr
+				end
+			| [] ->
+				let func_type: function_type item =
+					`function_type prototype,
+					{it_depending = depending_of_prototype prototype}
+				in
+				let source = (func_type :> source_item) :: source in
+				func_type, source
+			end
+		) in
+		loop source
 	);;
 	
 	(* named types *)
@@ -972,7 +1102,7 @@ struct
 	);;
 	
 	let rec dereference (t: type_item): type_item option = (
-		begin match t with
+		begin match resolve_typedef t with
 		| `pointer t, _ ->
 			Some t
 		| `restrict (`pointer t, _), _ ->
@@ -986,79 +1116,6 @@ struct
 		| _ ->
 			None
 		end
-	);;
-	
-	type compatibility = [`just | `compatible | `error];;
-	
-	let min_compatibility (x: compatibility) (y: compatibility): compatibility = (
-		begin match x, y with
-		| `error, _ | _, `error -> `error
-		| `compatible, _ | _, `compatible -> `compatible
-		| `just, `just -> `just
-		end
-	);;
-	
-	let rec type_ABI_compatibility ~(dest: type_item) ~(source: type_item): compatibility = (
-		if dest == source then `just else
-		begin match dest, source with
-		| _, (`void, _) ->
-			`compatible
-		| ((`char | `signed_char | `unsigned_char), _), ((`char | `signed_char | `unsigned_char), _) ->
-			`compatible
-		| (`pointer dest, _), (`pointer source, _) ->
-			type_ABI_compatibility ~dest ~source
-		| (`const dest, _), (`const source, _) ->
-			type_ABI_compatibility ~dest:(dest :> type_item) ~source:(source :> type_item)
-		| (`const dest, _), _ ->
-			let r2 = type_ABI_compatibility ~dest:(dest :> type_item) ~source in
-			min_compatibility `compatible r2
-		| (`named (_, _, (`typedef dest), _), _), _ ->
-			type_ABI_compatibility ~dest ~source
-		| _, (`named (_, _, (`typedef source), _), _) ->
-			type_ABI_compatibility ~dest ~source
-		| _ ->
-			`error
-		end
-	) and prototype_ABI_compatibility ~(dest: prototype) ~(source: prototype): compatibility = (
-		let d_conv, d_args, d_varargs, d_result = dest in
-		let s_conv, s_args, s_varargs, s_result = source in
-		(* calling convention *)
-		if d_conv <> s_conv then `error else
-		(* arguments *)
-		let result =
-			let rec loop (ds: variable item list) (ss: variable item list) result = (
-				begin match ds, ss with
-				| d :: dr, s :: sr ->
-					let `named (_, _, `variable (d_t, _), _), _ = d in
-					let `named (_, _, `variable (s_t, _), _), _ = s in
-					let r2 = type_ABI_compatibility ~dest:d_t ~source:s_t in
-					if r2 = `error then `error else
-					loop dr sr (min_compatibility r2 result)
-				| [], [] ->
-					result
-				| _ :: _, [] ->
-					if s_varargs = `varargs then `compatible else `error
-				| [], _ :: _ ->
-					`error
-				end
-			) in
-			loop d_args s_args `just
-		in
-		if result = `error then `error else
-		(* varargs *)
-		let result =
-			if d_varargs = s_varargs then result else
-			if d_varargs = `none && s_varargs = `varargs then `compatible else
-			`error
-		in
-		if result = `error then `error else
-		(* result *)
-		let r2 = type_ABI_compatibility ~dest:d_result ~source:s_result in
-		if r2 = `error then (
-			if fst d_result = `void then `compatible else `error
-		) else (
-			min_compatibility r2 result
-		)
 	);;
 	
 	let find_enum_by_element
@@ -1399,21 +1456,29 @@ struct
 				derived_types, source, None
 			| Some var, `some (_, `ident field_name) ->
 				let t = snd var in
-				let resolved_t = resolve_typedef t in
+				(* dereferencing *)
 				let resolved_t, var = (
 					if dereferencing then (
-						begin match dereference resolved_t with
+						begin match dereference t with
 						| Some target_t ->
 							let target_t = resolve_typedef target_t in
 							target_t, (`dereference var, target_t)
 						| None ->
 							error (fst x) "this expression is not a pointer type.";
-							resolved_t, var
+							t, var
 						end
 					) else (
-						resolved_t, var
+						(resolve_typedef t), var
 					)
 				) in
+				(* remove const *)
+				let resolved_t =
+					begin match resolved_t with
+					| `const t, _ -> resolve_typedef (t :> type_item)
+					| _ -> resolved_t
+					end
+				in
+				(* element access *)
 				begin match resolved_t with
 				| `anonymous (_, `struct_type (_, items)), _
 				| `anonymous (_, `union items), _
@@ -2708,11 +2773,7 @@ struct
 				handle_parameter_type_list error predefined_types derived_types namespace source attributes.at_aligned ptl
 			in
 			let prototype: prototype = conventions, params, varargs, base_type in
-			let func_type: anonymous_item =
-				`function_type prototype,
-				{it_depending = depending_of_prototype prototype}
-			in
-			let source = (func_type :> source_item) :: source in
+			let func_type, source = find_function_type prototype source in
 			handle_direct_declarator error predefined_types derived_types namespace source (func_type :> type_item) attributes dd
 		| `old_function_type (dd, _, idl, _) ->
 			begin match idl with
@@ -2722,11 +2783,7 @@ struct
 			| `none ->
 				let conventions = attributes.at_conventions in
 				let prototype: prototype = conventions, [], `varargs, base_type in
-				let func_type: anonymous_item =
-					`function_type prototype,
-					{it_depending = depending_of_prototype prototype}
-				in
-				let source = (func_type :> source_item) :: source in
+				let func_type, source = find_function_type prototype source in
 				handle_direct_declarator error predefined_types derived_types namespace source (func_type :> type_item) attributes dd
 			end
 		end
@@ -2980,11 +3037,7 @@ struct
 				end
 			in
 			let prototype: prototype = conventions, params, varargs, base_type in
-			let func_type: anonymous_item =
-				`function_type prototype,
-				{it_depending = depending_of_prototype prototype}
-			in
-			let source = (func_type :> source_item) :: source in
+			let func_type, source = find_function_type prototype source in
 			begin match dd with
 			| `some dd ->
 				handle_direct_abstract_declarator error predefined_types derived_types namespace source (func_type :> type_item) attributes dd
