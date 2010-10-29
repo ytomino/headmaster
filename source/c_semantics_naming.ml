@@ -81,6 +81,8 @@ struct
 						let added_dest_items =
 							List.fold_right (fun item (added_dest_items: source_item list) ->
 								begin match item with
+								| `named (_, _, `defined_alias _, _), _ ->
+									added_dest_items (* does not chain *)
 								| `named (_, name, _, _), _ as item ->
 									if 
 										List.exists (fun (i: source_item) ->
@@ -192,8 +194,10 @@ struct
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
 				| #anonymous_type, _
+				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _), _), _), _
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _), _ ->
 					pair
+				| `named (_, name, `defined_alias (`named (_, _, kind, _), _), _), _
 				| `named (_, name, kind, _), _ ->
 					let l_name = 
 						begin try
@@ -218,8 +222,10 @@ struct
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
 				| #anonymous_type, _
+				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _), _), _), _
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _), _ ->
 					pair
+				| `named (_, name, `defined_alias (`named (_, _, kind, _), _), _), _
 				| `named (_, name, kind, _), _ ->
 					if StringMap.mem name special_map then pair else
 					let s_name =

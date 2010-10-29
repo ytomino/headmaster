@@ -1,6 +1,8 @@
 open Environment;;
 
-let gcc_lang (lang: language): string = (
+type language = [`c | `cxx | `objc | `objcxx];; (* gcc supports *)
+
+let gcc_lang (lang: [< language]): string = (
 	begin match lang with
 	| `c -> "c"
 	| `cxx -> "c++"
@@ -36,7 +38,7 @@ let bytes_of_digits (d: int): int = (
 	16
 );;
 
-let gcc_env (command: string) (lang: language): environment = (
+let gcc_env (command: string) (lang: [< language]): environment = (
 	let predefined = Buffer.create 4096 in
 	let include_path = ref [] in
 	let sys_include_path = ref [] in

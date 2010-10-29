@@ -79,6 +79,7 @@ module TextStream = struct
 			s.ts_line <- s.ts_line + 1;
 			s.ts_column <- 1
 		| '\r' ->
+			fill s;
 			if hd s = '\n' then (
 				s.ts_column <- s.ts_column + 1;
 				s.ts_cr <- true

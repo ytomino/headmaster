@@ -13,6 +13,7 @@ open Environment_gcc;;
 let source_filename = ref "../c-lib.h";;
 let gcc_command = ref "gcc";;
 let tab_width = 3;;
+let destdir = "import";;
 
 let rec parse_args i = (
 	if i < Array.length Sys.argv then (
@@ -124,7 +125,7 @@ let ada_sources = ref [];;
 let dirs = T.dir_packages filename_mapping;;
 
 List.iter (fun x ->
-	let filename = Filename.concat "build" (T.spec_filename x) in
+	let filename = Filename.concat destdir (T.spec_filename x) in
 	print_string filename;
 	print_newline ();
 	let f = open_out filename in
@@ -141,7 +142,7 @@ let items_per_package = T.items_per_package (remove_include_dir env) ada_mapping
 let name_mapping = T.name_mapping filename_mapping items_per_package;;
 
 StringMap.iter (fun package items ->
-	let ads_filename = Filename.concat "build" (T.spec_filename package) in
+	let ads_filename = Filename.concat destdir (T.spec_filename package) in
 	print_string ads_filename;
 	let f = open_out ads_filename in
 	let ff = Format.make_formatter (output f) (fun () -> flush f) in
@@ -153,6 +154,7 @@ StringMap.iter (fun package items ->
 			~predefined_types
 			~derived_types
 			~opaque_types
+			~enum_of_element:namespace.A.ns_enum_of_element
 			~name:package
 			items;
 		Format.pp_print_flush ff ();
@@ -170,7 +172,7 @@ StringMap.iter (fun package items ->
 	end;
 	close_out f;
 	if T.body_required items then (
-		let adb_filename = Filename.concat "build" (T.body_filename package) in
+		let adb_filename = Filename.concat destdir (T.body_filename package) in
 		print_string adb_filename;
 		let f = open_out adb_filename in
 		let ff = Format.make_formatter (output f) (fun () -> flush f) in
@@ -201,9 +203,10 @@ print_string "---- check ----\n";;
 
 flush stdout;;
 
+let prefix = String.sub !gcc_command 0 (String.length !gcc_command - 3);;
 let command =
 	List.fold_left (fun command filename ->
 		command ^ " " ^ filename
-	) "gnatmake -gnatc -gnatwa -gnaty -D build" !ada_sources;;
+	) (prefix ^ "gnatmake -gnatc -gnatwa -gnaty -D " ^ destdir) !ada_sources;;
 
 ignore (Sys.command command);;

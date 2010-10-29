@@ -393,6 +393,9 @@ module Semantics (Literals: LiteralsType) = struct
 	type volatile_type = [`volatile of not_qualified_type item];;
 	type const_type = [`const of not_const_type item];;
 	
+	type struct_or_union_type_item = struct_or_union_type item;;
+	type not_qualified_type_item = not_qualified_type item;;
+	
 	type derived_type = [
 		| `pointer of type_item
 		| `array of Integer.t option * not_qualified_type item
@@ -432,8 +435,10 @@ module Semantics (Literals: LiteralsType) = struct
 	type typedef_item = typedef_type item;;
 	
 	type named_type = named_type_var with_name;;
+	type named_type_item = named_type item;;
 	
 	type function_definition = [`function_definition of [`static | `extern_inline | `none] * function_type item * statement list];;
+	type function_definition_item = function_definition with_name item;;
 	type function_item = function_var with_name item;;
 	
 	type predefined_item = predefined_type item;;
@@ -458,6 +463,9 @@ module Semantics (Literals: LiteralsType) = struct
 		| `assign of expression * assignment_operator * expression];;
 	type any_assignment_expression = any_assignment_expression_var * type_item;;
 	
+	type statement_expression_var = [`statement of statement list];;
+	type statement_expression = statement_expression_var * type_item;;
+	
 	(* type check *)
 	
 	ignore (lazy ((assert false : named_type) :> named));;
@@ -473,6 +481,7 @@ module Semantics (Literals: LiteralsType) = struct
 	ignore (lazy ((assert false : conditional_expression) :> expression));;
 	ignore (lazy ((assert false : assignment_expression) :> any_assignment_expression));;
 	ignore (lazy ((assert false : any_assignment_expression) :> expression));;
+	ignore (lazy ((assert false : statement_expression) :> expression));;
 	
 	(* typedef *)
 	
@@ -571,6 +580,8 @@ module Semantics (Literals: LiteralsType) = struct
 	type opaque_types = opaque_enum_item StringMap.t *
 		opaque_struct_item StringMap.t *
 		opaque_union_item StringMap.t;;
+	
+	let empty_opaque_types = StringMap.empty, StringMap.empty, StringMap.empty;;
 	
 	let is_opaque (item: opaque_type_var with_name item)
 		(opaque_types: opaque_types)

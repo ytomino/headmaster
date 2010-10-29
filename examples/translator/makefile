@@ -35,8 +35,8 @@ else
 	ln -sf $(TEST).byte $(TEST)$(EXEEXT)
 endif
 
-test: $(TEST)$(EXEEXT)
-	-rm $(BUILDDIR)/c*.ads $(BUILDDIR)/c*.adb $(BUILDDIR)/c*.ali
+test: $(TEST)$(EXEEXT) import
+	-$(RM) import/*
 	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(H)
 
 interactive:
@@ -49,6 +49,9 @@ $(BUILDDIR)/gmp.cma:
 
 $(BUILDDIR)/unicode.cma:
 	make -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+
+import:
+	mkdir import
 
 clean:
 	-$(RMDIR) build

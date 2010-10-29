@@ -61,7 +61,6 @@ let read data = (
 	end
 );;
 
-type language = [`c | `cxx | `objc | `objcxx];;
 type include_from = [`user | `system];;
 
 let find_include
@@ -161,9 +160,9 @@ let remove_include_dir (env: environment) (filename: string): string = (
 	let r = loop None env.en_include in
 	let r = loop r env.en_sys_include in
 	begin match r with
-	| Some r -> r
+	| Some r ->
+		r
 	| None ->
-		if Filename.is_relative filename then Filename.basename filename else
-		filename
+		Filename.basename filename (* specified in command line *)
 	end
 );;

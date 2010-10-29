@@ -20,7 +20,7 @@ let print_exception (e: exn): unit = (
 );;
 
 type options = {
-	source_filename: string;
+	source_filenames: string list;
 	tab_width: int;
 	gcc_command: string;
 	include_dirs: string list;
@@ -33,7 +33,7 @@ type options = {
 	version: bool};;
 
 let initial_options = {
-	source_filename = "";
+	source_filenames = [];
 	tab_width = 1;
 	gcc_command = "gcc";
 	include_dirs = [];
@@ -99,16 +99,16 @@ let option_spec =
 	case "v" ~long:"version" ~desc:"Print the version number"
 		=> (fun options -> {options with version = true});
 	otherwise
-		(fun arg options -> {options with source_filename = arg})];;
+		(fun arg options -> {options with source_filenames = arg :: options.source_filenames})];;
 
 let options = CommandLine.parse option_spec Sys.argv initial_options;;
 
 if options.usage || options.version ||
-	options.source_filename = "" || options.to_lang = `none
+	options.source_filenames = [] || options.to_lang = `none
 then (
 	let error = not options.usage && not options.version &&
-		(options.source_filename = "" || options.to_lang = `none) in
-	if error && options.source_filename = "" then (
+		(options.source_filenames = [] || options.to_lang = `none) in
+	if error && options.source_filenames = [] then (
 		print_string "no input file was specified.";
 		print_newline ()
 	);
@@ -194,7 +194,10 @@ let predefined = (
 	end
 );;
 
-let source_tokens = lazy (read_file options.source_filename);;
+let source_tokens = lazy (LazyList.concat (List.map
+	(fun name -> lazy (read_file name))
+	(List.rev options.source_filenames)));;
+
 let source_tokens' = lazy (PP.preprocess
 	error options.lang read_include_file
 	false predefined StringMap.empty source_tokens);;
@@ -262,6 +265,7 @@ begin match options.to_lang with
 				~predefined_types
 				~derived_types
 				~opaque_types
+				~enum_of_element:namespace.A.ns_enum_of_element
 				~name:package
 				items;
 			Format.pp_print_flush ff ();

@@ -1692,7 +1692,26 @@ struct
 			end
 		| `statement (_, compound, _) ->
 			let derived_types, source, compound = handle_compound_statement error predefined_types derived_types namespace source `default compound in
-			let t = find_predefined_type `void predefined_types in (* ??? *)
+			let rec loop xs = (
+				begin match xs with
+				| stmt :: [] ->
+					begin match stmt with
+					| `expression (_, t) ->
+						t
+					| `local (_, stmts) ->
+						loop stmts
+					| _ ->
+						error (fst x) "last of statement expression is not an expression.";
+						find_predefined_type `void predefined_types (* should it be error? *)
+					end
+				| _ :: xr ->
+					loop xr
+				| [] ->
+					error (fst x) "statement expression is empty.";
+					find_predefined_type `void predefined_types
+				end
+			) in
+			let t = loop compound in 
 			derived_types, source, Some (`statement compound, t)
 		| `array_access (left, _, right, _) ->
 			begin match right with
