@@ -1427,6 +1427,8 @@ struct
 				{attributes with at_used = `unused}
 			| `used ->
 				{attributes with at_used = `used}
+			| `warn_unused_result ->
+				{attributes with at_warn_unused_result = true}
 			| `weak_import ->
 				{attributes with at_weak_import = true}
 			end
@@ -1798,6 +1800,32 @@ struct
 					derived_types, source, None
 				end
 			| _ ->
+				derived_types, source, None
+			end
+		| `__builtin_compare ((_, func), _, left, _, right, _) ->
+			begin match left with
+			| `some left ->
+				begin match func with
+				| `__builtin_isgreater ->
+					let int_gt left right = (Integer.compare left right > 0) in
+					handle_compare (fun left right -> Some (`gt (left, right))) int_gt left right
+				| `__builtin_isgreaterequal ->
+					let int_ge left right = (Integer.compare left right >= 0) in
+					handle_compare (fun left right -> Some (`ge (left, right))) int_ge left right
+				| `__builtin_isless ->
+					let int_lt left right = (Integer.compare left right < 0) in
+					handle_compare (fun left right -> Some (`lt (left, right))) int_lt left right
+				| `__builtin_islessequal ->
+					let int_le left right = (Integer.compare left right <= 0) in
+					handle_compare (fun left right -> Some (`le (left, right))) int_le left right
+				| `__builtin_islessgreater ->
+					let int_ne left right = (Integer.compare left right <> 0) in
+					handle_compare (fun left right -> Some (`ne (left, right))) int_ne left right
+				| `__builtin_isunordered ->
+					let int_uo _ _ = false in (* integer is always orderd *)
+					handle_compare (fun left right -> Some (`uo (left, right))) int_uo left right
+				end
+			| `error ->
 				derived_types, source, None
 			end
 		| `element_access (var, _, field) ->
@@ -3456,9 +3484,10 @@ struct
 					begin match snd x with
 					| `declaration decl ->
 						let derived_types, namespace, local, _ = handle_declaration error predefined_types derived_types namespace [] alignment (fst x, decl) in
+						let local = List.rev local in (* source order *)
 						let derived_types, source, stmts = loop derived_types namespace source xr [] in
 						let local = `local (local, stmts) in
-						derived_types, source, List.rev (local :: rs)
+						derived_types, source, List.rev (local :: List.rev rs)
 					| `statement stmt ->
 						let derived_types, source, stmt = handle_statement ~control ?return_type error predefined_types derived_types namespace source alignment (fst x, stmt) in
 						let rs =

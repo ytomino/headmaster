@@ -216,8 +216,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		!long_double_mantissa
 	in
 	let builtin = [
-		"__builtin_alloca", [`unsigned_int], `pointer `void;
-		"__builtin_bzero", [`pointer `void; `unsigned_int], `void;
+		"__builtin_alloca", [`unsigned_int], `pointer `char;
+		"__builtin_bzero", [`pointer `char; `unsigned_int], `void;
 		"__builtin_expect", [`bool; `bool], `bool;
 		"__builtin_fabsf", [`float], `float;
 		"__builtin_fabs", [`double], `double;
@@ -229,12 +229,6 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_inff", [], `float;
 		"__builtin_inf", [], `double;
 		"__builtin_infl", [], `long_double;
-		"__builtin_isgreater", [`long_double; `long_double], `long_double;
-		"__builtin_isgreaterequal", [`long_double; `long_double], `long_double;
-		"__builtin_isless", [`long_double; `long_double], `long_double;
-		"__builtin_islessequal", [`long_double; `long_double], `long_double;
-		"__builtin_islessgreater", [`long_double; `long_double], `long_double;
-		"__builtin_isunordered", [`long_double; `long_double], `long_double;
 		"__builtin_nanf", [`pointer (`const `char)], `float;
 		"__builtin_nan", [`pointer (`const `char)], `double;
 		"__builtin_nanl", [`pointer (`const `char)], `long_double]

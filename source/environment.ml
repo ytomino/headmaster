@@ -37,7 +37,7 @@ type type_for_builtin = [
 	| `long_double
 	| `bool
 	| `void
-	| `pointer of [`void | `const of [`char]]];;
+	| `pointer of [`void | `char | `const of [`char]]];;
 
 type environment = {
 	en_sizeof: sizeof;

@@ -792,6 +792,8 @@ struct
 						`some (p4, `unused), xs
 					| "__used__" ->
 						`some (p4, `used), xs
+					| "__warn_unused_result__" ->
+						`some (p4, `warn_unused_result), xs
 					| "weak_import" ->
 						`some (p4, `weak_import), xs
 					| _ ->
@@ -1079,7 +1081,43 @@ struct
 					let args, xs = parse_argument_expression_list_option error lang typedefs xs in
 					let r_paren, xs = parse_r_paren_or_error error xs in
 					let `some (ps, ()) = (`some left) & (`some l_paren) &^ args &^ r_paren in
-					loop (ps, `function_call (left, l_paren, args, r_paren)) xs
+					let item =
+						match left with
+						| (l_ps, `ident (
+							"__builtin_isgreater"
+							| "__builtin_isgreaterequal"
+							| "__builtin_isless"
+							| "__builtin_islessequal"
+							| "__builtin_islessgreater"
+							| "__builtin_isunordered" as funcname))
+						->
+							let builtin : builtin_comparator =
+								match funcname with
+								| "__builtin_isgreater" -> `__builtin_isgreater
+								| "__builtin_isgreaterequal" -> `__builtin_isgreaterequal
+								| "__builtin_isless" -> `__builtin_isless
+								| "__builtin_islessequal" -> `__builtin_islessequal
+								| "__builtin_islessgreater" -> `__builtin_islessgreater
+								| "__builtin_isunordered" -> `__builtin_isunordered
+								| _ -> assert false
+							in
+							begin match args with
+							| `some (_, `cons ((left_p, `nil left_e), comma, right)) ->
+								`__builtin_compare (
+									(l_ps, builtin),
+									`some l_paren,
+									(`some (left_p, left_e) :> expression pe),
+									`some comma,
+									(right :> expression pe),
+									r_paren)
+							| _ ->
+								error (LazyList.hd_a xs) "arguments mismatch for builtin comparator.";
+								`__builtin_compare ((l_ps, builtin), `error, `error, `error, `error, `error)
+							end
+						| _ ->
+							`function_call (left, l_paren, args, r_paren)
+					in
+					loop (ps, item) xs
 				| lazy (`cons (period_p, (`period as period_e), xs)) ->
 					let period = period_p, period_e in
 					let id, xs = parse_identifier_or_error error xs in

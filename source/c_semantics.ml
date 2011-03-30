@@ -164,6 +164,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_selectany: bool;
 		at_unavailable: bool;
 		at_used: [`none | `used | `unused];
+		at_warn_unused_result : bool;
 		at_weak_import: bool};;
 	
 	let no_attributes = {
@@ -184,6 +185,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_selectany = false;
 		at_unavailable = false;
 		at_used = `none;
+		at_warn_unused_result = false;
 		at_weak_import = false};;
 	
 	(* items *)
@@ -362,6 +364,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `ge of expression * expression
 		| `eq of expression * expression
 		| `ne of expression * expression
+		| `uo of expression * expression (* unordered *)
 		| `bit_and of expression * expression
 		| `bit_xor of expression * expression
 		| `bit_or of expression * expression
@@ -678,7 +681,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `add (a, b) | `sub (a, b)
 		| `l_shift (a, b) | `r_shift (a, b)
 		| `lt (a, b) | `gt (a, b) | `le (a, b) | `ge (a, b)
-		| `eq (a, b) | `ne (a, b)
+		| `eq (a, b) | `ne (a, b) | `uo (a, b)
 		| `bit_and (a, b) | `bit_xor (a, b) | `bit_or (a, b)
 		| `and_then (a, b) | `or_else (a, b) ->
 			is_static_expression a && is_static_expression b
@@ -738,7 +741,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `l_shift (expr1, expr2) | `r_shift (expr1, expr2)
 		| `lt (expr1, expr2) | `gt (expr1, expr2)
 		| `le (expr1, expr2) | `ge (expr1, expr2)
-		| `eq (expr1, expr2) | `ne (expr1, expr2)
+		| `eq (expr1, expr2) | `ne (expr1, expr2) | `uo (expr1, expr2)
 		| `bit_and (expr1, expr2) | `bit_xor (expr1, expr2) | `bit_or (expr1, expr2)
 		| `and_then (expr1, expr2) | `or_else (expr1, expr2)
 		| `assign (expr1, _, expr2) | `comma (expr1, expr2) ->

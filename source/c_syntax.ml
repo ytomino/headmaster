@@ -54,6 +54,14 @@ type bit_width_mode = [
 	| `__unwind_word__ (* pointer size ? *)
 	| `__word__];;
 
+type builtin_comparator = [
+	| `__builtin_isgreater
+	| `__builtin_isgreaterequal
+	| `__builtin_isless
+	| `__builtin_islessequal
+	| `__builtin_islessgreater
+	| `__builtin_isunordered];;
+
 module Syntax (Literals: LiteralsType) = struct
 	open Literals;;
 	
@@ -119,6 +127,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `unavailable
 		| `unused
 		| `used
+		| `warn_unused_result
 		| `weak_import]
 	(* inline assembler *)
 	and inline_assembler = [`__asm | `__asm__] p * [`VOLATILE | `__volatile__] opt * [`l_paren] pe * [`chars_literal of string] pe * ia_out opt * [`r_paren] pe * [`semicolon] pe
@@ -153,6 +162,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `function_call of expression p * [`l_paren] p * argument_expression_list opt * [`r_paren] pe
 		| `__builtin_constant_p of [`__builtin_constant_p] p * [`l_paren] pe * expression pe * [`r_paren] pe (* extended *)
 		| `__builtin_va_arg of [`__builtin_va_arg] p * [`l_paren] pe * expression pe * [`comma] pe * type_name pe * [`r_paren] pe (* extended *)
+		| `__builtin_compare of builtin_comparator p * [`l_paren] pe * expression pe * [`comma] pe * expression pe * [`r_paren] pe (* extended *)
 		| `element_access of expression p * [`period] p * identifier pe
 		| `dereferencing_element_access of expression p * [`arrow] p * identifier pe
 		| `post_increment of expression p * [`increment] p
