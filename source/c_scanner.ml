@@ -31,6 +31,9 @@ struct
 		let unclosed_string_error (ps: ranged_position) (s: string): unit = (
 			error ps ("\"" ^ String.escaped s ^ "\" is not closed string.")
 		) in
+		let hexadecimal_literal_error (ps: ranged_position) (): unit = (
+			error ps "illegal hexadecimal literal."
+		) in
 		let not_10_based_float_literal_error (ps: ranged_position) (): unit = (
 			error ps "floating-point literal should be 10-based."
 		) in
@@ -596,7 +599,12 @@ struct
 				in
 				let integer_part =
 					let s = read_digits ~base in
-					if s = "" && base = 8 then "0" else s
+					if s <> "" then s else (
+						if base = 16 then (
+							hexadecimal_literal_error (p1, TextStream.prev_position stream) ()
+						);
+						"0"
+					)
 				in
 				begin match TextStream.hd stream with
 				| '.' | 'e' | 'E' | 'p' | 'P' as h ->

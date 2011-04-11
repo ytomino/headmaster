@@ -81,13 +81,13 @@ struct
 						let added_dest_items =
 							List.fold_right (fun item (added_dest_items: source_item list) ->
 								begin match item with
-								| `named (_, _, `defined_alias _, _), _ ->
+								| `named (_, _, `defined_alias _, _) ->
 									added_dest_items (* does not chain *)
-								| `named (_, name, _, _), _ as item ->
+								| `named (_, name, _, _) as item ->
 									if 
 										List.exists (fun (i: source_item) ->
 											begin match i with
-											| `named (_, n2, `defined_alias i2, _), _ ->
+											| `named (_, n2, `defined_alias i2, _) ->
 												n2 = name && i2 == item
 											| _ ->
 												false
@@ -97,12 +97,11 @@ struct
 										let alias =
 											let p = h, 0, 0, 0 in
 											let ps = p, p in
-											`named (ps, name, `defined_alias item, no_attributes),
-											{it_depending = [item]}
+											`named (ps, name, `defined_alias item, no_attributes)
 										in
 										alias :: added_dest_items
 									)
-								| #anonymous_type, _ ->
+								| #anonymous_type ->
 									added_dest_items
 								end
 							) source_items dest_items
@@ -193,12 +192,12 @@ struct
 		let pair =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
-				| #anonymous_type, _
-				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _), _), _), _
-				| `named (_, _, (`enum _ | `struct_type _ | `union _), _), _ ->
+				| #anonymous_type
+				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _)
+				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) ->
 					pair
-				| `named (_, name, `defined_alias (`named (_, _, kind, _), _), _), _
-				| `named (_, name, kind, _), _ ->
+				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
+				| `named (_, name, kind, _) ->
 					let l_name = 
 						begin try
 							StringMap.find name special_map
@@ -221,12 +220,12 @@ struct
 		let result, _ =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
-				| #anonymous_type, _
-				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _), _), _), _
-				| `named (_, _, (`enum _ | `struct_type _ | `union _), _), _ ->
+				| #anonymous_type
+				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _)
+				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) ->
 					pair
-				| `named (_, name, `defined_alias (`named (_, _, kind, _), _), _), _
-				| `named (_, name, kind, _), _ ->
+				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
+				| `named (_, name, kind, _) ->
 					if StringMap.mem name special_map then pair else
 					let s_name =
 						let s = short_f name in
@@ -307,14 +306,14 @@ struct
 	let add_name_mapping_for_arguments
 		~(long_f: string -> string)
 		~(short_f: string -> string)
-		(args: variable item list)
+		(args: variable list)
 		(name_mapping: name_mapping)
 		: name_mapping =
 	(
 		let (_: string -> string) = long_f in (* ignore... currently, no care for confliction *)
 		let name_mapping, _ =
 			List.fold_left (fun (name_mapping, i) arg ->
-				let `named (ps, name, _, _), _ = arg in
+				let `named (ps, name, _, _) = arg in
 				let name_mapping =
 					if name = "" then (
 						name_mapping

@@ -47,6 +47,71 @@ let ignore_macros = make_setmap [
 		"STDMETHODIMPV_"; (* mingw32 *)
 		"THIS"; (* mingw32 *)
 		"THIS_"]; (* mingw32 *)
+	"cairo-deprecated.h", [
+		"cairo_atsui_font_face_create_for_atsu_font_id"; (* cairo / undefined *)
+		"cairo_concat_matrix"; (* cairo / undefined *)
+		"cairo_copy"; (* cairo / undefined *)
+		"cairo_current_fill_rule"; (* cairo / undefined *)
+		"cairo_current_font_extents"; (* cairo / undefined *)
+		"cairo_current_line_cap";
+		"cairo_current_line_join";
+		"cairo_current_line_width";
+		"cairo_current_matrix";
+		"cairo_current_miter_limit";
+		"cairo_current_operator";
+		"cairo_current_path";
+		"cairo_current_path_flat";
+		"cairo_current_point";
+		"cairo_current_target_surface";
+		"cairo_current_tolerance";
+		"cairo_default_matrix";
+		"cairo_get_font_extents";
+		"cairo_get_path";
+		"cairo_get_path_flat";
+		"cairo_get_status";
+		"cairo_get_status_string";
+		"cairo_init_clip";
+		"cairo_inverse_transform_distance";
+		"cairo_inverse_transform_point";
+		"cairo_matrix_copy";
+		"cairo_matrix_create";
+		"cairo_matrix_destroy";
+		"cairo_matrix_get_affine";
+		"cairo_matrix_set_affine";
+		"cairo_matrix_set_identity";
+		"cairo_pattern_add_color_stop";
+		"cairo_pdf_surface_set_dpi";
+		"cairo_ps_surface_set_dpi";
+		"cairo_scale_font";
+		"cairo_select_font";
+		"cairo_set_alpha";
+		"cairo_set_pattern";
+		"cairo_set_rgb_color";
+		"cairo_set_target_drawable";
+		"cairo_set_target_image";
+		"cairo_set_target_pdf";
+		"cairo_set_target_png";
+		"cairo_set_target_ps";
+		"cairo_set_target_quartz";
+		"cairo_set_target_surface";
+		"cairo_set_target_win32";
+		"cairo_set_target_xcb"; (* cairo / undefined *)
+		"cairo_show_surface"; (* cairo / undefined *)
+		"cairo_status_string"; (* cairo / undefined *)
+		"cairo_surface_create_for_image"; (* cairo / undefined *)
+		"cairo_surface_get_filter"; (* cairo / undefined *)
+		"cairo_surface_get_matrix"; (* cairo / undefined *)
+		"cairo_surface_set_filter"; (* cairo / undefined *)
+		"cairo_surface_set_matrix"; (* cairo / undefined *)
+		"cairo_surface_set_repeat"; (* cairo / undefined *)
+		"cairo_svg_surface_set_dpi"; (* cairo / undefined *)
+		"cairo_transform_distance"; (* cairo / undefined *)
+		"cairo_transform_font"; (* cairo / undefined *)
+		"cairo_transform_point"; (* cairo / undefined *)
+		"cairo_xcb_surface_create_for_pixmap_with_visual"; (* cairo / undefined *)
+		"cairo_xcb_surface_create_for_window_with_visual"; (* cairo / undefined *)
+		"cairo_xlib_surface_create_for_pixmap_with_visual"; (* cairo / undefined *)
+		"cairo_xlib_surface_create_for_window_with_visual"]; (* cairo / undefined *)
 	"cdefs.h", [
 		"__aligned"; (* freebsd7 / parameterized attribute *)
 		"__CONCAT"; (* freebsd7 / ## *)
@@ -146,6 +211,9 @@ let ignore_macros = make_setmap [
 		"__MINGW_ATTRIB_NONNULL"; (* mingw32 / parameterized attribute *)
 		"__UNUSED_PARAM"; (* mingw32 / parameterized attribute *)
 		"__USE_MINGW_ANSI_STDIO"]; (* mingw32 / condition-compiling macro *)
+	"mmsystem.h", [
+		"MCI_ANIM_WINDOW_DEFAULT"; (* mingw32 / bug? 0xL *)
+		"MCI_OVLY_WINDOW_DEFAULT"]; (* mingw32 / bug? 0xL *)
 	"mpc.h", [
 		"mpc_imagref"; (* MPC / hard to type inference...for future *)
 		"__MPC_PROTO"; (* MPC / parameter list *)
@@ -230,8 +298,6 @@ let ignore_macros = make_setmap [
 		"NPDEPG"; (* freebsd7 / pd_entry_t was undefined... be #include <machine/pmap.h> *)
 		"NPDEPTD"; (* freebsd7 / pd_entry_t was undefined... be #include <machine/pmap.h> *)
 		"NPTEPG"]; (* freebsd7 / pd_entry_t was undefined... be #include <machine/pmap.h> *)
-	"png.h", [
-		"png_info_init"]; (* libpng / bug? extra ";" *)
 	"pngconf.h", [
 		"PNG_ABORT"; (* libpng / abort was undefined... be #include <stdlib.h> *)
 		"PNG_EXPORT"; (* libpng / parameterized declaration *)
@@ -313,8 +379,6 @@ let ignore_macros = make_setmap [
 		"NdrFieldOffset"; (* mingw32 / generic, field *)
 		"NdrMarshSCtxtHdl"; (* mingw32 / bug? not enough "" *)
 		"NDRSContextValue"; (* mingw32 / hard to type inference...for future *)
-		"NdrUnMarshCCtxtHdl"; (* mingw32 / bug? misspell of NDR_*C*CONTEXT *)
-		"NdrUnMarshConfStringHdr"; (* mingw32 / bug? not enough "" *)
 		"NdrUnMarshSCtxtHdl"; (* mingw32 / bug? misspell of N*DR*SContextUnMarshall *)
 		"small_array_from_ndr"; (* mingw32 / hard to type inference...for future *)
 		"small_from_ndr"]; (* mingw32 / hard to type inference...for future *)
@@ -437,7 +501,7 @@ let ignore_macros = make_setmap [
 		"FD_ZERO"; (* darwin9 / sizeof(macro argument) *)
 		"__offsetof"]; (* darwin9 / generic, field *)
 	"winbase.h", [
-		"GetEnvironmentStrings"; (* mingw32 / bug? declared as normal function *)
+		"GetEnvironmentStrings"; (* mingw32 / duplicated by macro and normal function *)
 		"GetVolumeNameForVolumeMountPoint"; (* mingw32 / #ifdef *)
 		"GetVolumePathName"; (* mingw32 / #ifdef *)
 		"GetVolumePathNamesForVolumeName"; (* mingw32 / #ifdef *)
@@ -452,10 +516,8 @@ let ignore_macros = make_setmap [
 		"CONTAINING_RECORD"; (* mingw32 / generic, field *)
 		"DECLSPEC_ALIGN"; (* mingw32 / parameterized attribute *)
 		"FIELD_OFFSET"; (* mingw32 / generic, field *)
-		"HEAP_MAKE_TAG_FLAGS"; (* mingw32 / bug? extra "") *)
 		"_SLIST_ENTRY"; (* mingw32 / struct tag *)
-		"TEXT"; (* mingw32 / ## *)
-		"VALID_INHERIT_FLAGS"]; (* mingw32 / bug? extra "|" *)
+		"TEXT"]; (* mingw32 / ## *)
 	"winsock2.h", [
 		"FD_SET"; (* mingw32 / conflicted with typedef *)
 		"h_addr"; (* mingw32 / element alias and dereferencing *)

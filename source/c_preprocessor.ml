@@ -750,6 +750,12 @@ struct
 						`cons (merged_ps, chars_token, lazy (
 							LazyList.append yr (lazy (
 								preprocess error lang read in_macro_expr predefined macro_arguments xr))))
+					| lazy (`cons (ps2, `int_literal (_, n), yr)) ->
+						let chars_token = `chars_literal (Integer.to_based_string ~base:10 n) in
+						let merged_ps = fst ps, snd ps2 in
+						`cons (merged_ps, chars_token, lazy (
+							LazyList.append yr (lazy (
+								preprocess error lang read in_macro_expr predefined macro_arguments xr))))
 					| _ ->
 						error ps "# requires one identifier.";
 						LazyList.append yr (lazy (
