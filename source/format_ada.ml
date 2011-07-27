@@ -167,6 +167,71 @@ let pp_package_body
 	pp_close_box ff ()
 );;
 
+(* type *)
+
+let pp_type
+	(ff: formatter)
+	(name: string)
+	?(pp_discriminants: (formatter -> unit) list = [])
+	(pp_definition: formatter -> 'a)
+	: 'a =
+(
+	pp_print_space ff ();
+	pp_open_vbox ff indent;
+	pp_open_box ff indent;
+	pp_print_string ff "type";
+	pp_print_space ff ();
+	pp_print_string ff name;
+	pp_print_space ff ();
+	if pp_discriminants <> [] then (
+		pp_print_char ff '(';
+		List.iter (fun pp_d -> pp_d ff) pp_discriminants;
+		pp_print_char ff ')';
+		pp_print_space ff ()
+	);
+	pp_print_string ff "is";
+	pp_print_space ff ();
+	pp_definition ff
+);;
+
+let pp_record_definition
+	(ff: formatter)
+	(pp_elements: (formatter -> unit) list)
+	: unit =
+(
+	if pp_elements = [] then (
+		pp_print_string ff "null record;";
+		pp_close_box ff ();
+		pp_close_box ff ()
+	) else (
+		pp_print_string ff "record";
+		pp_close_box ff ();
+		List.iter (fun pp_e -> pp_e ff) pp_elements;
+		pp_close_box ff ();
+		pp_print_space ff ();
+		pp_print_string ff "end record;"
+	)
+);;
+
+let pp_subtype
+	(ff: formatter)
+	(name: string)
+	(pp_type: formatter -> unit)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	pp_print_string ff "subtype";
+	pp_print_space ff ();
+	pp_print_string ff name;
+	pp_print_space ff ();
+	pp_print_string ff "is";
+	pp_print_space ff ();
+	pp_type ff;
+	pp_print_string ff ";";
+	pp_close_box ff ()
+);;
+
 (* statement *)
 
 let pp_begin

@@ -347,6 +347,20 @@ struct
 		end
 	);;
 	
+	let parse_l_curly_or_error
+		(error: ranged_position -> string -> unit)
+		(xs: 'a in_t)
+		: [`l_curly] pe * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (lc_p, (`l_curly as lc_e), xs)) ->
+			`some (lc_p, lc_e), xs
+		| _ ->
+			error (LazyList.hd_a xs) "\"{\" was expected.";
+			`error, xs
+		end
+	);;
+	
 	let parse_r_curly_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
@@ -558,6 +572,12 @@ struct
 					let r_paren, xs = parse_r_paren_or_error error xs in
 					let `some (ps, ()) = (`some pack) &^ l_paren &^ pack_argument &^ r_paren in
 					`some (ps, `pack (pack, l_paren, pack_argument, r_paren)), skip_end_of_line xs
+				| lazy (`cons (instance_p, (`ident "instance"), xs)) ->
+					let instance = instance_p, `INSTANCE in
+					let sql, xs = parse_specifier_qualifier_list_or_error error lang typedefs xs in
+					let decl, xs = parse_declarator_or_error ~use_string:true error lang typedefs xs in
+					let `some (ps, ()) = (`some instance) &^ sql &^ decl in
+					`some (ps, `instance (instance, sql, decl)), skip_end_of_line xs
 				| lazy (`cons (_, `ident keyword, xs)) ->
 					error (LazyList.hd_a xs) ("unknown pragma \"" ^ keyword ^ "\".");
 					`error, (skip_until_end_of_line xs)
@@ -573,7 +593,7 @@ struct
 							`error, xs
 						end
 					in
-					let (mapping: mapping pe), xs =
+					let (mapping: language_mapping pe), xs =
 						begin match xs with
 						| lazy (`cons (type_p, `ident "type", xs)) ->
 							let type_token = type_p, `TYPE in
@@ -615,7 +635,7 @@ struct
 						end
 					in
 					let `some (ps, ()) = (`some for_token) &^ target_language &^ mapping in
-					`some (ps, `mapping (for_token, target_language, mapping)), skip_end_of_line xs
+					`some (ps, `language_mapping (for_token, target_language, mapping)), skip_end_of_line xs
 				| _ ->
 					error (LazyList.hd_a xs) "pragma sub-keyword was expected.";
 					`error, (skip_until_end_of_line xs)
@@ -1027,9 +1047,14 @@ struct
 		(xs: [`cons of ranged_position * firstset_of_postfix_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let handle_initializer (_: [`l_paren] p) xs = (
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+		let handle_initializer (l_paren: [`l_paren] p) xs = (
+			let tn, xs = parse_type_name error lang typedefs xs in
+			let r_paren, xs = parse_r_paren_or_error error xs in
+			let l_curly, xs = parse_l_curly_or_error error xs in
+			let ilist, xs = parse_initializer_list_or_error error lang typedefs xs in
+			let r_curly, xs = parse_r_curly_or_error error xs in
+			let `some (ps, ()) = (`some l_paren) &^ (`some tn) &^ r_paren &^ l_curly &^ ilist &^ r_curly in
+			(ps, `compound (l_paren, tn, r_paren, l_curly, ilist, r_curly)), xs
 		) in
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
@@ -1083,7 +1108,7 @@ struct
 					let `some (ps, ()) = (`some left) & (`some l_paren) &^ args &^ r_paren in
 					let item =
 						match left with
-						| (l_ps, `ident (
+						| (fn_p, `ident (
 							"__builtin_isgreater"
 							| "__builtin_isgreaterequal"
 							| "__builtin_isless"
@@ -1104,7 +1129,7 @@ struct
 							begin match args with
 							| `some (_, `cons ((left_p, `nil left_e), comma, right)) ->
 								`__builtin_compare (
-									(l_ps, builtin),
+									(fn_p, builtin),
 									`some l_paren,
 									(`some (left_p, left_e) :> expression pe),
 									`some comma,
@@ -1112,7 +1137,7 @@ struct
 									r_paren)
 							| _ ->
 								error (LazyList.hd_a xs) "arguments mismatch for builtin comparator.";
-								`__builtin_compare ((l_ps, builtin), `error, `error, `error, `error, `error)
+								`__builtin_compare ((fn_p, builtin), `error, `error, `error, `error, `error)
 							end
 						| _ ->
 							`function_call (left, l_paren, args, r_paren)
@@ -1262,9 +1287,18 @@ struct
 		let handle_cast l_paren xs = (
 			let tn, xs = parse_type_name error lang typedefs xs in
 			let r_paren, xs = parse_r_paren_or_error error xs in
-			let expr, xs = parse_cast_expression_or_error error lang typedefs xs in
-			let `some (ps, ()) = (`some l_paren) & (`some tn) &^ r_paren &^ expr in
-			(ps, `cast (l_paren, tn, r_paren, expr)), xs
+			begin match xs with
+			| lazy (`cons (lc_p, (`l_curly as lc_e), xs)) -> (* compound literal *)
+				let l_curly = `some (lc_p, lc_e) in
+				let ilist, xs = parse_initializer_list_or_error error lang typedefs xs in
+				let r_curly, xs = parse_r_curly_or_error error xs in
+				let `some (ps, ()) = (`some l_paren) & l_curly &^ ilist &^ r_curly in
+				(ps, `compound (l_paren, tn, r_paren, l_curly, ilist, r_curly)), xs
+			| _ ->
+				let expr, xs = parse_cast_expression_or_error error lang typedefs xs in
+				let `some (ps, ()) = (`some l_paren) & (`some tn) &^ r_paren &^ expr in
+				(ps, `cast (l_paren, tn, r_paren, expr)), xs
+			end
 		) in
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
@@ -1305,18 +1339,18 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`asterisk as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`asterisk as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_cast_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`mul (left, op, right))) xs
-			| lazy (`cons (op_ps, (`slash as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`slash as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_cast_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`div (left, op, right))) xs
-			| lazy (`cons (op_ps, (`percent as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`percent as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_cast_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`rem (left, op, right))) xs
@@ -1351,13 +1385,13 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`plus as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`plus as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_multicative_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`add (left, op, right))) xs
-			| lazy (`cons (op_ps, (`minus as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`minus as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_multicative_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`sub (left, op, right))) xs
@@ -1392,13 +1426,13 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`l_shift as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`l_shift as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_additive_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`l_shift (left, op, right))) xs
-			| lazy (`cons (op_ps, (`r_shift as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`r_shift as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_additive_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`r_shift (left, op, right))) xs
@@ -1433,23 +1467,23 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`lt as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`lt as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`lt (left, op, right))) xs
-			| lazy (`cons (op_ps, (`gt as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`gt as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`gt (left, op, right))) xs
-			| lazy (`cons (op_ps, (`le as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`le as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`le (left, op, right))) xs
-			| lazy (`cons (op_ps, (`ge as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`ge as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`ge (left, op, right))) xs
@@ -1525,8 +1559,8 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`ampersand as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`ampersand as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_equality_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`bit_and (left, op, right))) xs
@@ -1561,8 +1595,8 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`caret as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`caret as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_and_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`bit_xor (left, op, right))) xs
@@ -1597,8 +1631,8 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`vertical as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`vertical as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_exclusive_or_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`bit_or (left, op, right))) xs
@@ -1633,8 +1667,8 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`and_then as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`and_then as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_inclusive_or_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`and_then (left, op, right))) xs
@@ -1669,8 +1703,8 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`or_else as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`or_else as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_logical_and_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`or_else (left, op, right))) xs
@@ -1773,8 +1807,8 @@ struct
 	(
 		let rec loop left xs = (
 			begin match xs with
-			| lazy (`cons (op_ps, (`comma as op), xs)) ->
-				let op = op_ps, op in
+			| lazy (`cons (op_p, (`comma as op_e), xs)) ->
+				let op = op_p, op_e in
 				let right, xs = parse_assignment_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
 				loop (ps, (`comma (left, op, right))) xs
@@ -1902,11 +1936,10 @@ struct
 			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
 			let `some (ps, ()) = (`some ex) &^ next in
 			(ps, `extension (ex, next)), xs
-		| lazy (`cons (ps, (`ident _), _)) ->
+		| lazy (`cons ((first, _ as ps), (`ident _), _)) ->
 			error ps "declaration-specifiers was expected.";
-			let first = fst ps in
-			let f_ps = first, first in
-			(f_ps, `type_specifier ((f_ps, `typedef_name (`ident "")), `none)), (xs :> 'a in_t)
+			let f_p = first, first in
+			(f_p, `type_specifier ((f_p, `typedef_name (`ident "")), `none)), (xs :> 'a in_t)
 		end
 	) and parse_declaration_specifiers_option
 		?(has_typedef: bool = false)
@@ -1961,7 +1994,9 @@ struct
 		(xs: [`cons of ranged_position * firstset_of_declarator * 'a in_t] lazy_t)
 		: init_declarator p * 'a in_t =
 	(
-		let decl, xs = parse_declarator error lang typedefs xs in
+		let decl, xs = parse_declarator error lang typedefs
+			(xs :> [`cons of ranged_position * [firstset_of_declarator | `chars_literal of string] * 'a in_t] lazy_t)
+		in
 		begin match xs with
 		| lazy (`cons (ass_p, (`assign as ass_e), xs)) ->
 			let assign = ass_p, ass_e in
@@ -2375,23 +2410,31 @@ struct
 			`error, xs
 		end
 	) and parse_declarator
+		?(use_string = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * firstset_of_declarator * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [firstset_of_declarator | `chars_literal of string] * 'a in_t] lazy_t)
 		: declarator p * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`asterisk as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let pointer, xs = parse_pointer error lang typedefs xs in
-			let dd, xs = parse_direct_declarator_or_error error lang typedefs xs in
+			let dd, xs = parse_direct_declarator_or_error ~use_string error lang typedefs xs in
 			let attrs, xs = parse_attribute_list_option error lang typedefs xs in
 			let `some (ps, ()) = (`some pointer) &^ dd &^ attrs in
 			(ps, (`some pointer, dd, attrs)), xs
 		| lazy (`cons (a, (`ident _ | `l_paren as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let dd, xs = parse_direct_declarator error lang typedefs xs in
+			let dd, xs = parse_direct_declarator ~use_string error lang typedefs xs in
+			let attrs, xs = parse_attribute_list_option error lang typedefs xs in
+			let `some (ps, ()) = (`some dd) &^ attrs in
+			(ps, (`none, `some dd, attrs)), xs
+		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
+			assert use_string;
+			let xs = lazy (`cons (a, it, xr)) in
+			let dd, xs = parse_direct_declarator ~use_string error lang typedefs xs in
 			let attrs, xs = parse_attribute_list_option error lang typedefs xs in
 			let `some (ps, ()) = (`some dd) &^ attrs in
 			(ps, (`none, `some dd, attrs)), xs
@@ -2412,6 +2455,7 @@ struct
 			`none, xs
 		end
 	) and parse_declarator_or_error
+		?(use_string = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
@@ -2421,17 +2465,22 @@ struct
 		begin match xs with
 		| lazy (`cons (a, (#firstset_of_declarator as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_declarator error lang typedefs xs in
+			let r, xs = parse_declarator ~use_string error lang typedefs xs in
+			`some r, xs
+		| lazy (`cons (a, (`chars_literal _ as it), xr)) when use_string ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let r, xs = parse_declarator ~use_string error lang typedefs xs in
 			`some r, xs
 		| _ ->
 			error (LazyList.hd_a xs) "declarator was expected.";
 			`error, xs
 		end
 	) and parse_direct_declarator
+		?(use_string = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [identifier | `l_paren] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [identifier | `chars_literal of string | `l_paren] * 'a in_t] lazy_t)
 		: direct_declarator p * 'a in_t =
 	(
 		let rec loop (item: direct_declarator p) (xs: 'a in_t) = (
@@ -2477,15 +2526,19 @@ struct
 		begin match xs with
 		| lazy (`cons (id_p, (`ident _ as id_e), xs)) ->
 			loop (id_p, id_e) xs
+		| lazy (`cons (id_p, (`chars_literal ident), xs)) ->
+			assert use_string;
+			loop (id_p, `ident ident) xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
 			let l_paren = lp_p, lp_e in
 			let attrs, xs = parse_attribute_list_option error lang typedefs xs in
-			let d, xs = parse_declarator_or_error error lang typedefs xs in
+			let d, xs = parse_declarator_or_error ~use_string error lang typedefs xs in
 			let r_paren, xs = parse_r_paren_or_error error xs in
 			let `some (ps, ()) = (`some l_paren) &^ attrs &^ d &^ r_paren in
 			loop (ps, `paren (l_paren, attrs, d, r_paren)) xs
 		end
 	) and parse_direct_declarator_or_error
+		?(use_string = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
@@ -2495,7 +2548,11 @@ struct
 		begin match xs with
 		| lazy (`cons (a, (#identifier | `l_paren as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_direct_declarator error lang typedefs xs in
+			let r, xs = parse_direct_declarator ~use_string error lang typedefs xs in
+			`some r, xs
+		| lazy (`cons (a, (`chars_literal _ as it), xr)) when use_string ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let r, xs = parse_direct_declarator ~use_string error lang typedefs xs in
 			`some r, xs
 		| _ ->
 			error (LazyList.hd_a xs) "direct-declarator was expected.";
@@ -2627,19 +2684,45 @@ struct
 			error (LazyList.hd_a xs) "parameter-declaration was expected.";
 			`error, xs
 		end
-	) and parse_identifier_list_option
+	) and parse_identifier_list
 		(error: ranged_position -> string -> unit)
 		(_: language)
 		(_: typedef_set)
+		(xs: [`cons of ranged_position * [`ident of string] * 'a in_t] lazy_t)
+		: identifier_list p * 'a in_t =
+	(
+		let rec loop (rs: identifier_list p) (xs: 'a in_t) = (
+			begin match xs with
+			| lazy (`cons (comma_p, (`comma as comma_e), xs)) ->
+				let comma = (comma_p, comma_e) in
+				begin match xs with
+				| lazy (`cons (ident_p, (`ident _ as ident_e), xs)) ->
+					let ident = `some (ident_p, ident_e) in
+					let `some (ps, ()) = (`some rs) & ident in
+					loop (ps, `cons (rs, comma, ident)) xs
+				| _ ->
+					error (LazyList.hd_a xs) "identifier was expected.";
+					let `some (ps, ()) = (`some rs) & (`some comma) in
+					(ps, `cons (rs, comma, `error)), xs
+				end
+			| _ ->
+				rs, xs
+			end
+		) in
+		let lazy (`cons (ident_p, (`ident _ as ident_e), xs)) = xs in
+		loop (ident_p, `nil ident_e) xs
+	) and parse_identifier_list_option
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
 		(xs: 'a in_t)
 		: identifier_list opt * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`ident _ as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			ignore xs;
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+			let list, xs = parse_identifier_list error lang typedefs xs in
+			`some list, xs
 		| _ ->
 			`none, xs
 		end
@@ -2884,19 +2967,66 @@ struct
 				`error, xs
 			end
 		end
+	) and parse_designator
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
+		(xs: [`cons of ranged_position * [`l_bracket | `period] * 'a in_t] lazy_t)
+		: designator p * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (lb_p, (`l_bracket as lb_e), xs)) ->
+			let l_bracket = lb_p, lb_e in
+			let expr, xs = parse_constant_expression_or_error error lang typedefs xs in
+			let r_bracket, xs = parse_r_bracket_or_error error xs in
+			let `some (ps, ()) = `some l_bracket &^ expr &^ r_bracket in
+			(ps, `index (l_bracket, expr, r_bracket)), xs
+		| lazy (`cons (pe_p, (`period as pe_e), xs)) ->
+			let period = pe_p, pe_e in
+			let id, xs = parse_identifier_or_error error xs in
+			let `some (ps, ()) = `some period &^ id in
+			(ps, `element (period, id)), xs
+		end
+	) and parse_designator_list
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
+		(xs: [`cons of ranged_position * [`l_bracket | `period] * 'a in_t] lazy_t)
+		: designator_list p * 'a in_t =
+	(
+		let rec loop (rs: designator_list p) xs = (
+			begin match xs with
+			| lazy (`cons (a, (`l_bracket | `period as it), xr)) ->
+				let xs = lazy (`cons (a, it, xr)) in
+				let second, xs = parse_designator error lang typedefs xs in
+				let `some (ps, ()) = (`some rs) &^ (`some second) in
+				loop (ps, `cons (rs, second)) xs
+			| _ ->
+				rs, xs
+			end
+		) in
+		let (first_p, first_e), xs = parse_designator error lang typedefs xs in
+		loop (first_p, `nil first_e) xs
 	) and parse_designation_option
 		(error: ranged_position -> string -> unit)
-		(_: language)
-		(_: typedef_set)
+		(lang: language)
+		(typedefs: typedef_set)
 		(xs: 'a in_t)
 		: designation opt * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`l_bracket | `period as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			ignore xs;
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+			let dlist, xs = parse_designator_list error lang typedefs xs in
+			begin match xs with
+			| lazy (`cons (ass_p, (`assign as ass_e), xs)) ->
+				let ass = `some (ass_p, ass_e) in
+				let `some (ps, ()) = `some dlist &^ ass in
+				`some (ps, (dlist, ass)), xs
+			| _ ->
+				error (LazyList.hd_a xs) "\"=\" was expected.";
+				`some (fst dlist, (dlist, `error)), xs
+			end
 		| _ ->
 			`none, xs
 		end
@@ -2925,14 +3055,17 @@ struct
 			(ps, `label (id, colon, stmt)), xs
 		| lazy (`cons (case_p, (`CASE as case_e), xs)) ->
 			let case = case_p, case_e in
-			ignore case;
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+			let expr, xs = parse_constant_expression_or_error error lang typedefs xs in
+			let colon, xs = parse_colon_or_error error xs in
+			let stmt, xs = parse_statement_or_error ~semicolon_need error lang typedefs xs in
+			let `some (ps, ()) = `some case &^ expr &^ colon &^ stmt in
+			(ps, `case (case, expr, colon, stmt)), xs
 		| lazy (`cons (default_p, (`DEFAULT as default_e), xs)) ->
 			let default = default_p, default_e in
-			ignore default;
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+			let colon, xs = parse_colon_or_error error xs in
+			let stmt, xs = parse_statement_or_error ~semicolon_need error lang typedefs xs in
+			let `some (ps, ()) = `some default &^ colon &^ stmt in
+			(ps, `default (default, colon, stmt)), xs
 		| lazy (`cons (a, (`l_curly as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let (block_p, block_e), xs = parse_compound_statement error lang typedefs xs in
@@ -3010,9 +3143,12 @@ struct
 			end
 		| lazy (`cons (switch_p, (`SWITCH as switch_e), xs)) ->
 			let switch = switch_p, switch_e in
-			ignore switch;
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+			let l_paren, xs = parse_l_paren_or_error error xs in
+			let cond, xs = parse_expression_or_error error lang typedefs xs in
+			let r_paren, xs = parse_r_paren_or_error error xs in
+			let stmt, xs = parse_statement_or_error ~semicolon_need error lang typedefs xs in
+			let `some (ps, ()) = (`some switch) &^ l_paren &^ cond &^ r_paren &^ stmt in
+			(ps, `switch (switch, l_paren, cond, r_paren, stmt)), xs
 		| lazy (`cons (while_p, (`WHILE as while_e), xs)) ->
 			let while_t = while_p, while_e in
 			let l_paren, xs = parse_l_paren_or_error error xs in
@@ -3032,15 +3168,25 @@ struct
 			let `some (ps, ()) = (`some do_t) &^ stmt &^ while_t &^ l_paren &^ cond &^ r_paren &^ semicolon in
 			(ps, `do_loop (do_t, stmt, while_t, l_paren, cond, r_paren, semicolon)), xs
 		| lazy (`cons (for_p, (`FOR as for_e), xs)) ->
+			let handle_with_declaration for_t l_paren xs = (
+				let decl, typedefs, xs = parse_declaration error lang typedefs xs in
+				let cond_expr, xs = parse_expression_option error lang typedefs xs in
+				let semicolon2, xs = parse_semicolon_or_error error xs in
+				let next_expr, xs = parse_expression_option error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let stmt, xs = parse_statement_or_error ~semicolon_need error lang typedefs xs in
+				let `some (ps, ()) = (`some for_t) &^ (`some decl) &^ cond_expr &^ semicolon2 &^ next_expr &^ r_paren &^ stmt in
+				(ps, `for_with_declaration (for_t, l_paren, decl, cond_expr, semicolon2, next_expr, r_paren, stmt)), xs
+			) in
 			let for_t = for_p, for_e in
 			let l_paren, xs = parse_l_paren_or_error error xs in
 			begin match xs with
-			| lazy (`cons (_, `l_paren, lazy (`cons (_, #firstset_of_declaration_specifiers, _)))) ->
-				error (LazyList.hd_a xs) "unimplemented!";
-				assert false
-			| lazy (`cons (_, `l_paren, lazy (`cons (_, `ident name, _)))) when StringSet.mem name typedefs ->
-				error (LazyList.hd_a xs) "unimplemented!";
-				assert false
+			| lazy (`cons (a, (#firstset_of_declaration_specifiers as it), xr)) ->
+				let xs = lazy (`cons (a, it, xr)) in
+				handle_with_declaration for_t l_paren xs
+			| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
+				let xs = lazy (`cons (a, it, xr)) in
+				handle_with_declaration for_t l_paren xs
 			| _ ->
 				let init_expr, xs = parse_expression_option error lang typedefs xs in
 				let semicolon1, xs = parse_semicolon_or_error error xs in
@@ -3255,7 +3401,7 @@ struct
 					in
 					result, typedefs, xs
 				| _ ->
-					let arg_bodies, xs = parse_declaration_list_option error lang typedefs xs in
+					let arg_bodies, typedefs, xs = parse_declaration_list_option error lang typedefs xs in
 					let func_body, xs = parse_compound_statement_or_error error lang typedefs xs in
 					let `some (ps, ()) = (`some specifiers) &^ declarator &^ arg_bodies &^ func_body in
 					let result = ps, `function_definition (
@@ -3284,18 +3430,29 @@ struct
 		end
 	) and parse_declaration_list_option
 		(error: ranged_position -> string -> unit)
-		(_: language)
-		(_: typedef_set)
+		(lang: language)
+		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: declaration_list opt * 'a in_t =
+		: declaration_list opt * typedef_set * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (_, #firstset_of_type_specifier, _))
-		| lazy (`cons (_, `ident _, _)) ->
-			error (LazyList.hd_a xs) "unimplemented!";
-			assert false
+		| lazy (`cons (a, (#firstset_of_type_specifier | `ident _ as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let rec loop rs typedefs xs = (
+				begin match xs with
+				| lazy (`cons (a, (#firstset_of_type_specifier | `ident _ as it), xr)) ->
+					let xs = lazy (`cons (a, it, xr)) in
+					let second, typedefs, xs = parse_declaration error lang typedefs xs in
+					let `some (ps, ()) = (`some rs) & (`some second) in
+					loop (ps, (`cons (rs, second))) typedefs xs
+				| _ ->
+					`some rs, typedefs, xs
+				end
+			) in
+			let (first_p, first_e), typedefs, xs = parse_declaration error lang typedefs xs in
+			loop (first_p, (`nil first_e)) typedefs xs
 		| _ ->
-			`none, xs
+			`none, typedefs, xs
 		end
 	);;
 	

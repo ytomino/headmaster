@@ -91,4 +91,4 @@ let (predefined_types: A.predefined_types),
 	(derived_types: A.derived_types),
 	(namespace: A.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(language_mapping: SEM.language_mapping StringMap.t) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;

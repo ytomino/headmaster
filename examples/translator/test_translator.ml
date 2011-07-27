@@ -92,13 +92,13 @@ let (predefined_types: A.predefined_types),
 	(derived_types: A.derived_types),
 	(namespace: A.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(language_mapping: SEM.language_mapping StringMap.t) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
 let opaque_types = A.opaque_types namespace;;
 
 print_string "---- language mapping ----\n";;
 
-let ada_mapping = try StringMap.find "ADA" language_mapping with Not_found -> SEM.no_language_mapping;;
+let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options;;
 
 List.iter (fun (_, ada_type) ->
 	(* pretty printer for C types is unimplemented... *)

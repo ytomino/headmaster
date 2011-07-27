@@ -270,7 +270,7 @@ struct
 				end
 			)
 		in
-		let langage_typedefs: typedef_type list =
+		let language_typedefs: typedef_type list =
 			let find_f t (x, _) = x = (t :> predefined_type) in
 			let find t = (fst (List.find (find_f t) predefined_types) :> Semantics.all_type) in
 			(`named (builtin_position, "ptrdiff_t", `typedef (find typedef_ptrdiff_t), no_attributes)) ::
@@ -283,7 +283,7 @@ struct
 				end
 			)
 		in
-		predefined_types, langage_typedefs
+		predefined_types, language_typedefs
 	);;
 	
 	(* derived types *)
@@ -672,6 +672,23 @@ struct
 			end
 		| _ ->
 			expr
+		end
+	);;
+	
+	(* zero value *)
+	
+	let zero_expression
+		(error: ranged_position -> string -> unit)
+		(ps: ranged_position)
+		(t: not_qualified_type)
+		: expression =
+	(
+		begin match t with
+		| `char ->
+			`char_literal '\x00', (t :> Semantics.all_type)
+		| _ ->
+			error ps "unimplemented!";
+			assert false
 		end
 	);;
 	
@@ -1145,9 +1162,9 @@ struct
 		(namespace: namespace)
 		(info: extra_info)
 		(alignment_stack: alignment list)
-		(language_mapping: language_mapping StringMap.t)
+		(mapping_options: mapping_options)
 		(x: Syntax.pragma p)
-		: derived_types * extra_info * alignment list * language_mapping StringMap.t =
+		: derived_types * extra_info * alignment list * mapping_options =
 	(
 		let ps, (_, directive) = x in
 		begin match directive with
@@ -1159,19 +1176,60 @@ struct
 					begin match snd gcc_directive with
 					| `fenv ->
 						let info = {info with ei_fenv = true} in
-						derived_types, info, alignment_stack, language_mapping
+						derived_types, info, alignment_stack, mapping_options
 					| `poison _ ->
 						error (fst gcc_directive) "unimplemented!";
 						assert false
 					| `visibility _ ->
 						(* ignore #pragma visibility *)
-						derived_types, info, alignment_stack, language_mapping
+						derived_types, info, alignment_stack, mapping_options
 					| `system_header ->
 						let info = {info with ei_system_header = true} in
-						derived_types, info, alignment_stack, language_mapping
+						derived_types, info, alignment_stack, mapping_options
 					end
 				| `error ->
-					derived_types, info, alignment_stack, language_mapping
+					derived_types, info, alignment_stack, mapping_options
+				end
+			| `instance (_, sql, decl) ->
+				begin match sql, decl with
+				| `some sql, `some decl ->
+					let derived_types, n2, s2, base_type = handle_specifier_qualifier_list error predefined_types derived_types namespace [] (List.hd alignment_stack) sql in
+					let derived_types, n2, s2, decl = handle_declarator error predefined_types derived_types n2 s2 base_type no_attributes decl in
+					begin match decl with
+					| Some (_, name, t, attrs) ->
+						if n2 != namespace || (
+							match s2 with
+							| [] -> false
+							| st :: [] when (st :> all_item) == (t :> all_item) -> false
+							| _ -> true)
+						then (
+							error (fst directive) "new type-specifier was found in pragma."
+						);
+						if attrs <> no_attributes then (
+							error (fst directive) "attributes are ignored in pragma instance."
+						);
+						let mapping_options = {mapping_options with mo_instances =
+							StringMap.modify (fun rs ->
+								let error =
+									List.exists (fun i ->
+										begin match t, i with
+										| `function_type p1, `function_type p2 ->
+											prototype_ABI_compatibility ~dest:p1 ~source:p2 = `just (* same prototype *)
+										| _ ->
+											error (fst directive) "this type could not be overloaded.";
+											true
+										end
+									) rs
+								in
+								if error then rs else t :: rs
+							) ~default:[] name mapping_options.mo_instances}
+						in
+						derived_types, info, alignment_stack, mapping_options
+					| None ->
+						derived_types, info, alignment_stack, mapping_options
+					end
+				| _ ->
+					derived_types, info, alignment_stack, mapping_options
 				end
 			| `pack (_, _, arg, _) ->
 				let push (n: Integer.t) alignment_stack = (
@@ -1198,23 +1256,23 @@ struct
 						begin match n with
 						| `some n ->
 							let alignment_stack = push (snd n) alignment_stack in
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						| `error ->
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						end
 					| `pop ->
 						let alignment_stack = pop alignment_stack in
-						derived_types, info, alignment_stack, language_mapping
+						derived_types, info, alignment_stack, mapping_options
 					| `set n ->
 						let alignment_stack = push n (List.tl alignment_stack) in
-						derived_types, info, alignment_stack, language_mapping
+						derived_types, info, alignment_stack, mapping_options
 					end
 				| `none ->
 					(* set default *)
 					let alignment_stack = `default :: (List.tl alignment_stack) in
-					derived_types, info, alignment_stack, language_mapping
+					derived_types, info, alignment_stack, mapping_options
 				end
-			| `mapping (_, lang, mapping) ->
+			| `language_mapping (_, lang, mapping) ->
 				begin match lang, mapping with
 				| `some lang, `some mapping ->
 					let lang = String.uppercase (snd lang) in
@@ -1226,14 +1284,14 @@ struct
 							if s2 <> [] then (
 								error (fst typename) "new type-specifier was found in pragma."
 							);
-							let language_mapping =
+							let mapping_options = {mapping_options with mo_language_mappings =
 								StringMap.modify (fun x ->
 									{x with lm_type = (t, repr) :: x.lm_type}
-								) ~default:no_language_mapping lang language_mapping
+								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
 							in
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						| _ ->
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						end
 					| `overload (_, sql, decl) ->
 						begin match sql, decl with
@@ -1262,7 +1320,7 @@ struct
 											let `function_type original_prototype = original_t in
 											begin match prototype_ABI_compatibility ~dest:prototype ~source:original_prototype with
 											| `compatible ->
-												let language_mapping =
+												let mapping_options = {mapping_options with mo_language_mappings =
 													StringMap.modify (fun x ->
 														let overload =
 															begin try
@@ -1274,53 +1332,53 @@ struct
 															end
 														in
 														{x with lm_overload = overload}
-													) ~default:no_language_mapping lang language_mapping
+													) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
 												in
-												derived_types, info, alignment_stack, language_mapping
+												derived_types, info, alignment_stack, mapping_options
 											| `error ->
 												error (fst mapping) "this overload has no ABI compatibility with original function.";
-												derived_types, info, alignment_stack, language_mapping
+												derived_types, info, alignment_stack, mapping_options
 											| `just ->
 												error (fst mapping) "this overload has same prototype of original function.";
-												derived_types, info, alignment_stack, language_mapping
+												derived_types, info, alignment_stack, mapping_options
 											end
 										| _ ->
 											error (fst mapping) ("\"" ^ name ^ "\" is not function.");
-											derived_types, info, alignment_stack, language_mapping
+											derived_types, info, alignment_stack, mapping_options
 										end
 									with Not_found ->
 										error (fst mapping) ("\"" ^ name ^ "\" was not found.");
-										derived_types, info, alignment_stack, language_mapping
+										derived_types, info, alignment_stack, mapping_options
 									end
 								| _ ->
 									error (fst mapping) ("overloading \"" ^ name ^ "\" is not function.");
-									derived_types, info, alignment_stack, language_mapping
+									derived_types, info, alignment_stack, mapping_options
 								end
 							| None ->
-								derived_types, info, alignment_stack, language_mapping
+								derived_types, info, alignment_stack, mapping_options
 							end
 						| _ ->
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						end
 					| `includes ((_, `chars_literal file1), _, file2) ->
 						begin match file2 with
 						| `some (_, `chars_literal file2) ->
-							let language_mapping =
+							let mapping_options = {mapping_options with mo_language_mappings =
 								StringMap.modify (fun x ->
 									{x with lm_include = (file1, file2) :: x.lm_include}
-								) ~default:no_language_mapping lang language_mapping
+								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
 							in
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						| `error ->
-							derived_types, info, alignment_stack, language_mapping
+							derived_types, info, alignment_stack, mapping_options
 						end
 					end
 				| _ ->
-					derived_types, info, alignment_stack, language_mapping
+					derived_types, info, alignment_stack, mapping_options
 				end
 			end
 		| `error ->
-			derived_types, info, alignment_stack, language_mapping
+			derived_types, info, alignment_stack, mapping_options
 		end
 	) and handle_attribute
 		(_: ranged_position -> string -> unit)
@@ -1808,7 +1866,12 @@ struct
 			) `lvalue (`some left)
 		| `compound (_, typename, _, _, list, _) ->
 			let derived_types, source, t = handle_type_name error predefined_types derived_types namespace source typename in
-			handle_initializer_list error predefined_types derived_types namespace source t list
+			begin match list with
+			| `some list ->
+				handle_initializer_list error predefined_types derived_types namespace source t list
+			| `error ->
+				derived_types, source, None
+			end
 		| `increment (_, right) ->
 			handle_unary (fun derived_types right ->
 				derived_types, Some (`increment right, snd right)
@@ -3052,19 +3115,25 @@ struct
 		: derived_types * source_item list * expression option =
 	(
 		let kind =
-			begin match required_type with
+			begin match resolve_typedef required_type with
 			| `anonymous (_, `struct_type (_, items))
 			| `anonymous (_, `union items)
 			| `named (_, _, `struct_type (_, items), _)
 			| `named (_, _, `union items, _) ->
 				`aggregate items
-			| `array (_, t) ->
-				`array (t :> all_type)
+			| `array (size, t) ->
+				let size =
+					begin match size with
+					| Some size -> Integer.to_int size
+					| None -> -1
+					end
+				in
+				`array (size, (t :> not_qualified_type))
 			| `named(ps, _, `generic_type, _) ->
-				`array (`named (ps, "", `generic_type, no_attributes))
+				`array (-1, `named (ps, "", `generic_type, no_attributes))
 			| t ->
 				error (fst x) "bad type for initializer-list.";
-				`array t
+				`array (-1, remove_type_qualifiers t)
 			end
 		in
 		let derived_types, source, kind, list =
@@ -3080,8 +3149,8 @@ struct
 							let dummy_type = `named (fst x, "", `generic_type, no_attributes) in
 							dummy_type, `aggregate []
 						end
-					| `array t ->
-						t, kind
+					| `array (size, t) ->
+						(t :> all_type), `array (size - 1, t)
 					end
 				in
 				begin match d with
@@ -3107,13 +3176,18 @@ struct
 				end
 			) (derived_types, source, kind, []) x
 		in
-		begin match kind with
-		| `aggregate items when items <> [] ->
-			error (fst x) "too few elements for struct or union."
-		| _ ->
-			()
-		end;
-		derived_types, source, Some (`compound (List.rev list), required_type)
+		let zero =
+			begin match kind with
+			| `aggregate items ->
+				if items <> [] then (
+					error (fst x) "too few elements for struct or union."
+				);
+				None
+			| `array (size, t) ->
+				if size > 0 then Some (zero_expression error (fst x) t) else None
+			end
+		in
+		derived_types, source, Some (`compound (List.rev list, zero), required_type)
 	) and handle_statement
 		?(control: [`loop | `switch | `none] = `none)
 		?(return_type: all_type option)
@@ -3444,35 +3518,35 @@ struct
 		(namespace: namespace)
 		(sources: (source_item list * extra_info) StringMap.t)
 		(x: Syntax.translation_unit)
-		: derived_types * namespace * (source_item list * extra_info) StringMap.t * alignment list * language_mapping StringMap.t =
+		: derived_types * namespace * (source_item list * extra_info) StringMap.t * alignment list * mapping_options =
 	(
-		let in_f (current_filename: string) (derived_types, namespace, sources, alignment_stack, language_mapping) = (
+		let in_f (current_filename: string) (derived_types, namespace, sources, alignment_stack, mapping_options) = (
 			let current_source, current_info =
 				StringMap.find_or ~default:empty_source current_filename sources
 			in
-			derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info
+			derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info
 		) in
-		let out_f (previous_filename: string) (derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info) = (
+		let out_f (previous_filename: string) (derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info) = (
 			let sources = StringMap.add previous_filename (current_source, current_info) sources in
-			derived_types, namespace, sources, alignment_stack, language_mapping
+			derived_types, namespace, sources, alignment_stack, mapping_options
 		) in
-		Traversing.fold_tu (fun (derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info) (def_p, def_e) ->
+		Traversing.fold_tu (fun (derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info) (def_p, def_e) ->
 			let alignment = List.hd alignment_stack in
 			begin match def_e with
 			| `function_definition fdef ->
 				let derived_types, namespace, current_source, _ = handle_function_definition error predefined_types derived_types namespace current_source alignment (def_p, fdef) in
-				derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info
+				derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info
 			| `aliased_declaration adef ->
 				let derived_types, namespace, current_source, _ = handle_aliased_declaration error predefined_types derived_types namespace current_source alignment (def_p, adef) in
-				derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info
+				derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info
 			| `declaration decl ->
 				let derived_types, namespace, current_source, _ = handle_declaration error predefined_types derived_types namespace current_source alignment (def_p, decl) in
-				derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info
+				derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info
 			| `pragma pragma ->
-				let derived_types, current_info, alignment_stack, language_mapping = handle_pragma error predefined_types derived_types namespace current_info alignment_stack language_mapping (def_p, pragma) in
-				derived_types, namespace, sources, alignment_stack, language_mapping, current_source, current_info
+				let derived_types, current_info, alignment_stack, mapping_options = handle_pragma error predefined_types derived_types namespace current_info alignment_stack mapping_options (def_p, pragma) in
+				derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info
 			end
-		) in_f out_f (derived_types, namespace, sources, [`default], StringMap.empty) x
+		) in_f out_f (derived_types, namespace, sources, [`default], no_mapping_options) x
 	) and handle_function_definition
 		(error: ranged_position -> string -> unit)
 		(predefined_types: predefined_types)
@@ -3576,6 +3650,7 @@ struct
 		(derived_types: derived_types)
 		(namespace: namespace)
 		(source: source_item list)
+		(instances: (all_type list) StringMap.t)
 		(name: string)
 		(define: define p)
 		: derived_types * source_item list =
@@ -3742,12 +3817,29 @@ struct
 						derived_types, source
 					end
 				| _ ->
-					let required_type = `named (def_p, "", `generic_type, no_attributes) in
+					let required_type =
+						begin try
+							begin match StringMap.find name instances with
+							| t :: [] ->
+								t
+							| _ as ts -> 
+								if List.length ts > 1 then error def_p "instance of the initializer macro was overloaded.";
+								raise Not_found
+							end
+						with Not_found ->
+							`named (def_p, "", `generic_type, no_attributes) (* dummy type *)
+						end
+					in
 					let derived_types, source, expr = handle_initializer error predefined_types derived_types namespace source required_type (def_p, init) in
 					let item =
 						begin match expr with
 						| Some expr ->
-							`named (def_p, name, `defined_expression expr, no_attributes)
+							begin match expr with
+							| _, `named (_, "", `generic_type, _) -> (* failed to type inference *)
+								new_any "plase type with #pragma instance"
+							| _ ->
+								`named (def_p, name, `defined_expression expr, no_attributes)
+							end
 						| None ->
 							new_any "bad expression"
 						end
@@ -3798,7 +3890,7 @@ struct
 			[< predefined_type | `pointer of [< predefined_type | `const of [< predefined_type]]]) list)
 		(translation_unit: Syntax.translation_unit)
 		(defines: (define p) StringMap.t)
-		: predefined_types * derived_types * namespace * (source_item list * extra_info) StringMap.t * language_mapping StringMap.t =
+		: predefined_types * derived_types * namespace * (source_item list * extra_info) StringMap.t * mapping_options =
 	(
 		let predefined_types = ready_predefined_types lang sizeof typedef in
 		let derived_types, namespace, builtin_source =
@@ -3833,20 +3925,20 @@ struct
 			) ([], empty_namespace, []) builtin
 		in
 		let sources = StringMap.add builtin_name (builtin_source, no_extra_info) StringMap.empty in
-		let derived_types, namespace, sources, _, language_mapping = handle_translation_unit error predefined_types derived_types namespace sources translation_unit in
+		let derived_types, namespace, sources, _, mapping_options = handle_translation_unit error predefined_types derived_types namespace sources translation_unit in
 		let derived_types, sources =
 			StringMap.fold (fun name define (derived_types, sources) ->
 				let (((current_filename, _, _, _), _), _) = define in
 				let current_source, current_info =
 					StringMap.find_or ~default:empty_source current_filename sources
 				in
-				let derived_types, current_source = handle_define error predefined_types derived_types namespace current_source name define in
+				let derived_types, current_source = handle_define error predefined_types derived_types namespace current_source mapping_options.mo_instances name define in
 				let sources = StringMap.add current_filename (current_source, current_info) sources in
 				derived_types, sources
 			) defines (derived_types, sources)
 		in
 		let sources = StringMap.map (fun (items, info) -> List.rev items, info) sources in
-		predefined_types, derived_types, namespace, sources, language_mapping
+		predefined_types, derived_types, namespace, sources, mapping_options
 	);;
 	
 end;;

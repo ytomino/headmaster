@@ -303,6 +303,9 @@ let ignore_macros = make_setmap [
 		"PNG_EXPORT"; (* libpng / parameterized declaration *)
 		"PNG_EXPORT_VAR"; (* libpng / parameterized declaration *)
 		"png_jmpbuf"]; (* libpng / hard to type inference...for future *)
+	"pthread.h", [
+		"pthread_cleanup_pop"; (* darwin9 / partial statement *)
+		"pthread_cleanup_push"]; (* darwin9 / partial statement *)
 	"queue.h", [
 		"LIST_EMPTY"; (* freebsd7 / hard to type inference...for future *)
 		"LIST_ENTRY"; (* freebsd7 / parameterized declaration *)

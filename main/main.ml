@@ -212,7 +212,7 @@ let (predefined_types: A.predefined_types),
 	(derived_types: A.derived_types),
 	(namespace: A.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(language_mapping: SEM.language_mapping StringMap.t) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
 let opaque_types = A.opaque_types namespace;;
 
@@ -222,7 +222,7 @@ if options.create_dest_dir && not (Sys.file_exists options.dest_dir) then (
 
 begin match options.to_lang with
 | `ada ->
-	let ada_mapping = try StringMap.find "ADA" language_mapping with Not_found -> SEM.no_language_mapping in
+	let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options in
 	let filename_mapping = T.filename_mapping (remove_include_dir env) ada_mapping sources in
 	let dirs = T.dir_packages filename_mapping in
 	List.iter (fun x ->

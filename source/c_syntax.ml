@@ -75,8 +75,9 @@ module Syntax (Literals: LiteralsType) = struct
 	type pragma = [`sharp_PRAGMA] p * pragma_directive pe
 	and pragma_directive = [
 		| `gcc of [`GCC] p * gcc_directive pe
+		| `instance of [`INSTANCE] p * specifier_qualifier_list pe * declarator pe
 		| `pack of [`PACK] p * [`l_paren] pe * pack_argument opt * [`r_paren] pe
-		| `mapping of [`FOR] p * string pe * mapping pe]
+		| `language_mapping of [`FOR] p * string pe * language_mapping pe]
 	and gcc_directive = [
 		| `fenv
 		| `poison of [`POISON] p * poison_identifier_list pe
@@ -92,7 +93,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `push of [`PUSH] p * [`comma] pe * Integer.t pe
 		| `pop
 		| `set of Integer.t]
-	and mapping = [
+	and language_mapping = [
 		| `type_mapping of [`TYPE] p * type_name pe * [`assign] pe * [`chars_literal of string] pe
 		| `overload of [`OVERLOAD] p * specifier_qualifier_list pe * declarator pe
 		| `includes of [`chars_literal of string] p * [`INCLUDE] pe * [`chars_literal of string] pe]
@@ -167,7 +168,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `dereferencing_element_access of expression p * [`arrow] p * identifier pe
 		| `post_increment of expression p * [`increment] p
 		| `post_decrement of expression p * [`decrement] p
-		| `compound of [`l_paren] p * type_name p * [`r_paren] p * [`l_curly] p * initializer_list p * [`r_curly] p
+		| `compound of [`l_paren] p * type_name p * [`r_paren] pe * [`l_curly] pe * initializer_list pe * [`r_curly] pe
 		(* (6.5.3) unary-expression *)
 		| `increment of [`increment] p * expression pe
 		| `decrement of [`decrement] p * expression pe
@@ -377,7 +378,7 @@ module Syntax (Literals: LiteralsType) = struct
 	and identifier_list = [
 		(* (6.7.5) identifier-list *)
 		| `nil of identifier
-		| `cons of identifier_list p * [`comma] p * identifier p]
+		| `cons of identifier_list p * [`comma] p * identifier pe]
 	and type_name =
 		(* (6.7.6) type-name *)
 		specifier_qualifier_list p * abstract_declarator opt
@@ -406,23 +407,23 @@ module Syntax (Literals: LiteralsType) = struct
 		| `cons of initializer_list p * [`comma] p * designation opt * initializer_t pe]
 	and designation =
 		(* (6.7.8) designation *)
-		designator_list * [`assign] p
+		designator_list p * [`assign] pe
 	and designator_list = [
 		(* (6.7.8) designator-list *)
 		| `nil of designator
 		| `cons of designator_list p * designator p]
 	and designator = [
 		(* (6.7.8) designator *)
-		| `index of [`l_bracket] p * constant_expression p * [`r_bracket] p
-		| `element of [`preiod] p * identifier p]
+		| `index of [`l_bracket] p * constant_expression pe * [`r_bracket] pe
+		| `element of [`period] p * identifier pe]
 	(* A.2.3 Statements *)
 	and statement = [
 		(* (6.8) statement *)
 		| `asm of inline_assembler (* extended *)
 		(* (6.8.1) labeled-statement *)
 		| `label of identifier p * [`colon] p * statement pe
-		| `case of [`CASE] p * constant_expression p * [`colon] p * statement p
-		| `default of [`DEFAULT] p * [`colon] p * statement p
+		| `case of [`CASE] p * constant_expression pe * [`colon] pe * statement pe
+		| `default of [`DEFAULT] p * [`colon] pe * statement pe
 		(* (6.8.2) compound-statement *)
 		| `compound of compound_statement
 		(* (6.8.3) expression-statement *)
@@ -433,12 +434,12 @@ module Syntax (Literals: LiteralsType) = struct
 		(* (6.8.4) selection-statement *)
 		| `if_then of [`IF] p * [`l_paren] pe * expression pe * [`r_paren] pe * statement pe
 		| `if_then_else of [`IF] p * [`l_paren] pe * expression pe * [`r_paren] pe * statement pe * [`ELSE] p * statement pe
-		| `switch of [`SWITCH] p * [`l_paren] p * expression p * [`r_paren] pe * statement p
+		| `switch of [`SWITCH] p * [`l_paren] pe * expression pe * [`r_paren] pe * statement pe
 		(* (6.8.5) iteration-statement *)
 		| `while_loop of [`WHILE] p * [`l_paren] pe * expression pe * [`r_paren] pe * statement pe
 		| `do_loop of [`DO] p * statement pe * [`WHILE] pe * [`l_paren] pe * expression pe * [`r_paren] pe * [`semicolon] pe
 		| `for_loop of [`FOR] p * [`l_paren] pe * expression opt * [`semicolon] pe * expression opt * [`semicolon] pe * expression opt * [`r_paren] pe * statement pe
-		| `for_with_declaration of [`FOR] p * [`l_paren] pe * declaration p * expression opt * [`semicolon] pe * expression opt * [`r_paren] pe * statement p
+		| `for_with_declaration of [`FOR] p * [`l_paren] pe * declaration p * expression opt * [`semicolon] pe * expression opt * [`r_paren] pe * statement pe
 		(* (6.8.6) jump-statement *)
 		| `goto of [`GOTO] p * identifier pe * [`semicolon] pe
 		| `continue of [`CONTINUE] p * [`semicolon] pe

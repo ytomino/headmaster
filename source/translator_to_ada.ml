@@ -120,6 +120,10 @@ let ada_name_by_substitute (s: string): string = (
 	loop s s_length 0 b `substitute
 );;
 
+let ada_name_of_anonymous (i: int): string = (
+	"anonymous_" ^ string_of_int i
+);;
+
 let escape_ada_reserved_word ~(prefix: string) ~(postfix: string) (s: string): string = (
 	if StringSet.mem (String.lowercase s) ada_reserved_words then (
 		prefix ^ s ^ postfix
@@ -279,7 +283,8 @@ struct
 	
 	let name_mapping_for_struct_items = Naming.name_mapping_for_struct_items
 		~long_f:(fun s -> escape_ada_reserved_word ~prefix:"F_" ~postfix:"" (ada_name_by_substitute s))
-		~short_f:(fun s -> escape_ada_reserved_word ~prefix:"F_" ~postfix:"" (ada_name_by_short s));;
+		~short_f:(fun s -> escape_ada_reserved_word ~prefix:"F_" ~postfix:"" (ada_name_by_short s))
+		~anonymous_f:ada_name_of_anonymous;;
 	
 	let ada_simple_name_of
 		(ps: ranged_position)
@@ -464,6 +469,8 @@ struct
 			| `named (_, _, #Semantics.named_type_var, _) as t when mapped_type_exists t language_mapping ->
 				r
 			| `named (_, ("ptrdiff_t" | "size_t" | "wchar_t"), `typedef _, _) ->
+				r
+			| `function_type _ ->
 				r
 			| (item: Semantics.all_item) ->
 				List.fold_left (fun r d ->
@@ -858,12 +865,8 @@ struct
 			pp_pragma_convention ff `cdecl name
 		| `complex e ->
 			let e_name = ada_name_of_float_prec e in
-			pp_print_space ff ();
-			pp_open_vbox ff indent;
-			fprintf ff "type %s is record" name;
-			fprintf ff "@ Re, Im : %s'Base;" e_name;
-			pp_close_box ff ();
-			fprintf ff "@ end record;";
+			pp_type ff name pp_record_definition [
+				(fun ff -> fprintf ff "@ Re, Im : %s'Base;" e_name)];
 			pp_pragma_complex_representation ff name;
 			pp_pragma_convention ff `cdecl name
 		| `char ->
@@ -885,7 +888,7 @@ struct
 	(
 		begin try
 			let alias = find_mapped_type (item :> Semantics.all_type) language_mapping in
-			fprintf ff "@ subtype %a is %s;" pp_predefined_type_name item alias
+			pp_subtype ff (string_of_pp pp_predefined_type_name item) (fun ff -> pp_print_string ff alias)
 		with Not_found ->
 			pp_predefined_type_raw ff (string_of_pp pp_predefined_type_name item) item
 		end;
@@ -929,7 +932,7 @@ struct
 					end
 				) language_mapping.Semantics.lm_type
 			in
-			fprintf ff "@ subtype %s is %s;" name alias
+			pp_subtype ff name (fun ff -> pp_print_string ff alias)
 		with Not_found ->
 			fprintf ff "@ type %s is new %a;" name pp_predefined_type_name t
 		end
@@ -946,9 +949,9 @@ struct
 	(
 		begin try
 			let alias = find_mapped_type (item :> Semantics.all_type) language_mapping in
-			fprintf ff "@ subtype %a is %s;"
-				(pp_derived_type_name ~name_mapping ~anonymous_mapping ~current ~where:`name) item
-				alias
+			pp_subtype ff
+				(string_of_pp (fun ff -> pp_derived_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`name) item)
+				(fun ff -> pp_print_string ff alias)
 		with Not_found ->
 			let pp_pointer_type ff ~name_mapping name ~restrict t = (
 				pp_print_space ff ();
@@ -1001,7 +1004,7 @@ struct
 				| None ->
 					begin try
 						let alias = find_mapped_type_of_unconstrained_array base_type language_mapping in
-						fprintf ff "@ subtype %s is %s;" name alias
+						pp_subtype ff name (fun ff -> pp_print_string ff alias)
 					with Not_found ->
 						pp_print_space ff ();
 						pp_open_box ff indent;
@@ -1011,7 +1014,9 @@ struct
 					end
 				| Some n ->
 					let n = Integer.to_int n in
-					fprintf ff "@ subtype %s%d is %s (0 .. %d);" name n name (n - 1)
+					pp_subtype ff
+						(name ^ string_of_int n)
+						(fun ff -> fprintf ff "%s (0 .. %d)" name (n - 1))
 				end
 			| `restrict (`pointer t) ->
 				let name = string_of_pp
@@ -1025,7 +1030,7 @@ struct
 				let name = base_name ^ "_volatile" in
 				begin try
 					let alias = find_mapped_type (item :> Semantics.all_type) language_mapping in
-					fprintf ff "@ subtype %s is %s;" name alias
+					pp_subtype ff name (fun ff -> pp_print_string ff alias)
 				with Not_found ->
 					let resolved_base_type = Semantics.resolve_typedef (base_type :> Semantics.all_type) in
 					begin match resolved_base_type with
@@ -1245,56 +1250,33 @@ struct
 		(attributes: Semantics.attributes)
 		: unit =
 	(
-		let field_map = name_mapping_for_struct_items items in
-		pp_print_space ff ();
-		pp_open_vbox ff indent;
-		fprintf ff "type %s is " name;
-		if items = [] then (
-			fprintf ff "null record;";
-			pp_close_box ff ()
-		) else (
-			fprintf ff "record";
-			let (_: int) =
-				List.fold_left (fun anonymous_num (item_name, item_type, bits, _) ->
-					let item_name, anonymous_num =
-						if item_name = "" then (
-							let anonymous_num = anonymous_num + 1 in
-							"anonymous_" ^ string_of_int anonymous_num, anonymous_num
-						) else (
-							StringMap.find item_name field_map, anonymous_num
-						)
-					in
-					fprintf ff "@ %s : " item_name;
-					begin match bits with
-					| Some _ ->
-						()
-					| None ->
-						pp_print_string ff "aliased "
-					end;
-					pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype item_type;
-					begin match bits with
-					| Some bits ->
-						begin match Semantics.resolve_typedef item_type with
-						| #signed_int_prec ->
-							fprintf ff " range %d .. %d" 
-								(- (1 lsl (bits - 1)))
-								(1 lsl (bits - 1) - 1)
-						| #unsigned_int_prec ->
-							fprintf ff " range 0 .. %d"
-								(1 lsl bits - 1)
-						| _ ->
-							assert false (* bit field has non-integer type *)
-						end
-					| None ->
-						()
-					end;
-					pp_print_char ff ';';
-					anonymous_num
-				) 0 items
-			in
-			pp_close_box ff ();
-			fprintf ff "@ end record;"
-		);
+		let field_map, fields = name_mapping_for_struct_items items in
+		pp_type ff name pp_record_definition (
+			List.map (fun (field_name, (_, field_type, field_bits, _)) (ff: formatter) ->
+				fprintf ff "@ %s : " field_name;
+				begin match field_bits with
+				| Some _ -> ()
+				| None -> pp_print_string ff "aliased "
+				end;
+				pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype field_type;
+				begin match field_bits with
+				| Some field_bits ->
+					begin match Semantics.resolve_typedef field_type with
+					| #signed_int_prec ->
+						fprintf ff " range %d .. %d" 
+							(- (1 lsl (field_bits - 1)))
+							(1 lsl (field_bits - 1) - 1)
+					| #unsigned_int_prec ->
+						fprintf ff " range 0 .. %d"
+							(1 lsl field_bits - 1)
+					| _ ->
+						assert false (* bit field has non-integer type *)
+					end
+				| None ->
+					()
+				end;
+				pp_print_char ff ';'
+			) fields);
 		let is_bit_field =
 			begin match items with
 			| (_, _, Some _, _) :: _ -> true
@@ -1362,48 +1344,43 @@ struct
 		(items: Semantics.struct_item list)
 		: unit =
 	(
-		let field_map = name_mapping_for_struct_items items in
-		pp_print_space ff ();
-		pp_open_vbox ff indent;
-		fprintf ff "type %s (Unchecked_Tag : unsigned_int := 0) is " name;
-		if items = [] then (
-			fprintf ff "null record;";
-			pp_close_box ff ()
-		) else (
-			fprintf ff "record@ ";
-			pp_open_vbox ff indent;
-			fprintf ff "case Unchecked_Tag is";
-			let rec loop index xs = (
-				begin match xs with
-				| (item_name, item_type, _, _) :: xr ->
-					pp_print_space ff ();
-					pp_open_vbox ff indent;
-					if xr <> [] then (
-						fprintf ff "when %d =>" index
-					) else (
-						fprintf ff "when others =>"
-					);
-					if item_name = "" then (
-						fprintf ff "@ **** anonymous struct in union / unimplemented. ****\n";
-						assert false
-					) else (
-						assert (StringMap.mem item_name field_map);
-						let item_name = StringMap.find item_name field_map in
-						fprintf ff "@ %s : %a;" item_name
-							(pp_type_name ~name_mapping ~anonymous_mapping ~current ~where:`subtype) item_type
-					);
-					pp_close_box ff ();
-					loop (index + 1) xr
-				| [] ->
-					()
-				end
-			) in
-			loop 0 items;
-			pp_close_box ff ();
-			fprintf ff "@ end case;";
-			pp_close_box ff ();
-			fprintf ff "@ end record;"
-		);
+		let field_map, _ = name_mapping_for_struct_items items in
+		pp_type ff name
+			~pp_discriminants:[
+				fun ff -> fprintf ff "Unchecked_Tag : unsigned_int := 0"]
+			pp_record_definition
+			[fun ff ->
+				pp_print_space ff ();
+				pp_open_vbox ff indent;
+				fprintf ff "case Unchecked_Tag is";
+				let rec loop index xs = (
+					begin match xs with
+					| (item_name, item_type, _, _) :: xr ->
+						pp_print_space ff ();
+						pp_open_vbox ff indent;
+						if xr <> [] then (
+							fprintf ff "when %d =>" index
+						) else (
+							fprintf ff "when others =>"
+						);
+						if item_name = "" then (
+							fprintf ff "@ **** anonymous struct in union / unimplemented. ****\n";
+							assert false
+						) else (
+							assert (StringMap.mem item_name field_map);
+							let item_name = StringMap.find item_name field_map in
+							fprintf ff "@ %s : %a;" item_name
+								(pp_type_name ~name_mapping ~anonymous_mapping ~current ~where:`subtype) item_type
+						);
+						pp_close_box ff ();
+						loop (index + 1) xr
+					| [] ->
+						()
+					end
+				) in
+				loop 0 items;
+				pp_close_box ff ();
+				fprintf ff "@ end case;"];
 		pp_pragma_unchecked_union ff name;
 		pp_pragma_convention ff `c_pass_by_copy name
 	);;
@@ -1445,7 +1422,7 @@ struct
 		begin try
 			let alias = find_mapped_type (item :> Semantics.all_type) language_mapping in
 			let `named (_, name, _, _) = item in
-			fprintf ff "@ subtype %s is %s;" name alias
+			pp_subtype ff name (fun ff -> pp_print_string ff alias)
 		with Not_found ->
 			let `named (ps, name, `typedef t, _) = item in
 			begin match t with
@@ -1455,18 +1432,18 @@ struct
 				fprintf ff "@ --  subtype %s is ... (function type)" name
 			| _ ->
 				let name = ada_name_of current ps name `namespace name_mapping in
-				fprintf ff "@ subtype %s is " name;
-				begin match name with
-				| "ptrdiff_t" ->
-					pp_print_string ff "Standard.C.ptrdiff_t"
-				| "size_t" ->
-					pp_print_string ff "Standard.C.size_t"
-				| "wchar_t" ->
-					pp_print_string ff "Standard.C.wchar_t"
-				| _ ->
-					pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype t
-				end;
-				pp_print_char ff ';'
+				pp_subtype ff
+					name
+					(fun ff ->
+						match name with
+						| "ptrdiff_t" ->
+							pp_print_string ff "Standard.C.ptrdiff_t"
+						| "size_t" ->
+							pp_print_string ff "Standard.C.size_t"
+						| "wchar_t" ->
+							pp_print_string ff "Standard.C.wchar_t"
+						| _ ->
+							pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype t)
 			end
 		end
 	);;
@@ -1484,7 +1461,7 @@ struct
 		begin try
 			let alias = find_mapped_type (item :> Semantics.all_type) language_mapping in
 			let `named (_, name, _, _) = item in
-			fprintf ff "@ subtype %s is %s;" name alias
+			pp_subtype ff name (fun ff -> pp_print_string ff alias);
 		with Not_found ->
 			begin match item with
 			| `named (ps, name, (`opaque_enum | `opaque_struct | `opaque_union as kind), _) as item ->
@@ -1570,9 +1547,9 @@ struct
 				(ada_name_of current source_ps source_name `namespace name_mapping);
 			pp_close_box ff ()
 		| `named (_, _, #Semantics.named_type_var, _) as source_item ->
-			fprintf ff "@ subtype %s is %a;"
+			pp_subtype ff
 				name
-				(pp_type_name ~name_mapping ~anonymous_mapping ~current ~where:`subtype) source_item
+				(fun ff -> pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype source_item)
 		| `named (_, _, `extern _, _) as source_item ->
 			begin match source_item with
 			| `named (_, _, `extern ((`function_type prototype), _), _) as source_item ->
@@ -1605,9 +1582,9 @@ struct
 			| `void ->
 				fprintf ff "@ --  %s renames void (macro)" name
 			| _ ->
-				fprintf ff "@ subtype %s is %a;"
+				pp_subtype ff
 					name
-					(pp_type_name ~name_mapping ~anonymous_mapping ~current ~where:`subtype) source_item
+					(fun ff -> pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype source_item)
 			end
 		| `named (_, _, `defined_element_access _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
@@ -1654,45 +1631,56 @@ struct
 	
 	let pp_char_literal (ff: formatter) (c: char): unit = (
 		begin match c with
-		| '\x00' .. '\x1f' ->
+		| '\x00' .. '\x1f' | '\x80' .. '\xff' ->
 			fprintf ff "char'Val (%d)" (int_of_char c)
 		| _ ->
 			fprintf ff "\'%c\'" c
 		end
 	);;
 	
-	let pp_string_literal (ff: formatter) (s: string): unit = (
+	let pp_string_literal (ff: formatter) (t: [`c | `ada]) (s: string): unit = (
 		let rec loop q i = (
 			if i >= String.length s then (
 				if q then pp_print_char ff '\"'
 			) else (
 				begin match s.[i] with
-				| '\"' ->
-					if not q then pp_print_char ff '\"';
-					pp_print_string ff "\"\"";
-					loop true (i + 1)
-				| '\t' ->
-					if q then pp_print_string ff "\" & ";
-					fprintf ff "ASCII.HT & ";
-					loop false (i + 1)
-				| '\n' ->
-					if q then pp_print_string ff "\" & ";
-					fprintf ff "ASCII.LF &@ ";
+				| '\x00' .. '\x1f' | '\x80' .. '\xff' as c ->
+					if q then pp_print_char ff '\"';
+					if i > 0 then fprintf ff "@ & ";
+					begin match t with
+					| `c ->
+						fprintf ff "char'Val (%d)" (int_of_char c)
+					| `ada ->
+						begin match c with
+						| '\t' -> fprintf ff "ASCII.HT";
+						| '\r' -> fprintf ff "ASCII.CR";
+						| '\n' -> fprintf ff "ASCII.LF"; (* @\n *)
+						| _ -> fprintf ff "Character'Val (%d)" (int_of_char c)
+						end
+					end;
 					loop false (i + 1)
 				| c ->
-					if not q then pp_print_char ff '\"';
-					pp_print_char ff c;
+					if not q then (
+						if i > 0 then fprintf ff "@ & ";
+						pp_print_char ff '\"'
+					);
+					begin match c with
+					| '\"' ->
+						pp_print_string ff "\"\"";
+					| _ ->
+						pp_print_char ff c
+					end;
 					loop true (i + 1)
 				end
 			)
 		) in
-		pp_open_vbox ff 0;
 		if s = "" then (
 			fprintf ff "\"\""
+		) else if String.length s = 1 then (
+			fprintf ff "(0 => %a)" pp_char_literal s.[0]
 		) else (
 			loop false 0
-		);
-		pp_close_box ff ()
+		)
 	);;
 	
 	let rec pp_expression
@@ -1764,7 +1752,7 @@ struct
 		| `char_literal value, _ ->
 			pp_char_literal ff value
 		| `chars_literal value, _ ->
-			fprintf ff "%a &@ char'Val (0)" pp_string_literal value
+			pp_string_literal ff `c (value ^ "\x00")
 		| `wchar_literal _, _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
@@ -1831,7 +1819,7 @@ struct
 					assert false (* does not come here *)
 				end
 			in
-			let field_map = name_mapping_for_struct_items items in
+			let field_map, _ = name_mapping_for_struct_items items in
 			begin match expr with
 			| `dereference expr, _ (* omit .all *)
 			| expr ->
@@ -1863,9 +1851,51 @@ struct
 		| `post_decrement _, _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
-		| `compound _, _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `compound (exprs, zero), t ->
+			begin match Semantics.resolve_typedef t with
+			| `array _ ->
+				fprintf ff "(@,";
+				let rec loop n es = (
+					begin match es with
+					| [] ->
+						()
+					| e :: er ->
+						if n > 0 then fprintf ff ",@ ";
+						pp_expression ff ~name_mapping ~current ~outside:`lowest e;
+						loop (n + 1) er
+					end;
+				) in
+				loop 0 exprs;
+				begin match zero with
+				| Some zero ->
+					fprintf ff ",@ others => ";
+					pp_expression ff ~name_mapping ~current ~outside:`lowest zero
+				| None ->
+					()
+				end;
+				fprintf ff ")";
+			| `anonymous (_, `struct_type (_, items))
+			| `named (_, _, `struct_type (_, items), _) ->
+				let _, fields = name_mapping_for_struct_items items in
+				fprintf ff "(@,";
+				let rec loop first fs es = (
+					begin match fs, es with
+					| [], [] ->
+						()
+					| (field_name, _) :: fr, e :: er ->
+						if not first then fprintf ff ",@ ";
+						fprintf ff "%s => " field_name;
+						pp_expression ff ~name_mapping ~current ~outside:`lowest e;
+						loop false fr er
+					| _ ->
+						assert false
+					end
+				) in
+				loop true fields exprs;
+				fprintf ff ")";
+			| _ ->
+				assert false (* does not come here ??? *)
+			end
 		| `increment _, _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
@@ -1905,6 +1935,10 @@ struct
 					(pp_expression ~name_mapping ~current ~outside:`lowest) expr
 			| _, `bool, #int_prec ->
 				fprintf ff "Boolean'Pos (%a)"
+					(pp_expression ~name_mapping ~current ~outside:`lowest) expr
+			| (`int_literal _, _), _, #int_prec ->
+				fprintf ff "%a'(%a)"
+					(pp_type_name ~name_mapping ~anonymous_mapping:[] ~current ~where:`name) t2
 					(pp_expression ~name_mapping ~current ~outside:`lowest) expr
 			| _, _, #int_prec ->
 				fprintf ff "%a (%a)"
@@ -2153,7 +2187,9 @@ struct
 				begin match literal with
 				| `chars_literal value ->
 					pp_open_box ff indent;
-					fprintf ff "const_%s : constant char_array := %a &@ char'Val (0);" hash pp_string_literal value;
+					fprintf ff "const_%s : constant char_array := " hash;
+					pp_string_literal ff `c (value ^ "\x00");
+					fprintf ff ";";
 					pp_close_box ff ()
 				| _ ->
 					fprintf ff "@ **** unimplemented. ****\n";
@@ -2279,7 +2315,8 @@ struct
 		| `asm (volatile, template, out_args, in_args, destructive) ->
 			pp_print_space ff ();
 			pp_open_box ff indent;
-			fprintf ff "Asm (%a" pp_string_literal template;
+			fprintf ff "Asm (";
+			pp_string_literal ff `ada template;
 			if out_args <> [] then (
 				let handle (n, expr) = (
 					pp_type_name ff ~name_mapping ~anonymous_mapping:[]
@@ -2676,8 +2713,9 @@ struct
 			end
 		| `named (ps, name, `defined_typedef t, _) ->
 			let name = ada_name_of current ps name `namespace name_mapping in
-			fprintf ff "@ subtype %s is %a;" name
-				(pp_type_name ~name_mapping ~anonymous_mapping ~current ~where:`subtype) t
+			pp_subtype ff
+				name
+				(fun ff -> pp_type_name ff ~name_mapping ~anonymous_mapping ~current ~where:`subtype t)
 		| `named (ps, name, `defined_element_access (t, route), _) ->
 			let name = ada_name_of current ps name `namespace name_mapping in
 			pp_print_space ff ();
@@ -2845,7 +2883,7 @@ struct
 									assert false (* does not come here *)
 								end
 							in
-							let field_map = name_mapping_for_struct_items items in
+							let field_map, _ = name_mapping_for_struct_items items in
 							let name, field_t, _, _ = field in
 							fprintf ff ".%s" (StringMap.find name field_map);
 							field_t
@@ -3079,7 +3117,7 @@ struct
 								when Semantics.is_opaque item opaque_types
 							->
 								let t_name = ada_name_of name ps t_name kind name_mapping in
-								fprintf ff "@ type %s is null record;" t_name
+								pp_type ff t_name pp_record_definition []
 							| _ ->
 								()
 							end

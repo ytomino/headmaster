@@ -333,18 +333,30 @@ struct
 	let name_mapping_for_struct_items
 		~(long_f: string -> string)
 		~(short_f: string -> string)
+		~(anonymous_f: int -> string)
 		(items: struct_item list)
-		: string StringMap.t =
+		: string StringMap.t * (string * struct_item) list =
 	(
-		let (_: string -> string) = long_f in (* ignore... currently, no care for confliction *)
-		List.fold_left (fun name_mapping item ->
-			let name, _, _, _ = item in
-			if name = "" then (
-				name_mapping
-			) else (
-				StringMap.add name (short_f name) name_mapping
-			)
-		) StringMap.empty items
+		let _ = long_f in (* ignore... currently, no care for confliction *)
+		let rec loop anonymous_index map rs xs = (
+			begin match xs with
+			| [] ->
+				map, List.rev rs
+			| x :: xr ->
+				let name, _, _, _ = x in
+				if name = "" then (
+					let an = anonymous_f anonymous_index in
+					let rs = (an, x) :: rs in
+					loop (anonymous_index + 1) map rs xr
+				) else (
+					let sn = short_f name in
+					let map = StringMap.add name sn map in
+					let rs = (sn, x) :: rs in
+					loop anonymous_index map rs xr
+				)
+			end
+		) in
+		loop 1 StringMap.empty [] items
 	);;
 	
 end;;

@@ -337,7 +337,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `dereference of expression
 		| `post_increment of expression
 		| `post_decrement of expression
-		| `compound of expression list
+		| `compound of expression list * expression option
 		| `increment of expression
 		| `decrement of expression
 		| `address of expression
@@ -477,6 +477,17 @@ module Semantics (Literals: LiteralsType) = struct
 		| `named (_, _, `typedef t, _) ->
 			resolve_typedef t
 		| _ ->
+			t
+		end
+	);;
+	
+	let rec remove_type_qualifiers (t: all_type): not_qualified_type = (
+		begin match t with
+		| `const t ->
+			remove_type_qualifiers (t :> all_type)
+		| `volatile t ->
+			remove_type_qualifiers (t :> all_type)
+		| #not_qualified_type as t ->
 			t
 		end
 	);;
@@ -647,9 +658,13 @@ module Semantics (Literals: LiteralsType) = struct
 			false
 		| `element_access (a, _) | `dereference a ->
 			is_static_expression a
-		| `post_increment _ | `post_decrement _ | `compound _
-		| `increment _ | `decrement _ ->
+		| `post_increment _ | `post_decrement _ | `increment _ | `decrement _ ->
 			false
+		| `compound (xs, zero) ->
+			List.for_all is_static_expression xs && (
+				match zero with
+				| Some zero -> is_static_expression zero
+				| None -> true)
 		| `address a ->
 			begin match a with
 			| `ref_object _, _ -> true
@@ -719,8 +734,12 @@ module Semantics (Literals: LiteralsType) = struct
 			exists_in_expression stmt_f expr_f expr
 		| `sizeof_formal_type _ ->
 			false
-		| `compound exprs ->
-			List.exists (exists_in_expression stmt_f expr_f) exprs
+		| `compound (exprs, zero) ->
+			List.exists (exists_in_expression stmt_f expr_f) exprs ||
+			begin match zero with
+			| Some zero -> exists_in_expression stmt_f expr_f zero
+			| None -> false
+			end
 		| `mul (expr1, expr2) | `div (expr1, expr2) | `rem (expr1, expr2)
 		| `add (expr1, expr2) | `sub (expr1, expr2)
 		| `l_shift (expr1, expr2) | `r_shift (expr1, expr2)
@@ -814,7 +833,7 @@ module Semantics (Literals: LiteralsType) = struct
 		!result
 	);;
 	
-	(* language mapping *)
+	(* mapping options *)
 	
 	type language_mapping = {
 		lm_type: (all_type * string) list;
@@ -825,6 +844,20 @@ module Semantics (Literals: LiteralsType) = struct
 		lm_type = [];
 		lm_overload = [];
 		lm_include = []};;
+	
+	type mapping_options = {
+		mo_instances: (all_type list) StringMap.t;
+		mo_language_mappings: language_mapping StringMap.t};;
+	
+	let no_mapping_options = {
+		mo_instances = StringMap.empty;
+		mo_language_mappings = StringMap.empty};;
+	
+	let find_langauge_mappings (lang: string) (x: mapping_options): language_mapping = (
+		try
+			StringMap.find lang x.mo_language_mappings
+		with Not_found -> no_language_mapping
+	);;
 	
 end;;
 
