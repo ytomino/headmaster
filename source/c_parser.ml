@@ -1,13 +1,10 @@
 open C_lexical;;
+open C_parser_errors;;
 open C_syntax;;
+open Position;;
 open Value;;
 
 module StringSet = Set.Make (String);;
-
-let no_error_report_of_struct_declarator_list =
-	let list = [
-		"oaidl.h"] (* mingw32 *)
-	in List.fold_right StringSet.add list StringSet.empty;;
 
 module Parser
 	(Literals: LiteralsType)
@@ -710,7 +707,7 @@ struct
 						end
 					| "always_inline" | "__always_inline__" ->
 						`some (p4, `always_inline attr_keyword), xs
-					| "__cdecl__" ->
+					| "cdecl" | "__cdecl__" ->
 						`some (p4, `cdecl), xs
 					| "__const__" ->
 						`some (p4, `const), xs
@@ -806,6 +803,8 @@ struct
 						`some (p4, `sentinel), xs
 					| "__stdcall__" ->
 						`some (p4, `stdcall), xs
+					| "__thiscall__" ->
+						`some (p4, `thiscall), xs
 					| "unavailable" ->
 						`some (p4, `unavailable), xs
 					| "__unused__" ->
@@ -2256,8 +2255,7 @@ struct
 			loop (p, (`nil d)) xs
 		| _ ->
 			let ps = LazyList.hd_a xs in
-			let filename, _, _, _ = fst ps in
-			if not (StringSet.mem (Filename.basename filename) no_error_report_of_struct_declarator_list) then (
+			if not (is_known_struct_declarator_list_error ps) then (
 				error ps "struct-declarator-list was expected."
 			);
 			`error, xs

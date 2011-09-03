@@ -1,11 +1,12 @@
-open C_lexical;;
 open C_define_parser;;
+open C_lexical;;
 open C_parser;;
 open C_preprocessor;;
 open C_scanner;;
 open C_syntax;;
 open Environment;;
 open Environment_gcc;;
+open Position;;
 open Value_ocaml;;
 
 let source_filename = ref "../c-lib.h";;

@@ -1,6 +1,8 @@
+open C_analyzer_errors;;
+open C_semantics;;
 open C_syntax;;
 open C_syntax_traversing;;
-open C_semantics;;
+open Position;;
 open Value;;
 
 let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
@@ -197,14 +199,23 @@ struct
 		ns_opaque_union = StringMap.empty;
 		ns_union = StringMap.empty};;
 	
-	let opaque_types (namespace: namespace)
-		: opaque_enum_type StringMap.t *
-			opaque_struct_type StringMap.t *
-			opaque_union_type StringMap.t =
-	(
+	let opaque_types (namespace: namespace): opaque_types = (
 		StringMap.fold (fun k _ r -> StringMap.remove k r) namespace.ns_enum namespace.ns_opaque_enum,
 		StringMap.fold (fun k _ r -> StringMap.remove k r) namespace.ns_struct namespace.ns_opaque_struct,
 		StringMap.fold (fun k _ r -> StringMap.remove k r) namespace.ns_union namespace.ns_opaque_union
+	);;
+	
+	let rec resolve_opaque (namespace: namespace) (t: all_type): all_type = (
+		begin match t with
+		| `named (_, name, `opaque_enum, _) ->
+			(try (StringMap.find name namespace.ns_enum :> all_type) with Not_found -> t)
+		| `named (_, name, `opaque_struct, _) ->
+			(try (StringMap.find name namespace.ns_struct :> all_type) with Not_found -> t)
+		| `named (_, name, `opaque_union, _) ->
+			(try (StringMap.find name namespace.ns_union :> all_type) with Not_found -> t)
+		| _ ->
+			t
+		end
 	);;
 	
 	(* predefined types *)
@@ -667,6 +678,18 @@ struct
 			begin match expr with
 			| `chars_literal _, `array (_, `char) ->
 				`implicit_conv expr, t (* char array literal -> char *)
+			| _ ->
+				expr
+			end
+		| `pointer x when x != `void ->
+			begin match expr with
+			| `cast (`int_literal (_, n), _ as z), t2
+			| `explicit_conv (`int_literal (_, n), _ as z), t2
+			| `implicit_conv (`int_literal (_, n), _ as z), t2
+				when (match resolve_typedef t2 with `pointer `void -> true | _ -> false)
+					&& Integer.compare n Integer.zero = 0
+			->
+				`implicit_conv z, t (* NULL... is it removing the cast "(void * )"0, ok? *)
 			| _ ->
 				expr
 			end
@@ -1435,6 +1458,8 @@ struct
 				{attributes with at_selectany = true}
 			| `stdcall ->
 				{attributes with at_conventions = `stdcall}
+			| `thiscall ->
+				{attributes with at_conventions = `thiscall}
 			| `unavailable ->
 				{attributes with at_unavailable = true}
 			| `unused ->
@@ -1909,8 +1934,19 @@ struct
 				derived_types, Some (`bit_not right, snd right)
 			) Integer.lognot right
 		| `unary ((_, `exclamation), right) ->
-			let int_not x = (Integer.compare x Integer.zero = 0) in
-			handle_unary_bool (fun right -> Some (`not right)) int_not right
+			begin match right with
+			| `some (_, `unary ((_, `exclamation), (`some right))) -> (* folding !!expr to (bool)expr *)
+				let derived_types, source, right = handle_expression error predefined_types derived_types namespace source `rvalue right in
+				begin match right with
+				| Some right ->
+					derived_types, source, Some (conv_expr `bool right)
+				| None ->
+					derived_types, source, None
+				end
+			| _ ->
+				let int_not x = (Integer.compare x Integer.zero = 0) in
+				handle_unary_bool (fun right -> Some (`not (conv_expr `bool right))) int_not right
+			end
 		| `sizeof_expr (_, expr) ->
 			begin match expr with
 			| `some expr ->
@@ -2037,6 +2073,9 @@ struct
 					| _ ->
 						begin match result_type_of `conditional (snd true_case) (snd false_case) predefined_types derived_types with
 						| Some t, derived_types ->
+							let cond = conv_expr `bool cond in
+							let true_case = conv_expr t true_case in
+							let false_case = conv_expr t false_case in
 							derived_types, source, Some (`cond (cond, true_case, false_case), t)
 						| None, derived_types ->
 							error (fst x) "type mismatch for cases of conditional-operator";
@@ -3114,8 +3153,17 @@ struct
 		(x: Syntax.initializer_list p)
 		: derived_types * source_item list * expression option =
 	(
+		let resolved_type1 = resolve_typedef required_type in
+		let resolved_type2 = resolve_opaque namespace resolved_type1 in
+		let required_type =
+			if resolved_type1 != resolved_type2 then (
+				resolved_type2 (* opaque to full declaration *)
+			) else (
+				required_type (* keep typedef *)
+			)
+		in
 		let kind =
-			begin match resolve_typedef required_type with
+			begin match resolved_type2 with
 			| `anonymous (_, `struct_type (_, items))
 			| `anonymous (_, `union items)
 			| `named (_, _, `struct_type (_, items), _)
@@ -3348,6 +3396,7 @@ struct
 				let derived_types, source, true_case = handle_statement_or_error ~control derived_types source true_case in
 				begin match expr with
 				| Some expr ->
+					let expr = conv_expr `bool expr in
 					derived_types, source, Some (`if_statement (expr, true_case, []))
 				| None ->
 					derived_types, source, None
@@ -3363,6 +3412,7 @@ struct
 				let derived_types, source, false_case = handle_statement_or_error ~control derived_types source false_case in
 				begin match expr with
 				| Some expr ->
+					let expr = conv_expr `bool expr in
 					derived_types, source, Some (`if_statement (expr, true_case, false_case))
 				| None ->
 					derived_types, source, None
@@ -3821,58 +3871,78 @@ struct
 						begin try
 							begin match StringMap.find name instances with
 							| t :: [] ->
-								t
+								(t :> [all_type | `uninterpretable])
 							| _ as ts -> 
 								if List.length ts > 1 then error def_p "instance of the initializer macro was overloaded.";
 								raise Not_found
 							end
 						with Not_found ->
-							`named (def_p, "", `generic_type, no_attributes) (* dummy type *)
+							if is_known_uninterpretable_macro def_p name then (
+								(`uninterpretable :> [all_type | `uninterpretable])
+							) else (
+								`named (def_p, "", `generic_type, no_attributes) (* dummy type *)
+							)
 						end
 					in
-					let derived_types, source, expr = handle_initializer error predefined_types derived_types namespace source required_type (def_p, init) in
+					begin match required_type with
+					| `uninterpretable ->
+						let source = new_any "uninterpretable" :: source in
+						derived_types, source
+					| #all_type as required_type ->
+						let derived_types, source, expr = handle_initializer error predefined_types derived_types namespace source required_type (def_p, init) in
+						let item =
+							begin match expr with
+							| Some expr ->
+								begin match expr with
+								| _, `named (_, "", `generic_type, _) -> (* failed to type inference *)
+									new_any "plase type with #pragma instance"
+								| _ ->
+									`named (def_p, name, `defined_expression expr, no_attributes)
+								end
+							| None ->
+								new_any "bad expression"
+							end
+						in
+						let source = item :: source in
+						derived_types, source
+					end
+				end
+			| `function_expr (args, varargs, expr) ->
+				if is_known_uninterpretable_macro def_p name then (
+					let source = new_any "uninterpretable" :: source in
+					derived_types, source
+				) else (
+					let local, formal_types, args = new_local args in
+					let derived_types, source, expr = handle_expression error predefined_types derived_types local source `rvalue (def_p, expr) in
 					let item =
 						begin match expr with
 						| Some expr ->
-							begin match expr with
-							| _, `named (_, "", `generic_type, _) -> (* failed to type inference *)
-								new_any "plase type with #pragma instance"
-							| _ ->
-								`named (def_p, name, `defined_expression expr, no_attributes)
-							end
+							`named (def_p, name, `defined_generic_expression (formal_types, args, varargs, expr), no_attributes)
 						| None ->
 							new_any "bad expression"
 						end
 					in
 					let source = item :: source in
 					derived_types, source
-				end
-			| `function_expr (args, varargs, expr) ->
-				let local, formal_types, args = new_local args in
-				let derived_types, source, expr = handle_expression error predefined_types derived_types local source `rvalue (def_p, expr) in
-				let item =
-					begin match expr with
-					| Some expr ->
-						`named (def_p, name, `defined_generic_expression (formal_types, args, varargs, expr), no_attributes)
-					| None ->
-						new_any "bad expression"
-					end
-				in
-				let source = item :: source in
-				derived_types, source
+				)
 			| `function_stmt (args, varargs, stmt) ->
-				let local, formal_types, args = new_local args in
-				let derived_types, source, stmt = handle_statement error predefined_types derived_types local source `default (def_p, stmt) in
-				let item =
-					begin match stmt with
-					| Some stmt ->
-						`named (def_p, name, `defined_generic_statement (formal_types, args, varargs, stmt), no_attributes)
-					| None ->
-						new_any "bad statement"
-					end
-				in
-				let source = item :: source in
-				derived_types, source
+				if is_known_uninterpretable_macro def_p name then (
+					let source = new_any "uninterpretable" :: source in
+					derived_types, source
+				) else (
+					let local, formal_types, args = new_local args in
+					let derived_types, source, stmt = handle_statement error predefined_types derived_types local source `default (def_p, stmt) in
+					let item =
+						begin match stmt with
+						| Some stmt ->
+							`named (def_p, name, `defined_generic_statement (formal_types, args, varargs, stmt), no_attributes)
+						| None ->
+							new_any "bad statement"
+						end
+					in
+					let source = item :: source in
+					derived_types, source
+				)
 			| `any message ->
 				let source = new_any message :: source in
 				derived_types, source

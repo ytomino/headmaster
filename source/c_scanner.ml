@@ -1,9 +1,8 @@
 open C_lexical;;
+open C_scanner_errors;;
 open Input;;
+open Position;;
 open Value;;
-
-type position = Input.position;;
-type ranged_position = Input.ranged_position;;
 
 module Scanner
 	(Literals: LiteralsType)
@@ -32,7 +31,9 @@ struct
 			error ps ("\"" ^ String.escaped s ^ "\" is not closed string.")
 		) in
 		let hexadecimal_literal_error (ps: ranged_position) (): unit = (
-			error ps "illegal hexadecimal literal."
+			if not (is_known_hexadecimal_literal_error ps) then (
+				error ps "illegal hexadecimal literal."
+			)
 		) in
 		let not_10_based_float_literal_error (ps: ranged_position) (): unit = (
 			error ps "floating-point literal should be 10-based."

@@ -8,6 +8,7 @@ open C_semantics;;
 open C_syntax;;
 open Environment;;
 open Environment_gcc;;
+open Position;;
 open Value_ocaml;;
 
 let source_filename = ref "../c-lib.h";;

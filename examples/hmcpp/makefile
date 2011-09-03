@@ -12,6 +12,12 @@ BUILDDIR=build
 OCAMLMAKE=
 
 SOURCEDIR=../../source
+ifneq ($(HOMELOCAL),)
+DESTDIR=$(HOMELOCAL)
+else
+DESTDIR=.
+endif
+BINDIR=$(DESTDIR)/bin
 
 export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
@@ -19,7 +25,7 @@ export OCAMLRUNPARAM=b
 EXENAME=hmcpp$(EXEEXT)
 
 GCC=gcc
-H=/usr/local/include/gmp.h
+H=../c-lib.h
 
 .PHONY: $(EXENAME) test clean
 
@@ -48,3 +54,6 @@ ifeq ($(OCAMLMAKE),)
 	-$(RM) source
 	ocamlbuild -clean
 endif
+
+install: $(EXENAME)
+	install $(EXENAME) $(BINDIR)

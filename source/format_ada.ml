@@ -1,6 +1,6 @@
 open Format;;
 
-type calling_convention = [`cdecl | `stdcall | `fastcall];;
+type calling_convention = [`cdecl | `stdcall | `fastcall | `thiscall];;
 type ada_calling_convention = [calling_convention | `ada | `intrinsic | `c_pass_by_copy];;
 
 let convention_identifier (conv: [< ada_calling_convention]): string = (
@@ -11,6 +11,7 @@ let convention_identifier (conv: [< ada_calling_convention]): string = (
 	| `c_pass_by_copy -> "C_Pass_By_Copy"
 	| `stdcall -> "Stdcall"
 	| `fastcall -> "Fastcall" (* will be error by gnat *)
+	| `thiscall -> "Thiscall" (* will be error by gnat *)
 	end
 );;
 
@@ -306,13 +307,24 @@ let pp_return
 	pp_print_string ff "return";
 	begin match pp_expr with
 	| Some pp_expr ->
-		pp_print_char ff ' ';
+		pp_print_space ff ();
 		pp_expr ff ()
 	| None ->
 		()
 	end;
 	pp_print_char ff ';';
 	pp_close_box ff ()
+);;
+
+(* expression *)
+
+let pp_open_paren ff () = (
+	pp_print_char ff '(';
+	pp_print_break ff 0 0
+);;
+
+let pp_close_paren ff () = (
+	pp_print_char ff ')'
 );;
 
 (* pragma *)

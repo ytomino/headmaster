@@ -1,5 +1,6 @@
 open C_lexical;;
 open C_scanner;;
+open Position;;
 open Value;;
 open Value_ocaml;;
 

@@ -20,12 +20,14 @@ module Dependency
 struct
 	open Semantics;;
 	
+	let dummy_of_alias (_: named_item): named_item list = [];;
+	
 	let rec of_item (x: all_item): named_item list = (
 		begin match x with
 		| #named_item as x ->
 			x :: []
 		| _ ->
-			dependents x
+			dependents ~of_alias:dummy_of_alias x
 		end
 	) and of_typedef (x: typedef_var): named_item list = (
 		let `typedef t = x in
@@ -50,12 +52,14 @@ struct
 				begin match expr with
 				| `enumerator item, _ ->
 					(item :> named_item) :: rs
+				| `ref_function item, _ ->
+					(item :> named_item) :: rs
 				| _ ->
 					rs
 				end)
 			[]
 			expr
-	) and dependents (item: all_item): named_item list = (
+	) and dependents ~(of_alias: named_item -> named_item list) (item: all_item): named_item list = (
 		begin match item with
 		(* predefined types *)
 		| #predefined_type ->
@@ -127,7 +131,7 @@ struct
 		| `named (_, _, `defined_any _, _) ->
 			[]
 		| `named (_, _, `defined_alias item, _) ->
-			item :: []
+			item :: of_alias item
 		| `named (_, _, `generic_value _, _) ->
 			[]
 		end

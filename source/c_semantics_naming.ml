@@ -1,4 +1,5 @@
 open C_semantics;;
+open Position;;
 open Value;;
 
 module Naming

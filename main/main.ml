@@ -6,9 +6,10 @@ open C_preprocessor;;
 open C_scanner;;
 open C_semantics;;
 open C_syntax;;
-open Translator_to_ada;;
 open Environment;;
 open Environment_gcc;;
+open Position;;
+open Translator_to_ada;;
 open Version;;
 
 let print_exception (e: exn): unit = (
@@ -135,8 +136,10 @@ then (
 let has_error = ref false;;
 
 let error (ps: ranged_position) (m: string): unit = (
-	let ((f, _, l, c), _) = ps in
-	Printf.eprintf "%s:%d:%d: %s\n" f l c m;
+	output_position stderr (fst ps);
+	output_string stderr ": ";
+	output_string stderr m;
+	output_char stderr '\n';
 	has_error := true
 );;
 

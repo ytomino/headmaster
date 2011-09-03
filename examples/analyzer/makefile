@@ -52,16 +52,23 @@ ifeq ($(OCAMLMAKE),)
 endif
 
 some_tests:
+	make test
+	make test H=../cc.h
+	make test H=../posix.h
 	make test GCC=i686-pc-freebsd7-gcc
+	make test GCC=i686-pc-freebsd7-gcc H=../cc.h
+	make test GCC=i686-pc-freebsd7-gcc H=../posix.h
 	make test GCC=i686-pc-mingw32-gcc
+	make test GCC=i686-pc-mingw32-gcc H=../cc.h
 	make test GCC=i686-pc-mingw32-gcc H=../mingw-ansi.h
 	make test GCC=i686-pc-mingw32-gcc H=../mingw-wide.h
-	make test H=/usr/include/openssl/md5.h
-	make test H=/usr/include/unistd.h
-	make test H=/usr/include/sys/fcntl.h
-	make test H=/usr/local/include/png.h
+	make test H=../use-cairo.h
+	make test H=../use-expat.h
 	make test H=../use-gc.h
 	make test H=../use-gmp.h
 	make test H=../use-iconv.h
+	make test H=../use-openssl.h
+	make test H=../use-png.h
+	make test H=../use-readline.h
 	make test H=../use-yaml.h
 	make test H=../use-zlib.h

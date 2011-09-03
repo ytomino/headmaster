@@ -4,6 +4,7 @@ open C_preprocessor;;
 open C_scanner;;
 open Environment;;
 open Environment_gcc;;
+open Position;;
 open Version;;
 
 type options = {
@@ -93,8 +94,10 @@ if options.usage || options.version || options.source_filename = "" then (
 );;
 
 let error (ps: ranged_position) (m: string): unit = (
-	let ((f, _, l, c), _) = ps in
-	Printf.eprintf "%s:%d:%d: %s\n" f l c m
+	output_position stderr (fst ps);
+	output_string stderr ": ";
+	output_string stderr m;
+	output_char stderr '\n'
 );;
 
 let env: environment = gcc_env options.gcc_command options.lang;;

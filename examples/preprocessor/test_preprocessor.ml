@@ -3,6 +3,7 @@ open C_preprocessor;;
 open C_scanner;;
 open Environment;;
 open Environment_gcc;;
+open Position;;
 open Value_ocaml;;
 
 let source_filename = ref "../c-lib.h";;

@@ -1,7 +1,5 @@
+open Position;;
 open Value;;
-
-type position = (string * int * int * int);;
-type ranged_position = position * position;;
 
 type language = [`c | `cxx | `objc | `objcxx];;
 
@@ -115,7 +113,7 @@ type assignment_operator = [
 
 (* calling conventions *)
 
-type calling_convention = [`cdecl | `stdcall | `fastcall];;
+type calling_convention = [`cdecl | `stdcall | `fastcall | `thiscall];;
 type varargs_opt = [`varargs | `none];;
 
 (* source info *)

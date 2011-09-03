@@ -6,9 +6,10 @@ open C_preprocessor;;
 open C_scanner;;
 open C_semantics;;
 open C_syntax;;
-open Translator_to_ada;;
 open Environment;;
 open Environment_gcc;;
+open Position;;
+open Translator_to_ada;;
 
 let source_filename = ref "../c-lib.h";;
 let gcc_command = ref "gcc";;
@@ -207,6 +208,6 @@ let prefix = String.sub !gcc_command 0 (String.length !gcc_command - 3);;
 let command =
 	List.fold_left (fun command filename ->
 		command ^ " " ^ filename
-	) (prefix ^ "gnatmake -gnatc -gnatwa -gnaty -D " ^ destdir) !ada_sources;;
+	) (prefix ^ "gnatmake -gnatc -gnatef -gnatwa -gnaty -D " ^ destdir) !ada_sources;;
 
 ignore (Sys.command command);;

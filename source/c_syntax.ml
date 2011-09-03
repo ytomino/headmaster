@@ -1,7 +1,5 @@
+open Position;;
 open Value;;
-
-type position = (string * int * int * int);;
-type ranged_position = position * position;;
 
 (* types *)
 
@@ -125,6 +123,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `selectany
 		| `sentinel
 		| `stdcall
+		| `thiscall
 		| `unavailable
 		| `unused
 		| `used

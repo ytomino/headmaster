@@ -1,54 +1,17 @@
 open C_lexical;;
+open C_preprocessor_errors;;
+open Position;;
 open Value;;
 
-type position = (string * int * int * int);;
-type ranged_position = position * position;;
-
-let predefined_name = "<predefined>";;
-
-type include_from = [`user | `system];;
-
-module StringSet = Set.Make (String);;
 module StringMap = Map.Make (String);;
-
-let make_setmap (list: (string * string list) list): StringSet.t StringMap.t = (
-	List.fold_left (fun map (filename, macros) ->
-		let set = List.fold_right StringSet.add macros StringSet.empty in
-		StringMap.add filename set map
-	) StringMap.empty list
-);;
-
-let setmap_mem (ps: ranged_position) (e: string) (setmap: StringSet.t StringMap.t): bool = (
-	let filename, _, _, _ = fst ps in
-	try
-		let s = StringMap.find (Filename.basename filename) setmap in
-		StringSet.mem e s
-	with Not_found -> false
-);;
-
-let no_error_report_macros = make_setmap [
-	"cdefs.h", ["__FreeBSD_cc_version"]; (* freebsd7 *)
-	"complex.h", ["__WANT_LONG_DOUBLE_FORMAT__"]; (* darwin9 *)
-	"_mingw.h", ["__GNUC_STDC_INLINE__"]; (* mingw32 *)
-	"shellapi.h", ["_WIN32_IE"]; (* mingw32 *)
-	"stdint.h", ["__LP64__"]; (* darwin9 *)
-	"stdio.h", [
-		"_FORTIFY_SOURCE"; (* darwin9 *)
-		"__MINGW_FEATURES__"]; (* mingw32 *)
-	"string.h", ["_FORTIFY_SOURCE"]; (* darwin9 *)
-	"types.h", ["__LP64__"]; (* darwin9 *)
-	"winbase.h", [
-		"__USE_NTOSKRNL__"; (* mingw32 *)
-		"_WIN32_WINDOWS"]; (* mingw32 *)
-	"wingdi.h", ["_WIN32_WINDOWS"]; (* mingw32 *)
-	"winsock2.h", ["__INSIDE_MSYS__"]; (* mingw32 *)
-	"winuser.h", ["_WIN32_WINDOWS"]];; (* mingw32 *)
 
 module PreprocessorType
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType (Literals).S) =
 struct
 	module type S = sig
+		
+		type include_from = [`user | `system];;
 		
 		type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
 		and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
@@ -82,6 +45,8 @@ module Preprocessor
 	: PreprocessorType (Literals) (LexicalElement).S =
 struct
 	open Literals;;
+	
+	type include_from = [`user | `system];;
 	
 	let __STDC__ = `int_literal (`signed_int, Integer.one);;
 	let __STDC_VERSION__ = `int_literal (`signed_long, Integer.of_int 199901);;
@@ -201,7 +166,7 @@ struct
 				in
 				Integer.of_int x, xr
 			| lazy (`cons (ps, `ident name, xr)) ->
-				if not shortcircuit && not (setmap_mem ps name no_error_report_macros) then (
+				if not shortcircuit && not (is_known_preprocessor_error ps name) then (
 					error ps (name ^ " is undefined.")
 				);
 				Integer.zero, xr

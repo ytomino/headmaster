@@ -1,5 +1,4 @@
-type position = (string * int * int * int);;
-type ranged_position = position * position;;
+open Position;;
 
 module TextStream = struct
 	

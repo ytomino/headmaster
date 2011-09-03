@@ -24,7 +24,7 @@ export OCAMLRUNPARAM=b
 
 EXENAME=headmaster$(EXEEXT)
 
-.PHONY: $(EXENAME) clean install
+.PHONY: $(EXENAME) man testman clean install
 
 $(EXENAME): main.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
@@ -41,8 +41,18 @@ $(BUILDDIR)/gmp.cmxa:
 $(BUILDDIR)/unicode.cmxa:
 	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
 
+man: man1/headmaster.1
+
+man1/headmaster.1: headmaster.1.rst
+	-mkdir man1
+	rst2man.py $< $@
+
+testman: man1/headmaster.1
+	man -M . headmaster
+
 clean:
 	-$(RMDIR) $(BUILDDIR)
+	-$(RMDIR) man1
 	-$(RM) $(EXENAME)
 ifeq ($(OCAMLMAKE),)
 	-$(RM) source
