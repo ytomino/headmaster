@@ -148,6 +148,7 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	type attributes = {
 		at_aligned: alignment;
+		at_alloc_size: int list;
 		at_const: bool;
 		at_conventions: calling_convention;
 		at_deprecated: bool;
@@ -169,6 +170,7 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	let no_attributes = {
 		at_aligned = `default;
+		at_alloc_size = [];
 		at_const = false;
 		at_conventions = `cdecl;
 		at_deprecated = false;
@@ -420,6 +422,9 @@ module Semantics (Literals: LiteralsType) = struct
 	type opaquable_union_var = [`opaque_union | union_type_var];;
 	
 	type opaque_type_var = [`opaque_enum | `opaque_struct | `opaque_union];;
+	type opaque_type = opaque_type_var with_name;;
+	type non_opaque_type_var = [enum_type_var | struct_type_var | union_type_var];;
+	type non_opaque_type = non_opaque_type_var with_name;;
 	
 	type anonymous_type = [anonymous_type_var anonymous | function_type];;
 	
@@ -571,25 +576,77 @@ module Semantics (Literals: LiteralsType) = struct
 		end
 	);;
 	
-	(* opaque types *)
+	let rec fold_derived_types
+		(f: 'a -> derived_type -> 'a)
+		(a: 'a)
+		(base_type: all_type)
+		(derived_types: derived_type list)
+		: 'a =
+	(
+		List.fold_left (fun a dt ->
+			begin match dt with
+			| `pointer t ->
+				if t == base_type then f a dt else a
+			| `array (_, t) ->
+				if (t :> all_type) == base_type then f a dt else a
+			| `restrict t ->
+				if (t :> all_type) == base_type then f a dt else a
+			| `volatile t ->
+				if (t :> all_type) == base_type then f a dt else a
+			| `const t ->
+				if (t :> all_type) == base_type then f a dt else a
+			end
+		) a derived_types
+	);;
 	
-	type opaque_types = opaque_enum_type StringMap.t *
-		opaque_struct_type StringMap.t *
-		opaque_union_type StringMap.t;;
+	(* mapping from opaque type to body *)
 	
-	let empty_opaque_types = StringMap.empty, StringMap.empty, StringMap.empty;;
+	type opaque_mapping =
+		(opaque_enum_type * named_enum_type) StringMap.t *
+		(opaque_struct_type * named_struct_type) StringMap.t *
+		(opaque_union_type * named_union_type) StringMap.t;;
 	
-	let is_opaque (item: opaque_type_var with_name)
-		(opaque_types: opaque_types)
-		: bool =
+	let empty_opaque_mapping =
+		StringMap.empty,
+		StringMap.empty,
+		StringMap.empty;;
+	
+	let opaque_to_full
+		(item: opaque_type)
+		(opaque_mapping: opaque_mapping)
+		: non_opaque_type option =
+	(
+		try
+			let `named (_, name, kind, _) = item in
+			let oe, os, ou = opaque_mapping in
+			Some (
+				match kind with
+				| `opaque_enum -> (snd (StringMap.find name oe) :> non_opaque_type)
+				| `opaque_struct -> (snd (StringMap.find name os) :> non_opaque_type)
+				| `opaque_union -> (snd (StringMap.find name ou) :> non_opaque_type))
+		with Not_found -> None
+	);;
+	
+	let full_to_opaque
+		(item: non_opaque_type)
+		(opaque_mapping: opaque_mapping)
+		: opaque_type =
 	(
 		let `named (_, name, kind, _) = item in
-		let oe, os, ou = opaque_types in
+		let oe, os, ou = opaque_mapping in
 		begin match kind with
-		| `opaque_enum -> StringMap.mem name oe
-		| `opaque_struct -> StringMap.mem name os
-		| `opaque_union -> StringMap.mem name ou
+		| `enum _ -> (fst (StringMap.find name oe) :> opaque_type)
+		| `struct_type _ -> (fst (StringMap.find name os) :> opaque_type)
+		| `union _ -> (fst (StringMap.find name ou) :> opaque_type)
 		end
+	);;
+	
+	let is_opaque
+		(item: opaque_type)
+		(opaque_mapping: opaque_mapping)
+		: bool =
+	(
+		opaque_to_full item opaque_mapping = None
 	);;
 	
 	(* struct / union *)
@@ -855,6 +912,39 @@ module Semantics (Literals: LiteralsType) = struct
 		try
 			StringMap.find lang x.mo_language_mappings
 		with Not_found -> no_language_mapping
+	);;
+	
+	let find_mapped_type
+		(t: all_type)
+		(language_mapping: language_mapping)
+		: string =
+	(
+		List.assq t language_mapping.lm_type
+	);;
+	
+	let find_mapped_type_of_unconstrained_array
+		(base_type: not_qualified_type)
+		(language_mapping: language_mapping)
+		: string =
+	(
+		snd (
+			List.find (fun (t, _) ->
+				begin match t with
+				| `array (None, b) when b == base_type ->
+					true
+				| _ ->
+					false
+				end
+			) language_mapping.lm_type
+		)
+	);;
+	
+	let mem_mapped_type
+		(t: all_type)
+		(language_mapping: language_mapping)
+		: bool =
+	(
+		List.mem_assq t language_mapping.lm_type
 	);;
 	
 end;;

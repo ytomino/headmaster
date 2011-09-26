@@ -101,11 +101,11 @@ module Syntax (Literals: LiteralsType) = struct
 		| `cons of attribute_list p * attribute p]
 	and attribute = [`__attribute__] p * [`l_paren] pe * [`l_paren] pe * attribute_item pe * [`r_paren] pe * [`r_paren] pe
 	and attribute_item = [
-		| `aligned
-		| `aligned1 of string p * [`l_paren] p * Integer.t p * [`r_paren] p
+		| `aligned of string p * ([`l_paren] p * Integer.t p * [`r_paren] p) opt
+		| `alloc_size of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
 		| `always_inline of string
-		| `cdecl
-		| `const
+		| `cdecl of string
+		| `const of string
 		| `deprecated of string
 		| `dllimport of string
 		| `dllexport of string
@@ -115,17 +115,17 @@ module Syntax (Literals: LiteralsType) = struct
 		| `inline
 		| `malloc
 		| `mode of string p * [`l_paren] p * bit_width_mode p * [`r_paren] p
-		| `packed of string
 		| `noinline
 		| `noreturn of string
 		| `nothrow
+		| `packed of string
 		| `pure
 		| `selectany
 		| `sentinel
 		| `stdcall
 		| `thiscall
 		| `unavailable
-		| `unused
+		| `unused of string
 		| `used
 		| `warn_unused_result
 		| `weak_import]

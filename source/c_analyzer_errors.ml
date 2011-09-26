@@ -130,6 +130,8 @@ let known_uninterpretable_macros = make_setmap [
 	"timespec.h", [
 		"TIMEVAL_TO_TIMESPEC"; (* freebsd7 / accessing element of untyped parameter *)
 		"TIMESPEC_TO_TIMEVAL"]; (* freebsd7 / accessing element of untyped parameter *)
+	"tree.h", [
+		"XML_GET_CONTENT"]; (* libxml2 / accessing element of untyped parameter *)
 	"types.h", [
 		"FD_CLR"; (* darwin9 / accessing element of untyped parameter *)
 		"FD_SET"]; (* darwin9 / accessing element of untyped parameter *)

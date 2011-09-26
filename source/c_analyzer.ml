@@ -199,10 +199,27 @@ struct
 		ns_opaque_union = StringMap.empty;
 		ns_union = StringMap.empty};;
 	
-	let opaque_types (namespace: namespace): opaque_types = (
-		StringMap.fold (fun k _ r -> StringMap.remove k r) namespace.ns_enum namespace.ns_opaque_enum,
-		StringMap.fold (fun k _ r -> StringMap.remove k r) namespace.ns_struct namespace.ns_opaque_struct,
-		StringMap.fold (fun k _ r -> StringMap.remove k r) namespace.ns_union namespace.ns_opaque_union
+	let to_opaque_mapping
+		(opaques: 'a StringMap.t)
+		(fulls: 'b StringMap.t)
+		: ('a * 'b) StringMap.t =
+	(
+		let add_to_opaque_mapping
+			(opaques: 'a StringMap.t)
+			(tag: string)
+			(full: 'b)
+			(r: ('a * 'b) StringMap.t)
+			: ('a * 'b) StringMap.t =
+		(
+			StringMap.add tag (StringMap.find tag opaques, full) r
+		) in
+		StringMap.fold (add_to_opaque_mapping opaques) fulls StringMap.empty
+	);;
+	
+	let opaque_mapping (namespace: namespace): opaque_mapping = (
+		to_opaque_mapping namespace.ns_opaque_enum namespace.ns_enum,
+		to_opaque_mapping namespace.ns_opaque_struct namespace.ns_struct,
+		to_opaque_mapping namespace.ns_opaque_union namespace.ns_union
 	);;
 	
 	let rec resolve_opaque (namespace: namespace) (t: all_type): all_type = (
@@ -1404,7 +1421,7 @@ struct
 			derived_types, info, alignment_stack, mapping_options
 		end
 	) and handle_attribute
-		(_: ranged_position -> string -> unit)
+		(error: ranged_position -> string -> unit)
 		(attributes: attributes)
 		(x: Syntax.attribute p)
 		: attributes =
@@ -1413,15 +1430,44 @@ struct
 		begin match a with
 		| `some (_, a) ->
 			begin match a with
-			| `aligned ->
-				{attributes with at_aligned = `explicit_aligned}
-			| `aligned1 (_, _, (_, n), _) ->
-				{attributes with at_aligned = `aligned (Integer.to_int n)}
+			| `aligned (_, param) ->
+				begin match param with
+				| `none ->
+					{attributes with at_aligned = `explicit_aligned}
+				| `some (_, (_, (_, n), _)) ->
+					{attributes with at_aligned = `aligned (Integer.to_int n)}
+				end
+			| `alloc_size (_, _, list, _) ->
+				begin match list with
+				| `some list ->
+					let rec loop (list: Syntax.argument_expression_list p) rs = (
+						let int_of_expr ps (expr: Syntax.assignment_expression) rs = (
+							begin match expr with
+							| `int_literal (_, value) ->
+								Integer.to_int value :: rs
+							| _ ->
+								error ps "complex expression in __attributes__((alloc_size(...))) is not supported.";
+								rs
+							end
+						) in
+						begin match snd list with
+						| `nil expr ->
+							{attributes with at_alloc_size = int_of_expr (fst list) expr rs}
+						| `cons (list, _, expr) ->
+							loop list (match expr with
+								| `some expr -> int_of_expr (fst expr) (snd expr) rs
+								| `error -> rs)
+						end
+					) in
+					loop list []
+				| `error ->
+					attributes
+				end
 			| `always_inline _ ->
 				{attributes with at_inline = `always_inline}
-			| `cdecl ->
+			| `cdecl _ ->
 				{attributes with at_conventions = `cdecl}
-			| `const ->
+			| `const _ ->
 				{attributes with at_const = true}
 			| `deprecated _ ->
 				{attributes with at_deprecated = true}
@@ -1462,7 +1508,7 @@ struct
 				{attributes with at_conventions = `thiscall}
 			| `unavailable ->
 				{attributes with at_unavailable = true}
-			| `unused ->
+			| `unused _ ->
 				{attributes with at_used = `unused}
 			| `used ->
 				{attributes with at_used = `used}

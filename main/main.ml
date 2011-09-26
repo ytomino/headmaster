@@ -217,7 +217,7 @@ let (predefined_types: A.predefined_types),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
 	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
-let opaque_types = A.opaque_types namespace;;
+let opaque_mapping = A.opaque_mapping namespace;;
 
 if options.create_dest_dir && not (Sys.file_exists options.dest_dir) then (
 	Unix.mkdir options.dest_dir 0o755
@@ -251,7 +251,7 @@ begin match options.to_lang with
 		close_out f;
 	) dirs;
 	let items_per_package = T.items_per_package (remove_include_dir env) ada_mapping filename_mapping sources in
-	let name_mapping = T.name_mapping filename_mapping items_per_package in
+	let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package in
 	StringMap.iter (fun package items ->
 		let ads_filename = Filename.concat options.dest_dir (T.spec_filename package) in
 		print_string "generating ";
@@ -264,11 +264,11 @@ begin match options.to_lang with
 			T.pp_translated_package_spec
 				ff
 				~language_mapping:ada_mapping
-				~name_mapping
 				~predefined_types
 				~derived_types
-				~opaque_types
 				~enum_of_element:namespace.A.ns_enum_of_element
+				~opaque_mapping
+				~name_mapping
 				~name:package
 				items;
 			Format.pp_print_flush ff ();
@@ -293,6 +293,7 @@ begin match options.to_lang with
 				T.pp_notification ff version;
 				T.pp_translated_package_body
 					ff
+					~opaque_mapping
 					~name_mapping
 					~name:package
 					items;

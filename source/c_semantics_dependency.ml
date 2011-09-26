@@ -20,14 +20,16 @@ module Dependency
 struct
 	open Semantics;;
 	
-	let dummy_of_alias (_: named_item): named_item list = [];;
-	
-	let rec of_item (x: all_item): named_item list = (
+	let rec dummy_of_alias (_: named_item): named_item list = (
+		[]
+	) and dummy_of_argument (t: all_type): named_item list = (
+		of_item (t :> all_item)
+	) and of_item (x: all_item): named_item list = (
 		begin match x with
 		| #named_item as x ->
 			x :: []
 		| _ ->
-			dependents ~of_alias:dummy_of_alias x
+			dependents ~of_alias:dummy_of_alias ~of_argument:dummy_of_argument x
 		end
 	) and of_typedef (x: typedef_var): named_item list = (
 		let `typedef t = x in
@@ -39,11 +41,11 @@ struct
 				list_unionq (of_item (t: all_type :> all_item)) rs
 			) [] items
 		end
-	) and of_prototype (x: prototype): named_item list = (
+	) and of_prototype ~(of_argument: all_type -> named_item list) (x: prototype): named_item list = (
 		let _, args, _, ret = x in
 		List.fold_left (fun rs arg ->
 			let `named (_, _, `variable (arg_t, _), _) = arg in
-			list_unionq (of_item (arg_t :> all_item)) rs
+			list_unionq (of_argument arg_t) rs
 		) (of_item (ret :> all_item)) args
 	) and of_expr (expr: expression): named_item list = (
 		fold_expression
@@ -59,7 +61,12 @@ struct
 				end)
 			[]
 			expr
-	) and dependents ~(of_alias: named_item -> named_item list) (item: all_item): named_item list = (
+	) and dependents
+		~(of_alias: named_item -> named_item list)
+		~(of_argument: all_type -> named_item list)
+		(item: all_item)
+		: named_item list =
+	(
 		begin match item with
 		(* predefined types *)
 		| #predefined_type ->
@@ -83,7 +90,7 @@ struct
 		| `anonymous (_, (`union _ as sou)) ->
 			of_struct sou
 		| `function_type prototype ->
-			of_prototype prototype
+			of_prototype ~of_argument prototype
 		(* named types *)
 		| `named (_, _, `opaque_enum, _) ->
 			[]
@@ -104,14 +111,16 @@ struct
 		(* other named items *)
 		| `named (_, _, `enum_element _, _) ->
 			[]
+		| `named (_, _, `extern ((`function_type prototype), _), _) ->
+			of_prototype ~of_argument prototype
 		| `named (_, _, `extern (t, _), _) ->
 			of_item (t :> all_item)
 		| `named (_, _, `variable (t, _), _) ->
 			of_item (t :> all_item)
 		| `named (_, _, `function_forward (_, (`function_type prototype)), _) ->
-			of_prototype prototype
+			of_prototype ~of_argument prototype
 		| `named (_, _, `function_definition (_, (`function_type prototype), _), _) ->
-			of_prototype prototype
+			of_prototype ~of_argument prototype
 		| `named (_, _, `defined_operator _, _) ->
 			[]
 		| `named (_, _, `defined_specifiers _, _) ->

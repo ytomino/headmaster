@@ -14,6 +14,7 @@ open Value_ocaml;;
 let source_filename = ref "../c-lib.h";;
 let gcc_command = ref "gcc";;
 let tab_width = 3;;
+let sys_include_dirs = ref [];;
 
 if Filename.basename Sys.argv.(0) <> "ocaml" then (
 	let rec parse_args i = (
@@ -21,6 +22,9 @@ if Filename.basename Sys.argv.(0) <> "ocaml" then (
 			begin match Sys.argv.(i) with
 			| "--gcc" ->
 				gcc_command := Sys.argv.(i + 1);
+				parse_args (i + 2)
+			| "--isystem" ->
+				sys_include_dirs := Sys.argv.(i + 1) :: !sys_include_dirs;
 				parse_args (i + 2)
 			| arg ->
 				source_filename := arg;
@@ -37,7 +41,9 @@ let error (ps: ranged_position) (m: string): unit = (
 );;
 
 let env: environment = gcc_env !gcc_command `c;;
-let env = {env with en_include = "." :: env.en_include};;
+let env = {env with
+	en_include = "." :: env.en_include;
+	en_sys_include = List.rev_append !sys_include_dirs env.en_sys_include};;
 
 module Literals = struct
 	module Integer = Integer64;;

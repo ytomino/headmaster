@@ -95,13 +95,44 @@ let indent = 3;;
 
 (* package *)
 
+type with_option =
+	[`limited_with | `none] *
+	[`private_with | `none] *
+	[`use | `none];;
+
+let narrow_with_option: with_option = `limited_with, `private_with, `none;;
+
+let widely_with_option (a : with_option) (b: with_option): with_option = (
+	let a_limited, a_private, a_use = a in
+	let b_limited, b_private, b_use = b in
+	(if a_limited = `none || b_limited = `none then `none else `limited_with),
+	(if a_private = `none || b_private = `none then `none else `private_with),
+	(if a_use = `none && b_use = `none then `none else `use)
+);;
+
+type with_clause = string * with_option;;
+
 let pp_with_caluse
 	(ff: formatter)
-	(package, use: string * [`use | `none])
+	(package, (is_limited, is_private, use): with_clause)
 	: unit =
 (
 	pp_open_box ff indent;
-	fprintf ff "with %s;" package;
+	begin match is_limited with
+	| `limited_with ->
+		pp_print_string ff "limited ";
+	| `none ->
+		()
+	end;
+	begin match is_private with
+	| `private_with ->
+		pp_print_string ff "private ";
+	| `none ->
+		()
+	end;
+	pp_print_string ff "with ";
+	pp_print_string ff package;
+	pp_print_char ff ';';
 	begin match use with
 	| `use ->
 		fprintf ff "@ use %s;" package
@@ -114,7 +145,7 @@ let pp_with_caluse
 
 let pp_package_spec
 	(ff: formatter)
-	~(with_packages: (string * [`use | `none]) list)
+	~(with_packages: with_clause list)
 	~(name: string)
 	~(kind: [`pure | `preelaborate | `normal])
 	~(pp_contents: formatter -> unit)
@@ -153,7 +184,7 @@ let pp_package_spec
 
 let pp_package_body
 	(ff: formatter)
-	~(with_packages: (string * [`use | `none]) list)
+	~(with_packages: with_clause list)
 	~(name: string)
 	~(pp_contents: formatter -> unit)
 	: unit =
@@ -169,6 +200,20 @@ let pp_package_body
 );;
 
 (* type *)
+
+let pp_incomplete_type
+	(ff: formatter)
+	(name: string)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	pp_print_string ff "type";
+	pp_print_space ff ();
+	pp_print_string ff name;
+	pp_print_char ff ';';
+	pp_close_box ff ()
+);;
 
 let pp_type
 	(ff: formatter)
@@ -193,6 +238,34 @@ let pp_type
 	pp_print_string ff "is";
 	pp_print_space ff ();
 	pp_definition ff
+);;
+
+let pp_private_type_declaration
+	(ff: formatter)
+	(is_limited: [`limited | `none])
+	: unit =
+(
+	begin match is_limited with
+	| `limited ->
+		pp_print_string ff "limited "
+	| `none ->
+		()
+	end;
+	pp_print_string ff "private;";
+	pp_close_box ff ();
+	pp_close_box ff ()
+);;
+
+let pp_derived_type_definition
+	(ff: formatter)
+	(name: string)
+	: unit =
+(
+	pp_print_string ff "new ";
+	pp_print_string ff name;
+	pp_print_char ff ';';
+	pp_close_box ff ();
+	pp_close_box ff ()
 );;
 
 let pp_record_definition

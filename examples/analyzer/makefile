@@ -23,6 +23,7 @@ TEST=test_analyzer
 
 GCC=gcc
 H=../c-lib.h
+HFLAGS=
 
 .PHONY: $(TEST)$(EXEEXT) test interactive clean some_tests
 
@@ -36,7 +37,7 @@ else
 endif
 
 test: $(TEST)$(EXEEXT)
-	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(H)
+	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 interactive:
 ifneq ($(OCAMLMAKE),)
@@ -71,4 +72,5 @@ some_tests:
 	make test H=../use-png.h
 	make test H=../use-readline.h
 	make test H=../use-yaml.h
+	make test H=../use-xml.h HFLAGS="--isystem /usr/include/libxml2"
 	make test H=../use-zlib.h

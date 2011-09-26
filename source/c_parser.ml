@@ -678,8 +678,8 @@ struct
 		end
 	) and parse_attribute
 		(error: ranged_position -> string -> unit)
-		(_: language)
-		(_: typedef_set)
+		(lang: language)
+		(typedefs: typedef_set)
 		(xs: [`cons of ranged_position * [`__attribute__] * 'a in_t] lazy_t)
 		: attribute p * 'a in_t =
 	(
@@ -693,24 +693,33 @@ struct
 				| lazy (`cons (p4, `ident attr_keyword, xs)) ->
 					begin match attr_keyword with
 					| "__aligned__" ->
+						let n = p4, attr_keyword in
 						begin match xs with
 						| lazy (`cons (pa1, (`l_paren as ea1),
 							lazy (`cons (pa2, (`int_literal (_, arg)),
 							lazy (`cons (pa3, (`r_paren as ea3), xs))))))
 						->
-							let n = p4, attr_keyword in
+							let l_paren = pa1, ea1 in
 							let r_paren = pa3, ea3 in
+							let `some (a_ps, ()) = (`some l_paren) & (`some r_paren) in
 							let `some (ps, ()) = (`some n) & (`some r_paren) in
-							`some (ps, `aligned1 (n, (pa1, ea1), (pa2, arg), r_paren)), xs
+							`some (ps, `aligned (n, `some (a_ps, (l_paren, (pa2, arg), r_paren)))), xs
 						| _ ->
-							`some (p4, `aligned), xs
+							`some (p4, `aligned (n, `none)), xs
 						end
+					| "alloc_size" ->
+						let n = p4, attr_keyword in
+						let l_paren, xs = parse_l_paren_or_error error xs in
+						let args, xs = parse_argument_expression_list_or_error error lang typedefs xs in
+						let r_paren, xs = parse_r_paren_or_error error xs in
+						let `some (ps, ()) = (`some n) &^l_paren &^ args &^ r_paren in
+						`some (ps, `alloc_size (n, l_paren, args, r_paren)), xs
 					| "always_inline" | "__always_inline__" ->
 						`some (p4, `always_inline attr_keyword), xs
 					| "cdecl" | "__cdecl__" ->
-						`some (p4, `cdecl), xs
+						`some (p4, `cdecl attr_keyword), xs
 					| "__const__" ->
-						`some (p4, `const), xs
+						`some (p4, `const attr_keyword), xs
 					| "deprecated" | "__deprecated__" ->
 						`some (p4, `deprecated attr_keyword), xs
 					| "dllimport" | "__dllimport__" ->
@@ -807,8 +816,8 @@ struct
 						`some (p4, `thiscall), xs
 					| "unavailable" ->
 						`some (p4, `unavailable), xs
-					| "__unused__" ->
-						`some (p4, `unused), xs
+					| "unused" | "__unused__" ->
+						`some (p4, `unused attr_keyword), xs
 					| "__used__" ->
 						`some (p4, `used), xs
 					| "__warn_unused_result__" ->
@@ -1167,6 +1176,26 @@ struct
 			let left, xs = parse_primary_expression error lang typedefs xs in
 			loop left xs
 		end
+	) and parse_argument_expression_list
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
+		(xs: [`cons of ranged_position * firstset_of_assignment_expression * 'a in_t] lazy_t)
+		: argument_expression_list p * 'a in_t =
+	(
+		let rec loop rs xs = (
+			begin match xs with
+			| lazy (`cons (c_p, (`comma as c_e), xs)) ->
+				let comma = c_p, c_e in
+				let second, xs = parse_assignment_expression_or_error error lang typedefs xs in
+				let `some (ps, ()) = (`some rs) & (`some comma) &^ second in
+				loop (ps, `cons (rs, comma, second)) xs
+			| _ ->
+				rs, xs
+			end
+		) in
+		let (f_p, f_e), xs = parse_assignment_expression error lang typedefs xs in
+		loop (f_p, `nil f_e) xs
 	) and parse_argument_expression_list_option
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1177,21 +1206,26 @@ struct
 		begin match xs with
 		| lazy (`cons (a, (#firstset_of_assignment_expression as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let rec loop rs xs = (
-				begin match xs with
-				| lazy (`cons (c_p, (`comma as c_e), xs)) ->
-					let comma = c_p, c_e in
-					let second, xs = parse_assignment_expression_or_error error lang typedefs xs in
-					let `some (ps, ()) = (`some rs) & (`some comma) &^ second in
-					loop (ps, `cons (rs, comma, second)) xs
-				| _ ->
-					`some rs, xs
-				end
-			) in
-			let (f_p, f_e), xs = parse_assignment_expression error lang typedefs xs in
-			loop (f_p, `nil f_e) xs
+			let result, xs = parse_argument_expression_list error lang typedefs xs in
+			`some result, xs
 		| _ ->
 			`none, xs
+		end
+	) and parse_argument_expression_list_or_error
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
+		(xs: 'a in_t)
+		: argument_expression_list pe * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (a, (#firstset_of_assignment_expression as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let result, xs = parse_argument_expression_list error lang typedefs xs in
+			`some result, xs
+		| _ ->
+			error (LazyList.hd_a xs) "argument-expression-list was expected.";
+			`error, xs
 		end
 	) and parse_unary_expression
 		(error: ranged_position -> string -> unit)

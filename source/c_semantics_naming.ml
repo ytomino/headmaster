@@ -137,15 +137,18 @@ struct
 	
 	type name_mapping_per_module =
 		string StringMap.t *
-		string StringMap.t *
-		string StringMap.t *
-		string StringMap.t;;
+		string StringMap.t * (* enum *)
+		string StringMap.t * (* struct *)
+		string StringMap.t;; (* union *)
 	
 	let empty_name_mapping_per_module =
-		StringMap.empty, StringMap.empty, StringMap.empty, StringMap.empty;;
+		StringMap.empty,
+		StringMap.empty,
+		StringMap.empty,
+		StringMap.empty;;
 	
 	let add
-		(kind: [> opaque_type_var])
+		(kind: [> opaque_type_var | non_opaque_type_var])
 		(key: string)
 		(value: string)
 		(map: name_mapping_per_module)
@@ -153,11 +156,11 @@ struct
 	(
 		let nmap, emap, smap, umap = map in
 		begin match kind with
-		| `opaque_enum ->
+		| `opaque_enum | `enum _ ->
 			nmap, StringMap.add key value emap, smap, umap
-		| `opaque_struct ->
+		| `opaque_struct | `struct_type _ ->
 			nmap, emap, StringMap.add key value smap, umap
-		| `opaque_union ->
+		| `opaque_union | `union _ ->
 			nmap, emap, smap, StringMap.add key value umap
 		| _ ->
 			StringMap.add key value nmap, emap, smap, umap
@@ -187,15 +190,32 @@ struct
 		~(long_f: string -> string)
 		~(short_f: string -> string)
 		(special_map: string StringMap.t)
+		(opaque_mapping: opaque_mapping)
 		(items: source_item list)
 		: name_mapping_per_module =
 	(
+		let prefix_for_esu (name: string) (kind: named_var): string = (
+			begin match kind with
+			| `opaque_enum | `enum _ -> "enum_" ^ name
+			| `opaque_struct | `struct_type _ -> "struct_" ^ name
+			| `opaque_union | `union _ -> "union_" ^ name
+			| _ -> name
+			end
+		) in
+		let opaque_is_in_same (item: non_opaque_type): bool = (
+			let opaque = full_to_opaque item opaque_mapping in
+			let `named (((o_filename, _, _, _), _), _, _, _) = opaque in
+			let `named (((f_filename, _, _, _), _), _, _, _) = item in
+			o_filename = f_filename
+		) in
+		(* long name phase *)
 		let pair =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
 				| #anonymous_type
-				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _)
-				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) ->
+				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _) ->
+					pair
+				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->
 					pair
 				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
 				| `named (_, name, kind, _) ->
@@ -204,12 +224,7 @@ struct
 							StringMap.find name special_map
 						with Not_found ->
 							let s = long_f name in
-							begin match kind with
-							| `opaque_enum -> "enum_" ^ s
-							| `opaque_struct -> "struct_" ^ s
-							| `opaque_union -> "union_" ^ s
-							| _ -> s
-							end
+							prefix_for_esu s kind
 						end
 					in
 					let result = add kind name l_name result in
@@ -218,24 +233,21 @@ struct
 				end
 			) (empty_name_mapping_per_module, StringMap.empty) items
 		in
+		(* short name phase *)
 		let result, _ =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
 				| #anonymous_type
-				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _)
-				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) ->
+				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _) ->
+					pair
+				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->
 					pair
 				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
 				| `named (_, name, kind, _) ->
 					if StringMap.mem name special_map then pair else
 					let s_name =
 						let s = short_f name in
-						begin match kind with
-						| `opaque_enum -> "enum_" ^ s
-						| `opaque_struct -> "struct_" ^ s
-						| `opaque_union -> "union_" ^ s
-						| _ -> s
-						end
+						prefix_for_esu s kind
 					in
 					let u = String.uppercase s_name in
 					if StringMap.mem u rev then (
@@ -276,6 +288,7 @@ struct
 		~(short_f: string -> string)
 		(special_name_mapping: string StringMap.t StringMap.t)
 		(filename_mapping: string StringMap.t)
+		(opaque_mapping: opaque_mapping)
 		(items_per_module: source_item list StringMap.t)
 		: name_mapping =
 	(
@@ -288,7 +301,7 @@ struct
 						StringMap.empty
 					end
 				in
-				name_mapping_per_module ~long_f ~short_f special_map items
+				name_mapping_per_module ~long_f ~short_f special_map opaque_mapping items
 			) items_per_module
 		in
 		StringMap.mapi (fun k _ ->

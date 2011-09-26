@@ -325,6 +325,12 @@ let known_define_parser_errors = make_setmap [
 		"GetRawInputDeviceInfo"; (* mingw32 / out of #ifdef *)
 		"RegisterDeviceNotification"; (* mingw32 / out of #ifdef *)
 		"WHEEL_PAGESCROLL"]; (* mingw32 / UINT_MAX was undefined, #include <limits.h> *)
+	"xmlstring.h", [
+		"BAD_CAST"]; (* libxml2 / typename with paren *)
+	"xmlversion.h", [
+		"ATTRIBUTE_ALLOC_SIZE"; (* libxml2 / parameterized attribute *)
+		"ATTRIBUTE_PRINTF"; (* libxml2 / parameterized attribute *)
+		"LIBXML_TEST_VERSION"]; (* libxml2 / extra semicolon *)
 	predefined_name, [
 		"__declspec"; (* mingw32 / parameterized attribute *)
 		"__USER_LABEL_PREFIX__"]];; (* darwin9 / single "_" ...? *)

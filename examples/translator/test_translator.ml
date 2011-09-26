@@ -15,12 +15,16 @@ let source_filename = ref "../c-lib.h";;
 let gcc_command = ref "gcc";;
 let tab_width = 3;;
 let destdir = "import";;
+let sys_include_dirs = ref [];;
 
 let rec parse_args i = (
 	if i < Array.length Sys.argv then (
 		begin match Sys.argv.(i) with
 		| "--gcc" ->
 			gcc_command := Sys.argv.(i + 1);
+			parse_args (i + 2)
+		| "--isystem" ->
+			sys_include_dirs := Sys.argv.(i + 1) :: !sys_include_dirs;
 			parse_args (i + 2)
 		| arg ->
 			source_filename := arg;
@@ -36,7 +40,9 @@ let error (ps: ranged_position) (m: string): unit = (
 );;
 
 let env: environment = gcc_env !gcc_command `c;;
-let env = {env with en_include = "." :: env.en_include};;
+let env = {env with
+	en_include = "." :: env.en_include;
+	en_sys_include = List.rev_append !sys_include_dirs env.en_sys_include};;
 
 module Literals = struct
 	let float_prec, double_prec, long_double_prec = env.en_precision;;
@@ -95,7 +101,7 @@ let (predefined_types: A.predefined_types),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
 	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
-let opaque_types = A.opaque_types namespace;;
+let opaque_mapping = A.opaque_mapping namespace;;
 
 print_string "---- language mapping ----\n";;
 
@@ -140,7 +146,7 @@ List.iter (fun x ->
 print_string "---- packages ----\n";;
 
 let items_per_package = T.items_per_package (remove_include_dir env) ada_mapping filename_mapping sources;;
-let name_mapping = T.name_mapping filename_mapping items_per_package;;
+let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package;;
 
 StringMap.iter (fun package items ->
 	let ads_filename = Filename.concat destdir (T.spec_filename package) in
@@ -154,7 +160,7 @@ StringMap.iter (fun package items ->
 			~name_mapping
 			~predefined_types
 			~derived_types
-			~opaque_types
+			~opaque_mapping
 			~enum_of_element:namespace.A.ns_enum_of_element
 			~name:package
 			items;
@@ -180,6 +186,7 @@ StringMap.iter (fun package items ->
 		begin try
 			T.pp_translated_package_body
 				ff
+				~opaque_mapping
 				~name_mapping
 				~name:package
 				items;

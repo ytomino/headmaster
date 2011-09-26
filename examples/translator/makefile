@@ -23,6 +23,7 @@ TEST=test_translator
 
 GCC=gcc
 H=../c-lib.h
+HFLAGS=
 
 .PHONY: $(TEST)$(EXEEXT) test interactive clean some_tests
 
@@ -37,7 +38,7 @@ endif
 
 test: $(TEST)$(EXEEXT) import
 	-$(RM) import/*
-	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(H)
+	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 interactive:
 ifneq ($(OCAMLMAKE),)
@@ -81,7 +82,10 @@ some_tests:
 	make test H=../use-openssl.h
 	make test H=../use-png.h
 	make test H=../use-readline.h
+	make test H=../use-xml.h HFLAGS="--isystem /usr/include/libxml2"
+	make test H=../use-xml.h HFLAGS="--isystem /usr/local/i686-pc-freebsd7/local/include/libxml2" GCC=i686-pc-freebsd7-gcc
 	make test H=../use-yaml.h
 	make test H=../use-zlib.h
-	make test H=testcase-001.h
-	make test H=testcase-002.h
+	make test H=testcase001.h
+	make test H=testcase002.h
+	make test H=testcase003.h
