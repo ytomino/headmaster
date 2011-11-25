@@ -8,7 +8,7 @@ translate C header files
 
 :Author: Yuta Tomino
 :Date: 2010-2011
-:Version: 0.12
+:Version: 0.14
 :Manual section: 1
 :Manual group: preprocessor
 
@@ -31,7 +31,7 @@ OPTIONS
                          | but it is only affected reserved words.
 --gcc COMMAND            | Specify using gcc (default) and command location.
                          | This option is usable for cross-compiling.
-                         | (ex. --gcc ~/bin/i686-pc-mingw32-gcc)
+                         | (ex. --gcc ~/bin/i686-w64-mingw32-gcc)
 -h, --help               | Display the usage.
 -I PATH, --include PATH  | Add PATH to user header search path list.
 --isystem PATH           | Add PATH to system header search path list.

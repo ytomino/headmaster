@@ -136,17 +136,22 @@ struct
 			)
 		) in
 		let stmt_f rs _ = rs in
-		let expr_f rs e = (
+		let expr_f rs (e: expression) = (
 			begin match e with
-			| `cast (_, #int_prec as expr), (`pointer `void)
-				when is_static_expression expr
-			->
-				rs (* use System'To_Address *)
-			| `cast (_, t1), (`pointer _ as t2)
-			| `cast (_, (`pointer _ as t1)), t2
-				when not (is_generic_type t1) && not (is_generic_type t2)
-			->
-				add t1 t2 rs
+			| `cast ((_, t1) as expr), t2 ->
+				let t1 = resolve_typedef t1 in
+				let t2 = resolve_typedef t2 in
+				begin match t1, t2 with
+				| #int_prec, `pointer `void when is_static_expression expr ->
+					rs (* use System'To_Address *)
+				| _, (`pointer _)
+				| (`pointer _), _
+					when not (is_generic_type t1) && not (is_generic_type t2)
+				->
+					add t1 t2 rs
+				| _ ->
+					rs
+				end
 			| _ ->
 				rs
 			end

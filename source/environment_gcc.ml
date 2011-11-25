@@ -231,7 +231,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_infl", [], `long_double;
 		"__builtin_nanf", [`pointer (`const `char)], `float;
 		"__builtin_nan", [`pointer (`const `char)], `double;
-		"__builtin_nanl", [`pointer (`const `char)], `long_double]
+		"__builtin_nanl", [`pointer (`const `char)], `long_double;
+		"__builtin_return_address", [`unsigned_int], `pointer `char]
 	in
 	let result = {
 		en_sizeof = sizeof;

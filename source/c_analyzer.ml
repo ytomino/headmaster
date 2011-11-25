@@ -1426,99 +1426,134 @@ struct
 		(x: Syntax.attribute p)
 		: attributes =
 	(
-		let (_, (_, _, _, a, _, _)) = x in
-		begin match a with
-		| `some (_, a) ->
-			begin match a with
-			| `aligned (_, param) ->
-				begin match param with
-				| `none ->
-					{attributes with at_aligned = `explicit_aligned}
-				| `some (_, (_, (_, n), _)) ->
-					{attributes with at_aligned = `aligned (Integer.to_int n)}
-				end
-			| `alloc_size (_, _, list, _) ->
-				begin match list with
-				| `some list ->
-					let rec loop (list: Syntax.argument_expression_list p) rs = (
-						let int_of_expr ps (expr: Syntax.assignment_expression) rs = (
-							begin match expr with
-							| `int_literal (_, value) ->
-								Integer.to_int value :: rs
-							| _ ->
-								error ps "complex expression in __attributes__((alloc_size(...))) is not supported.";
-								rs
-							end
-						) in
-						begin match snd list with
-						| `nil expr ->
-							{attributes with at_alloc_size = int_of_expr (fst list) expr rs}
-						| `cons (list, _, expr) ->
-							loop list (match expr with
-								| `some expr -> int_of_expr (fst expr) (snd expr) rs
-								| `error -> rs)
-						end
-					) in
-					loop list []
-				| `error ->
-					attributes
-				end
-			| `always_inline _ ->
-				{attributes with at_inline = `always_inline}
-			| `cdecl _ ->
-				{attributes with at_conventions = `cdecl}
-			| `const _ ->
-				{attributes with at_const = true}
-			| `deprecated _ ->
-				{attributes with at_deprecated = true}
-			| `dllimport _ ->
-				{attributes with at_dllimport = true}
-			| `dllexport _ ->
-				{attributes with at_dllexport = true}
-			| `fastcall ->
-				{attributes with at_conventions = `fastcall}
-			| `format (_, _, (_, `ident id), _, (_, m), _, (_, n), _) ->
-				{attributes with at_format = `like (id, Integer.to_int m, Integer.to_int n)}
-			| `format_arg (_, _, (_, n), _) ->
-				{attributes with at_format = `arg (Integer.to_int n)}
-			| `inline ->
-				if attributes.at_inline = `always_inline then attributes else
-				{attributes with at_inline = `inline}
-			| `malloc ->
-				{attributes with at_malloc = true}
-			| `mode (_, _, (_, m), _) ->
-				{attributes with at_mode = Some m}
-			| `noinline ->
-				{attributes with at_inline = `noinline}
-			| `noreturn _ ->
-				{attributes with at_noreturn = true}
-			| `nothrow ->
-				{attributes with at_nothrow = true}
-			| `packed _ ->
-				{attributes with at_aligned = `packed}
-			| `pure ->
-				{attributes with at_pure = true}
-			| `sentinel ->
-				{attributes with at_sentinel = true}
-			| `selectany ->
-				{attributes with at_selectany = true}
-			| `stdcall ->
-				{attributes with at_conventions = `stdcall}
-			| `thiscall ->
-				{attributes with at_conventions = `thiscall}
-			| `unavailable ->
-				{attributes with at_unavailable = true}
-			| `unused _ ->
-				{attributes with at_used = `unused}
-			| `used ->
-				{attributes with at_used = `used}
-			| `warn_unused_result ->
-				{attributes with at_warn_unused_result = true}
-			| `weak_import ->
-				{attributes with at_weak_import = true}
-			end
+		let _, (_, _, _, list, _, _) = x in
+		begin match list with
+		| `some list ->
+			Traversing.fold_ail (handle_attribute_item error) attributes list
 		| `error ->
 			attributes
+		end
+	) and handle_attribute_item
+		(error: ranged_position -> string -> unit)
+		(attributes: attributes)
+		(x: Syntax.attribute_item p)
+		: attributes =
+	(
+		begin match snd x with
+		| `aligned (_, param) ->
+			begin match param with
+			| `none ->
+				{attributes with at_aligned = `explicit_aligned}
+			| `some (_, (_, (_, n), _)) ->
+				{attributes with at_aligned = `aligned (Integer.to_int n)}
+			end
+		| `alloc_size (_, _, list, _) ->
+			begin match list with
+			| `some list ->
+				let rec loop (list: Syntax.argument_expression_list p) rs = (
+					let int_of_expr ps (expr: Syntax.assignment_expression) rs = (
+						begin match expr with
+						| `int_literal (_, value) ->
+							Integer.to_int value :: rs
+						| _ ->
+							error ps "complex expression in __attributes__((alloc_size(...))) is not supported.";
+							rs
+						end
+					) in
+					begin match snd list with
+					| `nil expr ->
+						{attributes with at_alloc_size = int_of_expr (fst list) expr rs}
+					| `cons (list, _, expr) ->
+						loop list (match expr with
+							| `some expr -> int_of_expr (fst expr) (snd expr) rs
+							| `error -> rs)
+					end
+				) in
+				loop list []
+			| `error ->
+				attributes
+			end
+		| `always_inline _ ->
+			{attributes with at_inline = `always_inline}
+		| `cdecl _ ->
+			{attributes with at_conventions = `cdecl}
+		| `const _ ->
+			{attributes with at_const = true}
+		| `deprecated _ ->
+			{attributes with at_deprecated = true}
+		| `dllimport _ ->
+			{attributes with at_dllimport = true}
+		| `dllexport _ ->
+			{attributes with at_dllexport = true}
+		| `fastcall ->
+			{attributes with at_conventions = `fastcall}
+		| `format (_, _, (_, `ident id), _, (_, m), _, (_, n), _) ->
+			{attributes with at_format = `like (id, Integer.to_int m, Integer.to_int n)}
+		| `format_arg (_, _, (_, n), _) ->
+			{attributes with at_format = `arg (Integer.to_int n)}
+		| `inline _ ->
+			if attributes.at_inline = `always_inline then attributes else
+			{attributes with at_inline = `inline}
+		| `malloc ->
+			{attributes with at_malloc = true}
+		| `mode (_, _, (_, m), _) ->
+			{attributes with at_mode = Some m}
+		| `noinline ->
+			{attributes with at_inline = `noinline}
+		| `nonnull (_, _, list, _) ->
+			begin match list with
+			| `some list ->
+				let rec loop (list: Syntax.argument_expression_list p) rs = (
+					let int_of_expr ps (expr: Syntax.assignment_expression) rs = (
+						begin match expr with
+						| `int_literal (_, value) ->
+							Integer.to_int value :: rs
+						| _ ->
+							error ps "complex expression in __attributes__((nonnull(...))) is not supported.";
+							rs
+						end
+					) in
+					begin match snd list with
+					| `nil expr ->
+						{attributes with at_nonnull = int_of_expr (fst list) expr rs}
+					| `cons (list, _, expr) ->
+						loop list (match expr with
+							| `some expr -> int_of_expr (fst expr) (snd expr) rs
+							| `error -> rs)
+					end
+				) in
+				loop list []
+			| `error ->
+				attributes
+			end
+		| `noreturn _ ->
+			{attributes with at_noreturn = true}
+		| `nothrow ->
+			{attributes with at_nothrow = true}
+		| `packed _ ->
+			{attributes with at_aligned = `packed}
+		| `pure ->
+			{attributes with at_pure = true}
+		| `returns_twice ->
+			{attributes with at_returns_twice = true}
+		| `sentinel ->
+			{attributes with at_sentinel = true}
+		| `selectany ->
+			{attributes with at_selectany = true}
+		| `stdcall ->
+			{attributes with at_conventions = `stdcall}
+		| `thiscall ->
+			{attributes with at_conventions = `thiscall}
+		| `unavailable ->
+			{attributes with at_unavailable = true}
+		| `unused _ ->
+			{attributes with at_used = `unused}
+		| `used ->
+			{attributes with at_used = `used}
+		| `warn_unused_result ->
+			{attributes with at_warn_unused_result = true}
+		| `weak_import ->
+			{attributes with at_weak_import = true}
 		end
 	) and handle_expression
 		(error: ranged_position -> string -> unit)
@@ -2491,6 +2526,33 @@ struct
 						derived_types, namespace, sources, (List.append rs items)
 					) (derived_types, namespace, source, []) decls
 				in
+				(* check bit-field or not *)
+				let items =
+					let rec check_loop flag in_items out_items = (
+						begin match in_items with
+						| x :: xr ->
+							begin match x with
+							| _, _, Some (_: int), _ ->
+								if flag = `is_not_bf then (
+									error (fst decls) "normal members and bit-fields were mixed.";
+									List.rev out_items
+								) else (
+									check_loop `is_bf xr (x :: out_items)
+								)
+							| _, _, None, _ ->
+								if flag = `is_bf then (
+									error (fst decls) "normal members and bit-fields were mixed.";
+									List.rev out_items
+								) else (
+									check_loop `is_not_bf xr (x :: out_items)
+								)
+							end
+						| [] ->
+							List.rev out_items
+						end
+					) in
+					check_loop `unknown items []
+				in
 				(* type *)
 				begin match id with
 				| `some (id_p, `ident id_e) ->
@@ -3092,9 +3154,10 @@ struct
 		: derived_types * namespace * source_item list * (all_type * attributes) =
 	(
 		begin match snd x with
-		| `paren (_, decl, _) ->
+		| `paren (_, attrs, decl, _) ->
 			begin match decl with
 			| `some decl ->
+				let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs in
 				handle_abstract_declarator error predefined_types derived_types namespace source base_type attributes decl
 			| `error ->
 				derived_types, namespace, source, (base_type, attributes)

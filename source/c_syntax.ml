@@ -99,7 +99,10 @@ module Syntax (Literals: LiteralsType) = struct
 	and attribute_list = [
 		| `nil of attribute
 		| `cons of attribute_list p * attribute p]
-	and attribute = [`__attribute__] p * [`l_paren] pe * [`l_paren] pe * attribute_item pe * [`r_paren] pe * [`r_paren] pe
+	and attribute = [`__attribute__] p * [`l_paren] pe * [`l_paren] pe * attribute_item_list pe * [`r_paren] pe * [`r_paren] pe
+	and attribute_item_list = [
+		| `nil of attribute_item
+		| `cons of attribute_item_list p * [`comma] p * attribute_item pe]
 	and attribute_item = [
 		| `aligned of string p * ([`l_paren] p * Integer.t p * [`r_paren] p) opt
 		| `alloc_size of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
@@ -112,14 +115,16 @@ module Syntax (Literals: LiteralsType) = struct
 		| `fastcall
 		| `format of string p * [`l_paren] p * identifier p * [`comma] p * Integer.t p * [`comma] p * Integer.t p * [`r_paren] p
 		| `format_arg of string p * [`l_paren] p * Integer.t p * [`r_paren] p
-		| `inline
+		| `inline of string
 		| `malloc
 		| `mode of string p * [`l_paren] p * bit_width_mode p * [`r_paren] p
 		| `noinline
+		| `nonnull of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
 		| `noreturn of string
 		| `nothrow
 		| `packed of string
 		| `pure
+		| `returns_twice
 		| `selectany
 		| `sentinel
 		| `stdcall
@@ -387,7 +392,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `declarator of pointer opt * direct_abstract_declarator p]
 	and direct_abstract_declarator = [
 		(* (6.7.6) direct-abstract-declarator *)
-		| `paren of [`l_paren] p * abstract_declarator pe * [`r_paren] pe
+		| `paren of [`l_paren] p * attribute_list opt * abstract_declarator pe * [`r_paren] pe
 		| `array of direct_abstract_declarator opt * [`l_bracket] p * type_qualifier_list opt * assignment_expression opt * [`r_bracket] pe
 		| `static_array1 of direct_abstract_declarator opt * [`l_bracket] p * [`STATIC] p * type_qualifier_list opt * assignment_expression p * [`r_bracket] pe
 		| `static_array2 of direct_abstract_declarator opt * [`l_bracket] p * type_qualifier_list p * [`STATIC] p * assignment_expression p * [`r_bracket] pe

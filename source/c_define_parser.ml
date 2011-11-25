@@ -109,7 +109,14 @@ struct
 		in
 		begin match is_alias_of_other_macro macros macro with
 		| Some target ->
-			let _, result = parse_define ~name error lang typedefs macros target in
+			let _, result = parse_define
+				~name
+				error
+				lang
+				typedefs
+				(StringMap.remove macro.Preprocessor.df_name macros)
+				target
+			in
 			ps, result
 		| None ->
 			let xs = macro.Preprocessor.df_contents in
@@ -126,7 +133,7 @@ struct
 					has_error := true;
 					(LazyList.find_nil xs :> Preprocessor.in_prim))
 				false
-				macros
+				(StringMap.remove macro.Preprocessor.df_name macros)
 				StringMap.empty
 				xs)
 			in

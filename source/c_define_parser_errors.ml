@@ -202,6 +202,9 @@ let known_define_parser_errors = make_setmap [
 		"NdrUnMarshSCtxtHdl"]; (* mingw32 / bug? misspell of N*DR*SContextUnMarshall *)
 	"select.h", [
 		"FD_COPY"]; (* darwin9 / bcopy was undefined, #include <string.h> *)
+	"socket.h", [
+		"CTL_NET_NAMES"; (* freebsd7 / partial initializer *)
+		"CTL_NET_RT_NAMES"]; (* freebsd7 / partial initializer *)
 	"stat.h", [
 		"__DARWIN_STRUCT_STAT64"; (* darwin9 / partial declaration *)
 		"__DARWIN_STRUCT_STAT64_TIMES"]; (* darwin9 / partial declaration *)
@@ -217,6 +220,8 @@ let known_define_parser_errors = make_setmap [
 		"FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"timercmp"; (* darwin9 / parameterized operator *)
 		"timevalcmp"]; (* darwin9 / parameterized operator *)
+	"_timeval.h", [
+		"timercmp"]; (* mingw-w64 / parameterized operator *)
 	"tgmath.h", [
 		"acos"; (* gcc / magic macro *)
 		"acosh"; (* gcc / magic macro *)

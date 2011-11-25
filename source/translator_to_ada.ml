@@ -39,6 +39,7 @@ let ada_reserved_words =
 		"return";
 		"select";
 		"terminate";
+		"task";
 		"type";
 		"use"]
 	in List.fold_right StringSet.add list StringSet.empty;;
@@ -604,7 +605,7 @@ struct
 					| _ ->
 						let `named (ps, _, _, _) = d in
 						let package_name = Naming.module_of ps name_mapping in
-						if package_name = current then r else
+						if package_name = current || package_name = "" then r else
 						let package_name = "C." ^ package_name in
 						add_to_with_caluse_map package_name (`none, `none, `none) r
 					end
@@ -1122,10 +1123,10 @@ struct
 				(fun ff -> pp_print_string ff alias)
 		with Not_found ->
 			let pp_pointer_type ff ~mappings name ~restrict t = (
-				pp_print_space ff ();
 				begin match t with
 				| `function_type prototype
 				| `named (_, _, `typedef (`function_type prototype), _) ->
+					pp_print_space ff ();
 					pp_open_box ff indent;
 					let _, args, _, _ = prototype in
 					let opaque_mapping, name_mapping, anonymous_mapping = mappings in
@@ -1138,8 +1139,9 @@ struct
 					pp_pragma_convention ff conv name
 				| `void
 				| `const `void ->
-					fprintf ff "type %s is new System.Address;" name
+					pp_subtype ff name (fun ff -> pp_print_string ff "System.Address")
 				| _ ->
+					pp_print_space ff ();
 					pp_open_box ff indent;
 					begin match t with
 					| `const t ->
@@ -2205,14 +2207,16 @@ struct
 				end;
 				fprintf ff "'(%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
-			| _, _, #int_prec ->
+			| _, (#int_prec | #real_prec), (#int_prec | #real_prec) ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in
 					pp_type_name ff ~mappings ~current ~where:`name t2
 				end;
-				fprintf ff " (%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+				pp_print_string ff " (";
+				pp_print_break ff 0 0;
+				pp_expression ff ~mappings ~current ~outside:`lowest expr;
+				pp_print_char ff ')'
 			| _, _, `char ->
 				fprintf ff "char'Val (%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
@@ -2226,7 +2230,7 @@ struct
 			| _, #int_prec, (`pointer `void) when Semantics.is_static_expression expr -> (* pointer literal to void *)
 				begin match Semantics.integer_of_expression expr with
 				| Some (_, value) ->
-					fprintf ff "void_ptr (System'To_Address (%s))"
+					fprintf ff "System'To_Address (%s)"
 						(Integer.to_based_string ~base:10 value)
 				| None ->
 					assert false (* does not come here *)

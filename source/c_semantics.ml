@@ -158,9 +158,11 @@ module Semantics (Literals: LiteralsType) = struct
 		at_inline: [`none | `noinline | `inline | `always_inline];
 		at_malloc: bool;
 		at_mode: bit_width_mode option;
+		at_nonnull: int list;
 		at_noreturn: bool;
 		at_nothrow: bool;
 		at_pure: bool;
+		at_returns_twice: bool;
 		at_sentinel: bool;
 		at_selectany: bool;
 		at_unavailable: bool;
@@ -180,9 +182,11 @@ module Semantics (Literals: LiteralsType) = struct
 		at_inline = `none;
 		at_malloc = false;
 		at_mode = None;
+		at_nonnull = [];
 		at_noreturn = false;
 		at_nothrow = false;
 		at_pure = false;
+		at_returns_twice = false;
 		at_sentinel = false;
 		at_selectany = false;
 		at_unavailable = false;

@@ -3,6 +3,7 @@ open Known_errors;;
 let known_preprocessor_errors = make_setmap [
 	"cdefs.h", ["__FreeBSD_cc_version"]; (* freebsd7 *)
 	"complex.h", ["__WANT_LONG_DOUBLE_FORMAT__"]; (* darwin9 *)
+	"float.h", ["__clang_major__"]; (* mingw-w64 *)
 	"in.h", [
 		"CONFIG_FORCE_OUT_IFP"]; (* darwin9 *)
 	"ioctl.h", [

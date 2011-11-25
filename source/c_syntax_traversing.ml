@@ -18,6 +18,30 @@ struct
 		end
 	);;
 	
+	let rec fold_al (f: 'a -> attribute p -> 'a) (a: 'a) (xs: attribute_list p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a (fst xs, x)
+		| `cons (xr, x) ->
+			f (fold_al f a xr) x
+		end
+	);;
+	
+	let rec fold_ail (f: 'a -> attribute_item p -> 'a) (a: 'a) (xs: attribute_item_list p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a (fst xs, x)
+		| `cons (xr, _, x) ->
+			let v = fold_ail f a xr in
+			begin match x with
+			| `some x ->
+				f v x
+			| `error ->
+				v
+			end
+		end
+	);;
+	
 	let rec fold_iaal (f: 'a -> ia_argument p -> 'a) (a: 'a) (xs: ia_argument_list p): 'a = (
 		begin match snd xs with
 		| `nil x ->
@@ -45,15 +69,6 @@ struct
 			| `error ->
 				v
 			end
-		end
-	);;
-	
-	let rec fold_al (f: 'a -> attribute p -> 'a) (a: 'a) (xs: attribute_list p): 'a = (
-		begin match snd xs with
-		| `nil x ->
-			f a (fst xs, x)
-		| `cons (xr, x) ->
-			f (fold_al f a xr) x
 		end
 	);;
 	

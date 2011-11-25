@@ -218,16 +218,29 @@ struct
 					TextStream.junk_newline stream;
 					process ()
 				)
-			| '\\' when !need_eol -> (* macro-line continuation *)
-				TextStream.junk stream;
-				begin match TextStream.hd stream with
-				| '\n' | '\r' | '\x0c' ->
-					TextStream.junk stream
-				| _ ->
-					let p = TextStream.prev_position stream in
-					unexpected_error (p, p) '\\'
-				end;
-				process ()
+			| '\\' ->
+				if !need_eol then (
+					(* macro-line continuation *)
+					TextStream.junk stream;
+					begin match TextStream.hd stream with
+					| '\n' | '\r' | '\x0c' ->
+						TextStream.junk stream
+					| _ ->
+						let p = TextStream.prev_position stream in
+						unexpected_error (p, p) '\\'
+					end;
+					process ()
+				) else (
+					TextStream.junk stream;
+					begin match TextStream.hd stream with
+					| '\n' | '\r' | '\x0c' ->
+						() (* '\' and line feed be skipped *)
+					| _ ->
+						let p = TextStream.prev_position stream in
+						unexpected_error (p, p) '\\'
+					end;
+					process ()
+				)
 			| '(' ->
 				incr tokens_in_line;
 				let p = TextStream.junk_with_position stream in

@@ -105,6 +105,9 @@ let known_uninterpretable_macros = make_setmap [
 		"FD_CLR"; (* darwin9 / accessing element of untyped parameter *)
 		"FD_ISSET"; (* freebsd7 / accessing element of untyped parameter *)
 		"FD_SET"]; (* darwin9 / accessing element of untyped parameter *)
+	"socket.h", [
+		"CMSG_FIRSTHDR"; (* darwin9 / accessing element of untyped parameter *)
+		"CMSG_NXTHDR"]; (* darwin9 / accessing element of untyped parameter *)
 	"stdio.h", [
 		"clearerr_unlocked"; (* darwin9 / accessing element of untyped parameter *)
 		"ferror_unlocked"; (* darwin9 / accessing element of untyped parameter *)

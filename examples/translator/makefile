@@ -70,13 +70,14 @@ some_tests:
 	make test GCC=i686-pc-freebsd7-gcc
 	make test GCC=i686-pc-freebsd7-gcc H=../cc.h
 	make test GCC=i686-pc-freebsd7-gcc H=../posix.h
-	make test GCC=i686-pc-mingw32-gcc
-	make test GCC=i686-pc-mingw32-gcc H=../cc.h
-	make test GCC=i686-pc-mingw32-gcc H=../mingw-ansi.h
-	make test GCC=i686-pc-mingw32-gcc H=../mingw-wide.h
+	make test GCC=i686-w64-mingw32-gcc
+	make test GCC=i686-w64-mingw32-gcc H=../cc.h
+	make test GCC=i686-w64-mingw32-gcc H=../mingw-ansi.h
+	make test GCC=i686-w64-mingw32-gcc H=../mingw-wide.h
 	make test H=../use-cairo.h
 	make test H=../use-expat.h
 	make test H=../use-gc.h
+	make test H=../use-gc.h HFLAGS="--isystem /usr/local/i686-pc-freebsd7/local/include" GCC=i686-pc-freebsd7-gcc
 	make test H=../use-gmp.h
 	make test H=../use-iconv.h
 	make test H=../use-openssl.h

@@ -688,155 +688,195 @@ struct
 			let attr = attr_p, attr_e in
 			let l_paren1, xs = parse_l_paren_or_error error xs in
 			let l_paren2, xs = parse_l_paren_or_error error xs in
-			let item, xs =
+			let items, xs = parse_attribute_item_list_or_error error lang typedefs xs in
+			let r_paren2, xs = parse_r_paren_or_error error xs in
+			let r_paren1, xs = parse_r_paren_or_error error xs in
+			let `some (ps, ()) = (`some attr) &^ l_paren1 &^ l_paren2 &^ items &^ r_paren2 &^ r_paren1 in
+			(ps, (attr, l_paren1, l_paren2, items, r_paren2, r_paren1)), xs
+		end
+	) and parse_attribute_item_list_or_error
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
+		(xs: 'a in_t)
+		: attribute_item_list pe * 'a in_t =
+	(
+		let rec loop rs xs = (
+			begin match xs with
+			| lazy (`cons (comma_p, (`comma as comma_e), xs)) ->
+				let comma = comma_p, comma_e in
+				let second, xs = parse_attribute_item_or_error error lang typedefs xs in
+				let `some (ps, ()) = (`some rs) & (`some comma) &^ second in
+				loop (ps, `cons (rs, comma, second)) xs
+			| _ ->
+				`some rs, xs
+			end
+		) in
+		begin match parse_attribute_item_or_error error lang typedefs xs with
+		| `some (first_p, first_e), xs ->
+			loop (first_p, `nil first_e) xs
+		| `error, xs ->
+			(* an error has been already reported by parse_initializer_or_error *)
+			`error, xs
+		end
+	) and parse_attribute_item_or_error
+		(error: ranged_position -> string -> unit)
+		(lang: language)
+		(typedefs: typedef_set)
+		(xs: 'a in_t)
+		: attribute_item pe * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (p4, `ident attr_keyword, xs)) ->
+			begin match attr_keyword with
+			| "__aligned__" ->
+				let n = p4, attr_keyword in
 				begin match xs with
-				| lazy (`cons (p4, `ident attr_keyword, xs)) ->
-					begin match attr_keyword with
-					| "__aligned__" ->
+				| lazy (`cons (pa1, (`l_paren as ea1),
+					lazy (`cons (pa2, (`int_literal (_, arg)),
+					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
+				->
+					let l_paren = pa1, ea1 in
+					let r_paren = pa3, ea3 in
+					let `some (a_ps, ()) = (`some l_paren) & (`some r_paren) in
+					let `some (ps, ()) = (`some n) & (`some r_paren) in
+					`some (ps, `aligned (n, `some (a_ps, (l_paren, (pa2, arg), r_paren)))), xs
+				| _ ->
+					`some (p4, `aligned (n, `none)), xs
+				end
+			| "alloc_size" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let args, xs = parse_argument_expression_list_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ args &^ r_paren in
+				`some (ps, `alloc_size (n, l_paren, args, r_paren)), xs
+			| "always_inline" | "__always_inline__" ->
+				`some (p4, `always_inline attr_keyword), xs
+			| "cdecl" | "__cdecl__" ->
+				`some (p4, `cdecl attr_keyword), xs
+			| "__const__" ->
+				`some (p4, `const attr_keyword), xs
+			| "deprecated" | "__deprecated__" ->
+				`some (p4, `deprecated attr_keyword), xs
+			| "dllimport" | "__dllimport__" ->
+				`some (p4, `dllimport attr_keyword), xs
+			| "dllexport" | "__dllexport__" ->
+				`some (p4, `dllexport attr_keyword), xs
+			| "__fastcall__" ->
+				`some (p4, `fastcall), xs
+			| "format" | "__format__" ->
+				begin match xs with
+				| lazy (`cons (pa1, (`l_paren as ea1),
+					lazy (`cons (pa2, (#identifier as ea2),
+					lazy (`cons (pa3, (`comma as ea3),
+					lazy (`cons (pa4, (`int_literal (_, arg1)),
+					lazy (`cons (pa5, (`comma as ea5),
+					lazy (`cons (pa6, (`int_literal (_, arg2)),
+					lazy (`cons (pa7, (`r_paren as ea7), xs))))))))))))))
+				->
+					let n = p4, attr_keyword in
+					let r_paren = pa7, ea7 in
+					let `some (ps, ()) = (`some n) & (`some r_paren) in
+					`some (ps, `format (n, (pa1, ea1), (pa2, ea2), (pa3, ea3), (pa4, arg1), (pa5, ea5), (pa6, arg2), r_paren)), xs
+				| _ ->
+					error (LazyList.hd_a xs) "attribute \"__format__\" syntax error.";
+					`error, xs
+				end
+			| "__format_arg__" ->
+				begin match xs with
+				| lazy (`cons (pa1, (`l_paren as ea1),
+					lazy (`cons (pa2, (`int_literal (_, arg)),
+					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
+				->
+					let n = p4, attr_keyword in
+					let r_paren = pa3, ea3 in
+					let `some (ps, ()) = (`some n) & (`some r_paren) in
+					`some (ps, `format_arg (n, (pa1, ea1), (pa2, arg), r_paren)), xs
+				| _ ->
+					error (LazyList.hd_a xs) "attribute \"__format_arg__\" syntax error.";
+					`error, xs
+				end
+			| "__gnu_inline__" ->
+				`some (p4, `inline attr_keyword), xs
+			| "__malloc__" ->
+				`some (p4, `malloc), xs
+			| "__mode__" ->
+				begin match xs with
+				| lazy (`cons (pa1, (`l_paren as ea1),
+					lazy (`cons (pa2, `ident arg,
+					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
+				->
+					let bwm =
+						begin match arg with
+						| "__QI__" -> Some `__QI__
+						| "__HI__" -> Some `__HI__
+						| "__SI__" -> Some `__SI__
+						| "__DI__" -> Some `__DI__
+						| "__pointer__" -> Some `__pointer__
+						| "__unwind_word__" -> Some `__unwind_word__
+						| "__word__" -> Some `__word__
+						| _ -> None
+						end
+					in
+					begin match bwm with
+					| Some bwm ->
 						let n = p4, attr_keyword in
-						begin match xs with
-						| lazy (`cons (pa1, (`l_paren as ea1),
-							lazy (`cons (pa2, (`int_literal (_, arg)),
-							lazy (`cons (pa3, (`r_paren as ea3), xs))))))
-						->
-							let l_paren = pa1, ea1 in
-							let r_paren = pa3, ea3 in
-							let `some (a_ps, ()) = (`some l_paren) & (`some r_paren) in
-							let `some (ps, ()) = (`some n) & (`some r_paren) in
-							`some (ps, `aligned (n, `some (a_ps, (l_paren, (pa2, arg), r_paren)))), xs
-						| _ ->
-							`some (p4, `aligned (n, `none)), xs
-						end
-					| "alloc_size" ->
-						let n = p4, attr_keyword in
-						let l_paren, xs = parse_l_paren_or_error error xs in
-						let args, xs = parse_argument_expression_list_or_error error lang typedefs xs in
-						let r_paren, xs = parse_r_paren_or_error error xs in
-						let `some (ps, ()) = (`some n) &^l_paren &^ args &^ r_paren in
-						`some (ps, `alloc_size (n, l_paren, args, r_paren)), xs
-					| "always_inline" | "__always_inline__" ->
-						`some (p4, `always_inline attr_keyword), xs
-					| "cdecl" | "__cdecl__" ->
-						`some (p4, `cdecl attr_keyword), xs
-					| "__const__" ->
-						`some (p4, `const attr_keyword), xs
-					| "deprecated" | "__deprecated__" ->
-						`some (p4, `deprecated attr_keyword), xs
-					| "dllimport" | "__dllimport__" ->
-						`some (p4, `dllimport attr_keyword), xs
-					| "dllexport" | "__dllexport__" ->
-						`some (p4, `dllexport attr_keyword), xs
-					| "__fastcall__" ->
-						`some (p4, `fastcall), xs
-					| "__format__" ->
-						begin match xs with
-						| lazy (`cons (pa1, (`l_paren as ea1),
-							lazy (`cons (pa2, (#identifier as ea2),
-							lazy (`cons (pa3, (`comma as ea3),
-							lazy (`cons (pa4, (`int_literal (_, arg1)),
-							lazy (`cons (pa5, (`comma as ea5),
-							lazy (`cons (pa6, (`int_literal (_, arg2)),
-							lazy (`cons (pa7, (`r_paren as ea7), xs))))))))))))))
-						->
-							let n = p4, attr_keyword in
-							let r_paren = pa7, ea7 in
-							let `some (ps, ()) = (`some n) & (`some r_paren) in
-							`some (ps, `format (n, (pa1, ea1), (pa2, ea2), (pa3, ea3), (pa4, arg1), (pa5, ea5), (pa6, arg2), r_paren)), xs
-						| _ ->
-							error (LazyList.hd_a xs) "attribute \"__format__\" syntax error.";
-							`error, xs
-						end
-					| "__format_arg__" ->
-						begin match xs with
-						| lazy (`cons (pa1, (`l_paren as ea1),
-							lazy (`cons (pa2, (`int_literal (_, arg)),
-							lazy (`cons (pa3, (`r_paren as ea3), xs))))))
-						->
-							let n = p4, attr_keyword in
-							let r_paren = pa3, ea3 in
-							let `some (ps, ()) = (`some n) & (`some r_paren) in
-							`some (ps, `format_arg (n, (pa1, ea1), (pa2, arg), r_paren)), xs
-						| _ ->
-							error (LazyList.hd_a xs) "attribute \"__format_arg__\" syntax error.";
-							`error, xs
-						end
-					| "__gnu_inline__" ->
-						`some (p4, `inline), xs
-					| "__malloc__" ->
-						`some (p4, `malloc), xs
-					| "__mode__" ->
-						begin match xs with
-						| lazy (`cons (pa1, (`l_paren as ea1),
-							lazy (`cons (pa2, `ident arg,
-							lazy (`cons (pa3, (`r_paren as ea3), xs))))))
-						->
-							let bwm =
-								begin match arg with
-								| "__QI__" -> Some `__QI__
-								| "__HI__" -> Some `__HI__
-								| "__SI__" -> Some `__SI__
-								| "__DI__" -> Some `__DI__
-								| "__pointer__" -> Some `__pointer__
-								| "__unwind_word__" -> Some `__unwind_word__
-								| "__word__" -> Some `__word__
-								| _ -> None
-								end
-							in
-							begin match bwm with
-							| Some bwm ->
-								let n = p4, attr_keyword in
-								let r_paren = pa3, ea3 in
-								let `some (ps, ()) = (`some n) & (`some r_paren) in
-								`some (ps, `mode (n, (pa1, ea1), (pa2, bwm), r_paren)), xs
-							| None ->
-								error (LazyList.hd_a xs) "invalid symbol of bit width for attribute \"__mode__\".";
-								`error, xs
-							end
-						| _ ->
-							error (LazyList.hd_a xs) "attribute \"__mode__\" syntax error.";
-							`error, xs
-						end
-					| "__noinline__" ->
-						`some (p4, `noinline), xs
-					| "noreturn" | "__noreturn__" ->
-						`some (p4, `noreturn attr_keyword), xs
-					| "__nothrow__" ->
-						`some (p4, `nothrow), xs
-					| "packed" | "__packed__" ->
-						`some (p4, `packed attr_keyword), xs
-					| "__pure__" ->
-						`some (p4, `pure), xs
-					| "selectany" ->
-						`some (p4, `selectany), xs
-					| "sentinel" ->
-						`some (p4, `sentinel), xs
-					| "__stdcall__" ->
-						`some (p4, `stdcall), xs
-					| "__thiscall__" ->
-						`some (p4, `thiscall), xs
-					| "unavailable" ->
-						`some (p4, `unavailable), xs
-					| "unused" | "__unused__" ->
-						`some (p4, `unused attr_keyword), xs
-					| "__used__" ->
-						`some (p4, `used), xs
-					| "__warn_unused_result__" ->
-						`some (p4, `warn_unused_result), xs
-					| "weak_import" ->
-						`some (p4, `weak_import), xs
-					| _ ->
-						error p4 ("unknown attribute \"" ^ attr_keyword ^ "\".");
+						let r_paren = pa3, ea3 in
+						let `some (ps, ()) = (`some n) & (`some r_paren) in
+						`some (ps, `mode (n, (pa1, ea1), (pa2, bwm), r_paren)), xs
+					| None ->
+						error (LazyList.hd_a xs) "invalid symbol of bit width for attribute \"__mode__\".";
 						`error, xs
 					end
 				| _ ->
-					error (LazyList.hd_a xs) "identifier was expected.";
+					error (LazyList.hd_a xs) "attribute \"__mode__\" syntax error.";
 					`error, xs
 				end
-			in
-			let r_paren2, xs = parse_r_paren_or_error error xs in
-			let r_paren1, xs = parse_r_paren_or_error error xs in
-			let `some (ps, ()) = (`some attr) &^ l_paren1 &^ l_paren2 &^ item &^ r_paren2 &^ r_paren1 in
-			(ps, (attr, l_paren1, l_paren2, item, r_paren2, r_paren1)), xs
+			| "__noinline__" ->
+				`some (p4, `noinline), xs
+			| "nonnull" | "__nonnull__" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let args, xs = parse_argument_expression_list_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ args &^ r_paren in
+				`some (ps, `nonnull (n, l_paren, args, r_paren)), xs
+			| "noreturn" | "__noreturn__" ->
+				`some (p4, `noreturn attr_keyword), xs
+			| "__nothrow__" ->
+				`some (p4, `nothrow), xs
+			| "packed" | "__packed__" ->
+				`some (p4, `packed attr_keyword), xs
+			| "__pure__" ->
+				`some (p4, `pure), xs
+			| "__returns_twice__" ->
+				`some (p4, `returns_twice), xs
+			| "selectany" ->
+				`some (p4, `selectany), xs
+			| "sentinel" ->
+				`some (p4, `sentinel), xs
+			| "__stdcall__" ->
+				`some (p4, `stdcall), xs
+			| "__thiscall__" ->
+				`some (p4, `thiscall), xs
+			| "unavailable" ->
+				`some (p4, `unavailable), xs
+			| "unused" | "__unused__" ->
+				`some (p4, `unused attr_keyword), xs
+			| "__used__" ->
+				`some (p4, `used), xs
+			| "__warn_unused_result__" ->
+				`some (p4, `warn_unused_result), xs
+			| "weak_import" ->
+				`some (p4, `weak_import), xs
+			| _ ->
+				error p4 ("unknown attribute \"" ^ attr_keyword ^ "\".");
+				`error, xs
+			end
+		| _ ->
+			error (LazyList.hd_a xs) "identifier was expected.";
+			`error, xs
 		end
 	) and parse_inline_assembler
 		?(semicolon_need: bool = true)
@@ -2915,10 +2955,11 @@ struct
 			loop `none xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
 			let l_paren = lp_p, lp_e in
+			let attrs, xs = parse_attribute_list_option error lang typedefs xs in
 			let d, xs = parse_abstract_declarator_or_error error lang typedefs xs in
 			let r_paren, xs = parse_r_paren_or_error error xs in
 			let `some (ps, ()) = (`some l_paren) &^ d &^ r_paren in
-			let result = (ps, `paren (l_paren, d, r_paren)) in
+			let result = (ps, `paren (l_paren, attrs, d, r_paren)) in
 			begin match xs with
 			| lazy (`cons (a, (`l_paren | `l_bracket as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
