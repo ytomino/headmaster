@@ -114,6 +114,26 @@ let known_define_parser_errors = make_setmap [
 		"__section"]; (* freebsd7 / parameterized attribute *)
 	"complex.h", [
 		"complex"]; (* darwin9 / alias of _Complex *)
+	"ctype.h", [
+		"__chvalidchk"; (* mingw-w64 / _pctype is defined as expression *)
+		"_chvalidchk_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isalnum_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isalpha_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_ischartype_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_iscntrl_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_iscsym_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_iscsymf_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isdigit_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isgraph_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_islower_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isprint_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_ispunct_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isspace_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isupper_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"_isxdigit_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"__PCTYPE_FUNC"; (* mingw-w64 / _pctype is defined as expression *)
+		"__pctype_func"; (* mingw-w64 / _pctype is defined as expression *)
+		"__pwctype_func"]; (* mingw-w64 / _pctype is defined as expression *)
 	"dirent.h", [
 		"__DARWIN_STRUCT_DIRENTRY"; (* darwin9 / partial declaration *)
 		"d_ino"]; (* freebsd7 / renaming field of struct in the other file *)
@@ -159,10 +179,38 @@ let known_define_parser_errors = make_setmap [
 		"mpz_inp_str"; (* GMP / #include <stdio.h> *)
 		"mpz_out_raw"; (* GMP / #include <stdio.h> *)
 		"mpz_out_str"]; (* GMP / #include <stdio.h> *)
+	"host_special_ports.h", [
+		"host_get_audit_control_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_dynamic_pager_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_host_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_host_priv_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_io_master_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_lockd_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_user_notification_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_audit_control_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_dynamic_pager_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_lockd_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_user_notification_port"]; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+	"malloc.h", [
+		"_STATIC_ASSERT"]; (* mingw-w64 / parameterized declaration *)
+	"math.h", [
+		"__setusermatherr"]; (* mingw-w64 / duplicated by macro and normal function *)
+	"memory_object_types.h", [
+		"invalid_memory_object_flavor"]; (* darwin9 / OLD_MEMORY_OBJECT_BEHAVIOR_INFO and OLD_MEMORY_OBJECT_ATTRIBUTE_INFO are undefined *)
 	"_mingw.h", [
+		"_CRT_ALIGN"; (* mingw-w64 / parameterized attribute *)
+		"_CRT_DEPRECATE_TEXT"; (* mingw-w64 / parameterized attribute *)
+		"_CRT_glob"; (* mingw-w64 / _dowildcard is undefined *)
+		"_CRT_WIDE"; (* mingw-w64 / ## *)
 		"__MINGW_ATTRIB_NONNULL"; (* mingw32 / parameterized attribute *)
+		"__MINGW_BROKEN_INTERFACE"; (* mingw-w64 / parameterized pragma *)
+		"__restrict_arr"; (* mingw32 / reserved word *)
 		"__UNUSED_PARAM"; (* mingw32 / parameterized attribute *)
 		"__USE_MINGW_ANSI_STDIO"]; (* mingw32 / __MINGW_FEATURES__ was undefined *)
+	"_mingw_stat64.h", [
+		"_fstat32"; (* mingw-w64 / _fstat is alias of tag (chaining is not supported) *)
+		"_fstat32i64"; (* mingw-w64 / _fstati64 is alias of tag (chaining is not supported) *)
+		"fstat64"]; (* mingw-w64 / _fstat64 is alias of tag (chaining is not supported) *)
 	"mpc.h", [
 		"mpfr_exp_t"; (* MPC / conflicted with typedef *)
 		"__MPC_PROTO"]; (* MPC / parameter list *)
@@ -192,8 +240,7 @@ let known_define_parser_errors = make_setmap [
 		"pthread_cleanup_pop"; (* darwin9 / partial statement *)
 		"pthread_cleanup_push"]; (* darwin9 / partial statement *)
 	"rpcdce.h", [
-		"RPC_C_SECURITY_QOS_VERSION"; (* mingw32 / L ?? *)
-		"_SEC_WINNT_AUTH_IDENTITY"]; (* mingw32 / alias of struct tag was unsupported *)
+		"RPC_C_SECURITY_QOS_VERSION"]; (* mingw32 / L ?? *)
 	"rpcndr.h", [
 		"MIDL_INTERFACE"; (* mingw32 / reserved word *)
 		"NdrFieldPad"; (* mingw32 / generic, field *)
@@ -213,15 +260,46 @@ let known_define_parser_errors = make_setmap [
 	"stdint.h", [
 		"INTMAX_C"; (* mingw32 / ## *)
 		"UINTMAX_C"]; (* mingw32 / ## *)
+	"stdio.h", [
+		"_get_output_format"; (* mingw-w64 / duplicated by macro and normal function *)
+		"_set_output_format"]; (* mingw-w64 / duplicated by macro and normal function *)
+	"stdlib.h", [
+		"strtod"]; (* mingw-w64 / duplicated by macro and normal function *)
+	"string.h", [
+		"strcasecmp"; (* mingw-w64 / duplicated by macro and normal function *)
+		"strncasecmp"]; (* mingw-w64 / duplicated by macro and normal function *)
 	"_structs.h", [
 		"__DARWIN_FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"I386_MCONTEXT_SIZE"]; (* darwin9 / struct mcontext was undefined *)
+	"task_special_ports.h", [
+		"task_get_automountd_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_bootstrap_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_gssd_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_host_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_kernel_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_paged_ledger_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_task_access_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_get_wired_ledger_port"; (* darwin9 / task_get_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_automountd_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_bootstrap_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_gssd_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_host_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_kernel_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_paged_ledger_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_task_access_port"; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+		"task_set_wired_ledger_port"]; (* darwin9 / task_set_special_port is undefined, #include <mach/*/task.h> *)
+	"thread_special_ports.h", [
+		"thread_get_kernel_port"; (* darwin9 / thread_get_special_port is undefined, #include <mach/*/thread_act.h> *)
+		"thread_set_kernel_port"]; (* darwin9 / thread_set_special_port is undefined, #include <mach/*/thread_act.h> *)
 	"time.h", [
 		"FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"timercmp"; (* darwin9 / parameterized operator *)
 		"timevalcmp"]; (* darwin9 / parameterized operator *)
 	"_timeval.h", [
 		"timercmp"]; (* mingw-w64 / parameterized operator *)
+	"time_value.h", [
+		"time_value_add"; (* darwin9 / bad form, it shold use do ... while(0) *)
+		"time_value_add_usec"]; (* darwin9 / bad form, it shold use do ... while(0) *)
 	"tgmath.h", [
 		"acos"; (* gcc / magic macro *)
 		"acosh"; (* gcc / magic macro *)
@@ -295,6 +373,14 @@ let known_define_parser_errors = make_setmap [
 	"types.h", [
 		"FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"__offsetof"]; (* darwin9 / generic, field *)
+	"vm_param.h", [
+		"i386_btop"; (* darwin9 / pmap_paddr_t is undefined *)
+		"i386_ptob"; (* darwin9 / pmap_paddr_t is undefined *)
+		"i386_round_page"; (* darwin9 / pmap_paddr_t is undefined *)
+		"i386_trunc_page"; (* darwin9 / pmap_paddr_t is undefined *)
+		"machine_btop"]; (* darwin9 / pmap_paddr_t is undefined *)
+	"vm_types.h", [
+		"MACH_MSG_TYPE_INTEGER_T"]; (* darwin9 / MACH_MSG_TYPE_INTEGER_32 is undefined *)
 	"winbase.h", [
 		"GetEnvironmentStrings"; (* mingw32 / duplicated by macro and normal function *)
 		"GetVolumeNameForVolumeMountPoint"; (* mingw32 / out of #ifdef *)
@@ -310,7 +396,6 @@ let known_define_parser_errors = make_setmap [
 		"CONTAINING_RECORD"; (* mingw32 / generic, field *)
 		"DECLSPEC_ALIGN"; (* mingw32 / parameterized attribute *)
 		"FIELD_OFFSET"; (* mingw32 / generic, field *)
-		"_SLIST_ENTRY"; (* mingw32 / alias of struct tag was unsupported *)
 		"TEXT"]; (* mingw32 / ## *)
 	"winsock2.h", [
 		"FD_SET"; (* mingw32 / conflicted with typedef *)

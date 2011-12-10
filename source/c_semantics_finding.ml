@@ -135,6 +135,20 @@ struct
 				(t1, t2) :: rs
 			)
 		) in
+		let add_array (`array (_, e1) as t1) t2 rs = (
+			if List.exists 
+				begin fun (u1, u2) ->
+					match u1 with
+					| `array (_, f1) when f1 == e1 && u2 == t2 -> true
+					| _ -> false
+				end
+				rs
+			then (
+				rs
+			) else (
+				((t1 :> all_type), t2) :: rs
+			)
+		) in
 		let stmt_f rs _ = rs in
 		let expr_f rs (e: expression) = (
 			begin match e with
@@ -144,6 +158,8 @@ struct
 				begin match t1, t2 with
 				| #int_prec, `pointer `void when is_static_expression expr ->
 					rs (* use System'To_Address *)
+				| (`array ((Some _), _) as t1), (`pointer _) ->
+					add_array t1 t2 rs
 				| _, (`pointer _)
 				| (`pointer _), _
 					when not (is_generic_type t1) && not (is_generic_type t2)

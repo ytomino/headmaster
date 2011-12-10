@@ -17,6 +17,7 @@ let set_mem (ps: ranged_position) ~(set: StringSet.t): bool = (
 let make_setmap (list: (string * string list) list): StringSet.t StringMap.t = (
 	List.fold_left (fun map (filename, macros) ->
 		let set = List.fold_right StringSet.add macros StringSet.empty in
+		assert (not (StringMap.mem filename map));
 		StringMap.add filename set map
 	) StringMap.empty list
 );;

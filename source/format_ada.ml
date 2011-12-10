@@ -389,6 +389,13 @@ let pp_return
 	pp_close_box ff ()
 );;
 
+let pp_null_statement (ff: formatter) (): unit = (
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	pp_print_string ff "null;";
+	pp_close_box ff ()
+);;
+
 (* expression *)
 
 let pp_open_paren ff () = (
@@ -450,7 +457,7 @@ let pp_pragma_import
 	pp_print_space ff ();
 	pp_open_box ff indent;
 	assert (external_name.[0] <> '\"');
-	let shorthand = 
+	let shorthand =
 		match conv with
 		| `intrinsic -> name = external_name
 		| `ada | `c_pass_by_copy | #calling_convention -> false

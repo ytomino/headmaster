@@ -7,3 +7,5 @@ void __attribute__((always_inline,__gnu_inline__)) func(
 int *M(aaa);
 #define aaa (M(aaa))
 #define bbb aaa
+
+void g(){ return bbb; } /* return zaaa; */

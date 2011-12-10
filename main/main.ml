@@ -171,7 +171,7 @@ module P = DP.Parser;;
 module A = Analyzer (Literals) (AST) (SEM);;
 module T = Translate (Literals) (SEM);;
 
-let read_file (name: string): S.prim = (
+let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let h = open_in name in
 	let close_f () = close_in h in
 	S.scan error options.lang name options.tab_width close_f (input h)
@@ -179,12 +179,10 @@ let read_file (name: string): S.prim = (
 
 let read_include_file = make_include read_file env;;
 
-let predefined_tokens = lazy (S.scan
-	error options.lang predefined_name options.tab_width
-	ignore (read env.en_predefined));;
-let predefined_tokens' = lazy (PP.preprocess
-	error options.lang read_include_file
-	false StringMap.empty StringMap.empty predefined_tokens);;
+let predefined_tokens: PP.in_t = lazy (S.scan
+	error options.lang predefined_name options.tab_width ignore (read env.en_predefined) S.make_nil);;
+let predefined_tokens': PP.out_t = lazy (PP.preprocess
+	error options.lang read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -197,11 +195,21 @@ let predefined = (
 	end
 );;
 
-let source_tokens = lazy (LazyList.concat (List.map
-	(fun name -> lazy (read_file name))
-	(List.rev options.source_filenames)));;
+let source_tokens: PP.in_t =
+	let dummy_position = "<dummy>", 0, 0, 0 in
+	let dummy_ps = dummy_position, dummy_position in
+	let rec loop (source_filenames: string list) (ps: ranged_position): PP.in_t = (
+		begin match source_filenames with
+		| source_filename :: source_filenames_r ->
+			lazy (read_file source_filename (fun ps -> Lazy.force (loop source_filenames_r ps)))
+		| [] ->
+			assert (ps != dummy_ps);
+			lazy (S.make_nil ps)
+		end
+	) in
+	loop (List.rev options.source_filenames) dummy_ps;;
 
-let source_tokens' = lazy (PP.preprocess
+let source_tokens': PP.out_t = lazy (PP.preprocess
 	error options.lang read_include_file
 	false predefined StringMap.empty source_tokens);;
 

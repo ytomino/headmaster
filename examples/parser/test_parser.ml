@@ -52,15 +52,17 @@ module PP = Preprocessor (Literals) (LE);;
 module DP = DefineParser (Literals) (LE) (PP) (AST);;
 module P = DP.Parser;;
 
-let read_file (name: string): S.prim = (
+let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let h = open_in name in
 	S.scan error `c name tab_width (fun () -> close_in h) (input h)
 );;
 
 let read_include_file = make_include read_file env;;
 
-let predefined_tokens = lazy (S.scan error `c predefined_name tab_width ignore (read env.en_predefined));;
-let predefined_tokens' = lazy (PP.preprocess error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
+let predefined_tokens: PP.in_t = lazy (S.scan
+	error `c predefined_name tab_width ignore (read env.en_predefined) S.make_nil);;
+let predefined_tokens': PP.out_t = lazy (PP.preprocess
+	error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -75,8 +77,9 @@ let predefined = (
 
 print_string "---- standard libraries ----\n";;
 
-let lib_tokens = lazy (read_file !source_filename);;
-let lib_tokens' = lazy (PP.preprocess error `c read_include_file false predefined StringMap.empty lib_tokens);;
+let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil);;
+let lib_tokens': PP.out_t = lazy (PP.preprocess
+	error `c read_include_file false predefined StringMap.empty lib_tokens);;
 
 let (tu, typedefs, lazy (`nil (_, defined_tokens)): AST.translation_unit * P.typedef_set * (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error `c lib_tokens';;
 

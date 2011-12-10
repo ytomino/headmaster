@@ -122,6 +122,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `nonnull of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
 		| `noreturn of string
 		| `nothrow
+		| `optimize of string p * [`l_paren] pe * [`chars_literal of string] pe * [`r_paren] pe
 		| `packed of string
 		| `pure
 		| `returns_twice
@@ -309,8 +310,8 @@ module Syntax (Literals: LiteralsType) = struct
 		| `cons of struct_declaration_list p * struct_declaration p]
 	and struct_declaration = [
 		(* (6.7.2.1) struct-declaration *)
-		| `named of specifier_qualifier_list p * struct_declarator_list pe * [`semicolon] pe
-		| `anonymous_struct_or_union of [`__extension__] p * struct_or_union_specifier pe * [`semicolon] pe] (* extended *)
+		| `named of [`__extension__] opt * specifier_qualifier_list pe * struct_declarator_list pe * [`semicolon] pe
+		| `anonymous_struct_or_union of [`__extension__] p * struct_or_union_specifier p * [`semicolon] pe] (* extended *)
 	and specifier_qualifier_list = [
 		(* (6.7.2.1) specifier-qualifier-list *)
 		| `type_specifier of type_specifier p * specifier_qualifier_list opt

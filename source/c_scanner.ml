@@ -13,13 +13,16 @@ struct
 	type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
 	type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
 	
+	let make_nil (ps: ranged_position): prim = `nil (ps, ());;
+	
 	let scan
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(filename: string)
 		(tab_width: int)
 		(finalize: unit -> unit)
-		(input: string -> int -> int -> int): prim =
+		(input: string -> int -> int -> int)
+		(next: ranged_position -> prim): prim =
 	(
 		let unexpected_error (ps: ranged_position) (c: char): unit = (
 			error ps ("\'" ^ Char.escaped c ^ "\' is bad character.")
@@ -853,9 +856,9 @@ struct
 				finalize ();
 				let ps = p, p in
 				if !need_eol then (
-					`cons (ps, `end_of_line, lazy (`nil (ps, ())))
+					`cons (ps, `end_of_line, lazy (next ps))
 				) else (
-					`nil (ps, ())
+					next ps
 				)
 			| _ as h ->
 				let p = TextStream.junk_with_position stream in

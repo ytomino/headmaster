@@ -161,6 +161,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_nonnull: int list;
 		at_noreturn: bool;
 		at_nothrow: bool;
+		at_optimize: string option;
 		at_pure: bool;
 		at_returns_twice: bool;
 		at_sentinel: bool;
@@ -185,6 +186,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_nonnull = [];
 		at_noreturn = false;
 		at_nothrow = false;
+		at_optimize = None;
 		at_pure = false;
 		at_returns_twice = false;
 		at_sentinel = false;
@@ -212,8 +214,9 @@ module Semantics (Literals: LiteralsType) = struct
 	type 'a anonymous = [`anonymous of ranged_position * 'a];;
 	
 	type pointer_type = [`pointer of all_type]
+	and opaque_type_var = [`opaque_enum | `opaque_struct | `opaque_union]
 	and enum_item = enum_element with_name
-	and struct_item = string * all_type * int option * attributes
+	and struct_item = string * all_type * (int * int * bool) option * attributes (* position, width, explicit *)
 	and anonymous_type_var = [
 		| `enum of enum_item list
 		| `struct_type of alignment * struct_item list
@@ -303,6 +306,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `defined_specifiers of [storage_class | `none] (* and attributes *)
 		| `defined_type_qualifier of type_qualifier
 		| `defined_typedef of all_type
+		| `defined_opaque_type of opaque_type_var with_name (* tag *)
 		| `defined_element_access of struct_or_union_type * struct_item list
 		| `defined_expression of expression
 		| `defined_generic_expression of [`generic_type] with_name list * [`generic_value of all_type] with_name list * varargs_opt * expression
@@ -425,7 +429,6 @@ module Semantics (Literals: LiteralsType) = struct
 	type opaque_union_type = [`opaque_union] with_name;;
 	type opaquable_union_var = [`opaque_union | union_type_var];;
 	
-	type opaque_type_var = [`opaque_enum | `opaque_struct | `opaque_union];;
 	type opaque_type = opaque_type_var with_name;;
 	type non_opaque_type_var = [enum_type_var | struct_type_var | union_type_var];;
 	type non_opaque_type = non_opaque_type_var with_name;;
@@ -508,10 +511,6 @@ module Semantics (Literals: LiteralsType) = struct
 		| #predefined_type as result ->
 			result
 		end
-	);;
-	
-	let sizeof_predefined_type (e: [< predefined_type]) (predefined_types: predefined_types): int = (
-		snd (List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types))
 	);;
 	
 	let find_ptrdiff_t (predefined_types: predefined_types): [> [> typedef_var] with_name] = (
@@ -680,6 +679,13 @@ module Semantics (Literals: LiteralsType) = struct
 			)
 		| [] ->
 			None
+		end
+	);;
+	
+	let is_bitfield (xs: struct_item list): bool = (
+		begin match xs with
+		| (_, _, Some _, _) :: _ -> true
+		| _ -> false
 		end
 	);;
 	

@@ -127,7 +127,7 @@ struct
 			let xs = lazy (Preprocessor.preprocess
 				dummy_error
 				lang
-				(fun ~current ?next _ _ ->
+				(fun ~current ?next _ _ _ ->
 					ignore current;
 					ignore next;
 					has_error := true;
@@ -154,7 +154,7 @@ struct
 						let args =
 							List.map (fun (v, is_type) ->
 								v, (if is_type then `typedef else `value)
-							) args 
+							) args
 						in
 						let typedefs =
 							List.fold_right (fun ((_, k), is_type) v ->

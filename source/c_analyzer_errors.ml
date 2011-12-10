@@ -2,6 +2,11 @@ open Known_errors;;
 open Position;;
 
 let known_uninterpretable_macros = make_setmap [
+	"clock_types.h", [
+		"ADD_MACH_TIMESPEC"; (* darwin9 / accessing element of untyped parameter *)
+		"BAD_MACH_TIMESPEC"; (* darwin9 / accessing element of untyped parameter *)
+		"CMP_MACH_TIMESPEC"; (* darwin9 / accessing element of untyped parameter *)
+		"SUB_MACH_TIMESPEC"]; (* darwin9 / accessing element of untyped parameter *)
 	"dirent.h", [
 		"dirfd"; (* darwin9 / accessing element of untyped parameter *)
 		"_GENERIC_DIRSIZ"]; (* freebsd7 / accessing element of untyped parameter *)
@@ -112,12 +117,20 @@ let known_uninterpretable_macros = make_setmap [
 		"clearerr_unlocked"; (* darwin9 / accessing element of untyped parameter *)
 		"ferror_unlocked"; (* darwin9 / accessing element of untyped parameter *)
 		"feof_unlocked";  (* darwin9 / accessing element of untyped parameter *)
+		"_fgetc_nolock"; (* mingw-w64 / accessing element of untyped parameter *)
 		"fileno_unlocked"; (* darwin9 / accessing element of untyped parameter *)
+		"_fputc_nolock"; (* mingw-w64 / accessing element of untyped parameter *)
+		"_getc_nolock"; (* mingw-w64 / accessing element of untyped parameter *)
+		"_getchar_nolock"; (* mingw-w64 / accessing element of untyped parameter *)
+		"_putc_nolock"; (* mingw-w64 / accessing element of untyped parameter *)
+		"_putchar_nolock"; (* mingw-w64 / accessing element of untyped parameter *)
 		"__sclearerr"; (* darwin9 / accessing element of untyped parameter *)
 		"__sfeof"; (* darwin9 / accessing element of untyped parameter *)
 		"__sferror"; (* darwin9 / accessing element of untyped parameter *)
 		"__sfileno"; (* darwin9 / accessing element of untyped parameter *)
 		"__sgetc"]; (* darwin9 / accessing element of untyped parameter *)
+	"stdlib.h", [
+		"_PTR_LD"]; (* mingw-w64 / accessing element of untyped parameter *)
 	"_structs.h", [
 		"__DARWIN_FD_CLR"; (* darwin9 / accessing element of untyped parameter *)
 		"__DARWIN_FD_SET"]; (* darwin9 / accessing element of untyped parameter *)
@@ -133,6 +146,9 @@ let known_uninterpretable_macros = make_setmap [
 	"timespec.h", [
 		"TIMEVAL_TO_TIMESPEC"; (* freebsd7 / accessing element of untyped parameter *)
 		"TIMESPEC_TO_TIMEVAL"]; (* freebsd7 / accessing element of untyped parameter *)
+	"_timeval.h", [
+		"timerclear"; (* mingw-w64 / accessing element of untyped parameter *)
+		"timerisset"]; (* mingw-w64 / accessing element of untyped parameter *)
 	"tree.h", [
 		"XML_GET_CONTENT"]; (* libxml2 / accessing element of untyped parameter *)
 	"types.h", [

@@ -5,7 +5,8 @@
 #endif
 #if defined(__APPLE__)
 #include <stdint.h> /* uint32_t for sys/socket.h */
-//#include <malloc/malloc.h>
+#include <sys/types.h> /* user_addr_t for malloc/malloc.h */
+#include <malloc/malloc.h>
 #endif
 #include <sys/fcntl.h>
 #include <sys/stat.h>

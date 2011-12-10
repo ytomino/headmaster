@@ -85,7 +85,7 @@ struct
 								| `named (_, _, `defined_alias _, _) ->
 									added_dest_items (* does not chain *)
 								| `named (_, name, _, _) as item ->
-									if 
+									if
 										List.exists (fun (i: source_item) ->
 											begin match i with
 											| `named (_, n2, `defined_alias i2, _) ->
@@ -219,7 +219,7 @@ struct
 					pair
 				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
 				| `named (_, name, kind, _) ->
-					let l_name = 
+					let l_name =
 						begin try
 							StringMap.find name special_map
 						with Not_found ->
@@ -273,7 +273,7 @@ struct
 	
 	type name_mapping = (string * name_mapping_per_module) StringMap.t;;
 	
-	let module_of 
+	let module_of
 		(ps: ranged_position)
 		(name_mapping: name_mapping)
 		: string =

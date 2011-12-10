@@ -1,5 +1,6 @@
 open C_analyzer_errors;;
 open C_semantics;;
+open C_semantics_machine;;
 open C_syntax;;
 open C_syntax_traversing;;
 open Position;;
@@ -40,6 +41,7 @@ module Analyzer
 	(Semantics: SemanticsType (Literals).S) =
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
+	module Machine = Machine (Literals) (Semantics);;
 	open Literals;;
 	open Semantics;;
 	
@@ -300,7 +302,7 @@ struct
 		in
 		let language_typedefs: typedef_type list =
 			let find_f t (x, _) = x = (t :> predefined_type) in
-			let find t = (fst (List.find (find_f t) predefined_types) :> Semantics.all_type) in
+			let find t = (fst (List.find (find_f t) predefined_types) :> all_type) in
 			(`named (builtin_position, "ptrdiff_t", `typedef (find typedef_ptrdiff_t), no_attributes)) ::
 			(`named (builtin_position, "size_t", `typedef (find typedef_size_t), no_attributes)) :: (
 				begin match lang with
@@ -608,78 +610,6 @@ struct
 			item, namespace, source
 	);;
 	
-	(* sizeof *)
-	
-	let rec sizeof
-		(error: ranged_position -> string -> unit)
-		(predefined_types: predefined_types)
-		(ps: ranged_position)
-		(t: all_type)
-		: int =
-	(
-		begin match t with
-		| #predefined_type as p ->
-			sizeof_predefined_type p predefined_types
-		| `pointer _ ->
-			sizeof_predefined_type `__builtin_va_list predefined_types
-		| `restrict base ->
-			sizeof error predefined_types ps (base :> all_type)
-		| `volatile base ->
-			sizeof error predefined_types ps (base :> all_type)
-		| `const base ->
-			sizeof error predefined_types ps (base :> all_type)
-		| `anonymous (_, `enum _)
-		| `named (_, _, `enum _, _) ->
-			sizeof_predefined_type `signed_int predefined_types
-		| `anonymous (_, `struct_type (alignment, items))
-		| `named (_, _, `struct_type (alignment, items), _) ->
-			let alignment =
-				begin match alignment with
-				| `default | `explicit_aligned ->
-					sizeof_predefined_type `__builtin_va_list predefined_types
-				| `aligned n ->
-					n
-				| `packed ->
-					1
-				end
-			in
-			let rec loop total items = (
-				begin match items with
-				| (_, item_type, _, _) :: items ->
-					let item_size = sizeof error predefined_types ps item_type in
-					let total = (total + alignment - 1) / alignment * alignment + item_size in
-					loop total items
-				| [] ->
-					total
-				end
-			) in
-			loop 0 items
-		| `anonymous (_, `union items)
-		| `named (_, _, `union items, _) ->
-			let rec loop max_size items = (
-				begin match items with
-				| (_, item_type, _, _) :: items ->
-					let item_size = sizeof error predefined_types ps item_type in
-					loop (max max_size item_size) items
-				| [] ->
-					max_size
-				end
-			) in
-			loop 0 items
-		| `named (_, _, `typedef base, _) ->
-			sizeof error predefined_types ps base
-		| `array (Some n, base) ->
-			sizeof error predefined_types ps (base :> all_type) * Integer.to_int n
-		| `array (None, _)
-		| `named (_, _, (`generic_type | `opaque_enum | `opaque_struct | `opaque_union), _) ->
-			error ps "sizeof(opaque-type) was invalid.";
-			sizeof_predefined_type `__builtin_va_list predefined_types
-		| `function_type _ ->
-			error ps "sizeof(function) was invalid.";
-			sizeof_predefined_type `__builtin_va_list predefined_types
-		end
-	);;
-	
 	(* implicit conversion *)
 	
 	let conv_expr (t: all_type) (expr: expression): expression = (
@@ -725,7 +655,7 @@ struct
 	(
 		begin match t with
 		| `char ->
-			`char_literal '\x00', (t :> Semantics.all_type)
+			`char_literal '\x00', (t :> all_type)
 		| _ ->
 			error ps "unimplemented!";
 			assert false
@@ -735,8 +665,8 @@ struct
 	(* analyzing *)
 	
 	let get_bit_width_int error predefined_types ps size t1 t2 = (
-		if sizeof_predefined_type t1 predefined_types = size then t1 else
-		if sizeof_predefined_type t2 predefined_types = size then t2 else (
+		if Machine.sizeof_predefined_type t1 predefined_types = size then t1 else
+		if Machine.sizeof_predefined_type t2 predefined_types = size then t2 else (
 			error ps ("this environment does not have " ^ string_of_int (size * 8) ^ " bit-integer.");
 			t2
 		)
@@ -994,7 +924,7 @@ struct
 		(t: int_prec)
 		(x: Integer.t): expression =
 	(
-		let bit_size = sizeof_predefined_type t predefined_types * 8in
+		let bit_size = Machine.sizeof_predefined_type t predefined_types * 8in
 		let bits = Integer.sub (Integer.shift_left Integer.one bit_size) Integer.one in
 		let x2 = Integer.logand x bits in
 		begin match t with
@@ -1070,16 +1000,21 @@ struct
 		| (`imaginary prec1 | `complex prec1), (`imaginary prec2 | `complex prec2) ->
 			Some (find_predefined_type (`complex (float_prec prec1 prec2)) predefined_types), derived_types
 		| (`pointer _ as ptr_t), #int_prec
-		| (`restrict (`pointer _) as ptr_t), #int_prec
+		| (`restrict (`pointer _) as ptr_t), #int_prec when op = `add || op = `sub ->
+			Some ptr_t, derived_types
 		| #int_prec, (`pointer _ as ptr_t)
 		| #int_prec, (`restrict (`pointer _) as ptr_t) when op = `add ->
 			Some ptr_t, derived_types
-		| `array (_, elm_t), #int_prec
+		| `array (_, elm_t), #int_prec when op = `add || op = `sub ->
+			let ptr_t, derived_types = find_pointer_type (elm_t :> all_type) derived_types in
+			Some ptr_t, derived_types
 		| #int_prec, `array (_, elm_t) when op = `add ->
 			let ptr_t, derived_types = find_pointer_type (elm_t :> all_type) derived_types in
 			Some ptr_t, derived_types
 		| `pointer _, `pointer _ when op = `sub ->
-			assert false (* ptrdiff_t *)
+			Some (find_ptrdiff_t predefined_types), derived_types
+		| `pointer ptr_t1, `pointer ptr_t2 when ptr_t1 == ptr_t2 && op = `conditional ->
+			Some ptr_t1, derived_types
 		| `volatile t1, _ ->
 			result_type_of op (t1 :> all_type) t2 predefined_types derived_types
 		| _, `volatile t2 ->
@@ -1530,6 +1465,13 @@ struct
 			{attributes with at_noreturn = true}
 		| `nothrow ->
 			{attributes with at_nothrow = true}
+		| `optimize (_, _, arg, _) ->
+			begin match arg with
+			| `some (_, `chars_literal arg) ->
+				{attributes with at_optimize = Some arg}
+			| `error ->
+				attributes
+			end
 		| `packed _ ->
 			{attributes with at_aligned = `packed}
 		| `pure ->
@@ -1622,14 +1564,19 @@ struct
 				derived_types, source, None
 			end
 		) in
-		let handle_sizeof derived_types source t: derived_types * Semantics.source_item list * Semantics.expression option = (
+		let handle_sizeof derived_types source t: derived_types * source_item list * expression option = (
 			let size_t = find_size_t predefined_types in
 			begin match t with
 			| `named (_, formal_type, `generic_type, _) ->
 				derived_types, source, Some (`sizeof_formal_type formal_type, size_t)
 			| _ ->
-				let sizeof_value = sizeof error predefined_types (fst x) t in
-				derived_types, source, Some (`int_literal (`unsigned_int, Integer.of_int sizeof_value), size_t)
+				begin match Machine.sizeof t predefined_types with
+				| Some sizeof_value ->
+					derived_types, source, Some (`int_literal (`unsigned_int, Integer.of_int sizeof_value), size_t)
+				| None ->
+					error (fst x) "sizeof(opaque) is invalid.";
+					derived_types, source, None
+				end
 			end
 		) in
 		let handle_unary (f: derived_types -> expression -> derived_types * expression option) request (right: Syntax.expression pe): derived_types * source_item list * expression option = (
@@ -1757,15 +1704,17 @@ struct
 			derived_types, source, Some (v, find_predefined_type (`imaginary prec) predefined_types)
 		| `char_literal _ as v ->
 			derived_types, source, Some (v, find_predefined_type `char predefined_types)
-		| `chars_literal _ as v ->
+		| `chars_literal s as v ->
 			let base_type = find_predefined_type `char predefined_types in
-			let t, derived_types = find_array_type None base_type derived_types in
+			let length = Some (Integer.of_int (String.length s + 1)) in
+			let t, derived_types = find_array_type length base_type derived_types in
 			derived_types, source, Some (v, t)
 		| `wchar_literal _ as v ->
 			derived_types, source, Some (v, find_wchar_t predefined_types)
-		| `wchars_literal _ as v ->
+		| `wchars_literal s as v ->
 			let base_type = find_wchar_t predefined_types in
-			let t, derived_types = find_array_type None base_type derived_types in
+			let length = Some (Integer.of_int (WideString.length s + 1)) in
+			let t, derived_types = find_array_type length base_type derived_types in
 			derived_types, source, Some (v, t)
 		| `objc_string_literal _ ->
 			error (fst x) "unimplemented!";
@@ -1836,7 +1785,7 @@ struct
 					find_predefined_type `void predefined_types
 				end
 			) in
-			let t = loop compound in 
+			let t = loop compound in
 			derived_types, source, Some (`statement compound, t)
 		| `array_access (left, _, right, _) ->
 			begin match right with
@@ -2295,6 +2244,17 @@ struct
 		in
 		begin match analyzed_decl with
 		| Some (ps, id, t, attr) ->
+			(* fill length *)
+			let derived_types, t =
+				begin match t, init with
+				| `array (None, element_t1), Some (_, `array ((Some _ as length), element_t2)) when element_t1 == element_t2 ->
+					let array_type, derived_types = find_array_type length `char derived_types in
+					derived_types, array_type
+				| _ ->
+					derived_types, t
+				end
+			in
+			(* by storage class *)
 			begin match storage_class with
 			| `typedef ->
 				if init <> None then (
@@ -2332,7 +2292,7 @@ struct
 			| `register ->
 				begin match t with
 				| `function_type _ ->
-					error (fst x) "\"register\" could not be applied to function type."; 
+					error (fst x) "\"register\" could not be applied to function type.";
 					derived_types, namespace, source, None
 				| _ ->
 					let result = `named (ps, id, `variable (t, init), attr) in
@@ -2528,30 +2488,12 @@ struct
 				in
 				(* check bit-field or not *)
 				let items =
-					let rec check_loop flag in_items out_items = (
-						begin match in_items with
-						| x :: xr ->
-							begin match x with
-							| _, _, Some (_: int), _ ->
-								if flag = `is_not_bf then (
-									error (fst decls) "normal members and bit-fields were mixed.";
-									List.rev out_items
-								) else (
-									check_loop `is_bf xr (x :: out_items)
-								)
-							| _, _, None, _ ->
-								if flag = `is_bf then (
-									error (fst decls) "normal members and bit-fields were mixed.";
-									List.rev out_items
-								) else (
-									check_loop `is_not_bf xr (x :: out_items)
-								)
-							end
-						| [] ->
-							List.rev out_items
-						end
-					) in
-					check_loop `unknown items []
+					begin match Machine.is_bitfield items with
+					| `is_bitfield | `mixed ->
+						Machine.fill_bitfield error predefined_types (fst decls) items (* normal members and bit-fields are mixed *)
+					| `is_not_bitfield | `empty ->
+						items
+					end
 				in
 				(* type *)
 				begin match id with
@@ -2624,7 +2566,7 @@ struct
 			end
 		) in
 		begin match snd x with
-		| `named (sql, `some sdrl, _) ->
+		| `named (_, `some sql, `some sdrl, _) ->
 			let derived_types, namespace, source, base_type = handle_specifier_qualifier_list error predefined_types derived_types namespace source alignment sql in
 			let derived_types, namespace, source, result =
 				Traversing.fold_sdrl (fun (derived_types, namespace, source, rs as result) (sdecl: Syntax.struct_declarator p) ->
@@ -2636,7 +2578,7 @@ struct
 				) (derived_types, namespace, source, []) sdrl
 			in
 			derived_types, namespace, source, List.rev result
-		| `named (sql, `error, _) ->
+		| `named (_, `some sql, `error, _) ->
 			begin match snd sql with
 			| `type_specifier ((sou_spec_p, `struct_or_union_specifier sou_spec_e), `none) ->
 				(* anonymous struct or union without __extension__ *)
@@ -2645,13 +2587,11 @@ struct
 				(* error *)
 				derived_types, namespace, source, []
 			end
+		| `named (_, `error, _, _) ->
+			(* error *)
+			derived_types, namespace, source, []
 		| `anonymous_struct_or_union (_, sou_spec, _) ->
-			begin match sou_spec with
-			| `some sou_spec ->
-				handle_anonymous sou_spec
-			| `error ->
-				derived_types, namespace, source, []
-			end
+			handle_anonymous sou_spec
 		end
 	) and handle_specifier_qualifier_list
 		(error: ranged_position -> string -> unit)
@@ -2721,7 +2661,7 @@ struct
 					| Some n ->
 						begin match integer_of_expression n with
 						| Some (_, n) ->
-							derived_types, source, Some (Integer.to_int n)
+							derived_types, source, Some (-1, Integer.to_int n, true)
 						| None ->
 							error (fst expr) "int const value was required for bit-field.";
 							derived_types, source, None
@@ -3036,8 +2976,9 @@ struct
 			| _ ->
 				(* rev and replace type to pointer instead of array *)
 				List.fold_left (fun (derived_types, params) param ->
-					begin match param with
-					| `named (ps, name, `variable ((`array (_, base_type)), init), attrs) ->
+					let `named (ps, name, `variable (the_type, init), attrs) = param in
+					begin match resolve_typedef (remove_type_qualifiers the_type :> all_type) with
+					| `array (_, base_type) ->
 						let t, derived_types = find_pointer_type (base_type :> all_type) derived_types in
 						let new_param = `named (ps, name, `variable (t, init), attrs) in
 						derived_types, new_param :: params
@@ -3965,6 +3906,21 @@ struct
 					end
 				) in
 				begin match is_element_access init with
+				| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_enum ->
+					let t = (StringMap.find leftmost namespace.ns_opaque_enum :> opaque_type) in
+					let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
+					let source = item :: source in
+					derived_types, source
+				| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_struct ->
+					let t = (StringMap.find leftmost namespace.ns_opaque_struct :> opaque_type) in
+					let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
+					let source = item :: source in
+					derived_types, source
+				| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_union ->
+					let t = (StringMap.find leftmost namespace.ns_opaque_union :> opaque_type) in
+					let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
+					let source = item :: source in
+					derived_types, source
 				| leftmost :: _ as accessing when not (StringMap.mem leftmost namespace.ns_namespace) ->
 					begin match inference_by_field accessing source with
 					| `defined_element_access _ as result ->
@@ -3981,7 +3937,7 @@ struct
 							begin match StringMap.find name instances with
 							| t :: [] ->
 								(t :> [all_type | `uninterpretable])
-							| _ as ts -> 
+							| _ as ts ->
 								if List.length ts > 1 then error def_p "instance of the initializer macro was overloaded.";
 								raise Not_found
 							end

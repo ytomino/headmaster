@@ -29,10 +29,10 @@ struct
 		val preprocess:
 			(ranged_position -> string -> unit) ->
 			language ->
-			(current:string -> ?next:bool -> include_from -> string -> in_prim) ->
+			(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
 			bool ->
 			define_map ->
-			out_t StringMap.t ->
+			(in_t * out_t) StringMap.t ->
 			in_t ->
 			out_prim;;
 		
@@ -78,12 +78,12 @@ struct
 	
 	let rec take_line (xs: in_t): in_t * in_t = (
 		begin match xs with
-		| lazy (`cons (ps, token, xr)) ->
+		| lazy (`cons (ps, token, xs)) ->
 			if token = `end_of_line then (
-				lazy (`nil (ps, ())), xr
+				lazy (`nil (ps, ())), xs
 			) else (
-				let cs, xr' = take_line xr in
-				lazy (`cons (ps, token, cs)), xr'
+				let cs, xs = take_line xs in
+				lazy (`cons (ps, token, cs)), xs
 			)
 		| lazy (`nil _) as eof ->
 			eof, eof
@@ -92,21 +92,17 @@ struct
 	
 	let rec take_assignment_expression (level: int) (xs: in_t): in_t * in_t = (
 		begin match xs with
-		| lazy (`cons (ps, `l_paren, xr)) ->
-			let cs, xr' = take_assignment_expression (level + 1) xr in
-			lazy (`cons (ps, `l_paren, cs)), xr'
-		| lazy (`cons (ps, `r_paren, xr)) ->
-			if level > 0 then (
-				let cs, xr' = take_assignment_expression (level - 1) xr in
-				lazy (`cons (ps, `r_paren, cs)), xr'
-			) else (
-				lazy (`nil (ps, ())), xs
-			)
-		| lazy (`cons (ps, `comma, _)) when level = 0 ->
+		| lazy (`cons (ps, `l_paren, xs)) ->
+			let cs, xs = take_assignment_expression (level + 1) xs in
+			lazy (`cons (ps, `l_paren, cs)), xs
+		| lazy (`cons (ps, `r_paren, xs)) when level > 0 ->
+			let cs, xs = take_assignment_expression (level - 1) xs in
+			lazy (`cons (ps, `r_paren, cs)), xs
+		| lazy (`cons (ps, (`comma | `r_paren), _)) when level = 0 ->
 			lazy (`nil (ps, ())), xs
-		| lazy (`cons (ps, token, xr)) ->
-			let cs, xr' = take_assignment_expression level xr in
-			lazy (`cons (ps, token, cs)), xr'
+		| lazy (`cons (ps, token, xs)) ->
+			let cs, xs = take_assignment_expression level xs in
+			lazy (`cons (ps, token, cs)), xs
 		| lazy (`nil _) as eof ->
 			eof, eof
 		end
@@ -115,22 +111,21 @@ struct
 	let rec take_structure_while
 		(f: LexicalElement.t -> bool)
 		(level: int)
-		(xs: in_t): in_t * in_t =
+		(xs: in_t)
+		: in_t * in_t =
 	(
 		begin match xs with
-		| lazy (`cons (ps, ((`sharp_IF | `sharp_IFDEF | `sharp_IFNDEF) as token), xr)) ->
-			let cs, xr' = take_structure_while f (level + 1) xr in
-			lazy (`cons (ps, token, cs)), xr'
-		| lazy (`cons (ps, `sharp_ENDIF, xr)) when level > 0 ->
-			let cs, xr' = take_structure_while f (level - 1) xr in
-			lazy (`cons (ps, `sharp_ENDIF, cs)), xr'
-		| lazy (`cons (ps, token, xr)) ->
-			if level > 0 || f token then (
-				let cs, xr' = take_structure_while f level xr in
-				lazy (`cons (ps, token, cs)), xr'
-			) else (
-				lazy (`nil (ps, ())), xs
-			)
+		| lazy (`cons (ps, ((`sharp_IF | `sharp_IFDEF | `sharp_IFNDEF) as token), xs)) ->
+			let cs, xs = take_structure_while f (level + 1) xs in
+			lazy (`cons (ps, token, cs)), xs
+		| lazy (`cons (ps, `sharp_ENDIF, xs)) when level > 0 ->
+			let cs, xs = take_structure_while f (level - 1) xs in
+			lazy (`cons (ps, `sharp_ENDIF, cs)), xs
+		| lazy (`cons (ps, token, xs)) when level > 0 || f token ->
+			let cs, xs = take_structure_while f level xs in
+			lazy (`cons (ps, token, cs)), xs
+		| lazy (`cons (ps, _, _)) ->
+			lazy (`nil (ps, ())), xs
 		| lazy (`nil _) as eof ->
 			eof, eof
 		end
@@ -143,148 +138,143 @@ struct
 	(
 		let rec calc_term (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
 			begin match xs with
-			| lazy (`cons (_, `l_paren, xr)) ->
-				let value, xr = calc_cond shortcircuit xr in
-				begin match xr with
-				| lazy (`cons (_, `r_paren, xr)) ->
-					value, xr
+			| lazy (`cons (_, `l_paren, xs)) ->
+				let value, xs = calc_cond shortcircuit xs in
+				begin match xs with
+				| lazy (`cons (_, `r_paren, xs)) ->
+					value, xs
 				| lazy (`cons (ps, _, _) | `nil (ps, _)) ->
 					error ps "parenthesis mismatched.";
-					value, xr
+					value, xs
 				end
-			| lazy (`cons (_, `exclamation, xr)) ->
-				let value, xr = calc_term shortcircuit xr in
+			| lazy (`cons (_, `exclamation, xs)) ->
+				let value, xs = calc_term shortcircuit xs in
 				let value' = leinteger_of_bool (not (bool_of_leinteger value)) in
-				value', xr
-			| lazy (`cons (_, `int_literal (_, value), xr)) ->
-				value, xr
-			| lazy (`cons (_, `char_literal value, xr)) ->
+				value', xs
+			| lazy (`cons (_, `int_literal (_, value), xs)) ->
+				value, xs
+			| lazy (`cons (_, `char_literal value, xs)) ->
 				let x =
 					(* treat char as signed int *)
 					let c = int_of_char value in
 					if c < 0x80 then c else c lor (-1 lxor 0xff)
 				in
-				Integer.of_int x, xr
-			| lazy (`cons (ps, `ident name, xr)) ->
+				Integer.of_int x, xs
+			| lazy (`cons (ps, `ident name, xs)) ->
 				if not shortcircuit && not (is_known_preprocessor_error ps name) then (
 					error ps (name ^ " is undefined.")
 				);
-				Integer.zero, xr
+				Integer.zero, xs
 			| lazy (`cons (ps, _, _) | `nil (ps, _)) ->
 				error ps "term is required.";
 				Integer.zero, xs
 			end
 		) and calc_sum (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value1, xr) as result = calc_term shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `plus, xr)) ->
-				let (value2, xr) = calc_term shortcircuit xr in
-				(Integer.add value1 value2), xr
-			| lazy (`cons (_, `minus, xr)) ->
-				let (value2, xr) = calc_term shortcircuit xr in
-				(Integer.sub value1 value2), xr
-			| _ -> result
+			let value1, xs as result = calc_term shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `plus, xs)) ->
+				let value2, xs = calc_term shortcircuit xs in
+				(Integer.add value1 value2), xs
+			| lazy (`cons (_, `minus, xs)) ->
+				let value2, xs = calc_term shortcircuit xs in
+				(Integer.sub value1 value2), xs
+			| _ ->
+				result
 			end
 		) and calc_shift (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value1, xr) as result = calc_sum shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `l_shift, xr)) ->
-				let (value2, xr) = calc_sum shortcircuit xr in
-				(Integer.shift_left value1 (Integer.to_int value2)), xr
-			| lazy (`cons (_, `r_shift, xr)) ->
-				let (value2, xr) = calc_sum shortcircuit xr in
-				(Integer.shift_right value1 (Integer.to_int value2)), xr
-			| _ -> result
+			let value1, xs as result = calc_sum shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `l_shift, xs)) ->
+				let value2, xs = calc_sum shortcircuit xs in
+				(Integer.shift_left value1 (Integer.to_int value2)), xs
+			| lazy (`cons (_, `r_shift, xs)) ->
+				let value2, xs = calc_sum shortcircuit xs in
+				(Integer.shift_right value1 (Integer.to_int value2)), xs
+			| _ ->
+				result
 			end
 		) and calc_relation (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value1, xr) as result = calc_shift shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `eq, xr)) ->
-				let (value2, xr) = calc_shift shortcircuit xr in
-				let r = leinteger_of_bool
-					(Integer.compare value1 value2 = 0)
-				in
-				r, xr
-			| lazy (`cons (_, `ne, xr)) ->
-				let (value2, xr) = calc_shift shortcircuit xr in
-				let r = leinteger_of_bool
-					(Integer.compare value1 value2 <> 0)
-				in
-				r, xr
-			| lazy (`cons (_, `lt, xr)) ->
-				let (value2, xr) = calc_shift shortcircuit xr in
-				let r = leinteger_of_bool
-					(Integer.compare value1 value2 < 0)
-				in
-				r, xr
-			| lazy (`cons (_, `le, xr)) ->
-				let (value2, xr) = calc_shift shortcircuit xr in
-				let r = leinteger_of_bool
-					(Integer.compare value1 value2 <= 0)
-				in
-				r, xr
-			| lazy (`cons (_, `gt, xr)) ->
-				let (value2, xr) = calc_shift shortcircuit xr in
-				let r = leinteger_of_bool
-					(Integer.compare value1 value2 > 0)
-				in
-				r, xr
-			| lazy (`cons (_, `ge, xr)) ->
-				let (value2, xr) = calc_shift shortcircuit xr in
-				let r = leinteger_of_bool
-					(Integer.compare value1 value2 >= 0)
-				in
-				r, xr
-			| _ -> result
+			let value1, xs as result = calc_shift shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `eq, xs)) ->
+				let value2, xs = calc_shift shortcircuit xs in
+				let r = leinteger_of_bool (Integer.compare value1 value2 = 0) in
+				r, xs
+			| lazy (`cons (_, `ne, xs)) ->
+				let value2, xs = calc_shift shortcircuit xs in
+				let r = leinteger_of_bool (Integer.compare value1 value2 <> 0) in
+				r, xs
+			| lazy (`cons (_, `lt, xs)) ->
+				let value2, xs = calc_shift shortcircuit xs in
+				let r = leinteger_of_bool (Integer.compare value1 value2 < 0) in
+				r, xs
+			| lazy (`cons (_, `le, xs)) ->
+				let value2, xs = calc_shift shortcircuit xs in
+				let r = leinteger_of_bool (Integer.compare value1 value2 <= 0) in
+				r, xs
+			| lazy (`cons (_, `gt, xs)) ->
+				let value2, xs = calc_shift shortcircuit xs in
+				let r = leinteger_of_bool (Integer.compare value1 value2 > 0) in
+				r, xs
+			| lazy (`cons (_, `ge, xs)) ->
+				let value2, xs = calc_shift shortcircuit xs in
+				let r = leinteger_of_bool (Integer.compare value1 value2 >= 0) in
+				r, xs
+			| _ ->
+				result
 			end
 		) and calc_bit_and (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value1, xr) as result = calc_relation shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `ampersand, xr)) ->
-				let (value2, xr) = calc_relation shortcircuit xr in
+			let value1, xs as result = calc_relation shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `ampersand, xs)) ->
+				let value2, xs = calc_relation shortcircuit xs in
 				let r = Integer.logand value1 value2 in
-				r, xr
-			| _ -> result
+				r, xs
+			| _ ->
+				result
 			end
 		) and calc_and_then (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value1, xr) as result = calc_bit_and shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `and_then, xr)) ->
+			let value1, xs as result = calc_bit_and shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `and_then, xs)) ->
 				let b1 = bool_of_leinteger value1 in
-				let (value2, xr) = calc_and_then (shortcircuit || not b1) xr in
+				let value2, xs = calc_and_then (shortcircuit || not b1) xs in
 				let r = leinteger_of_bool (b1 && bool_of_leinteger value2) in
-				r, xr
-			| _ -> result
+				r, xs
+			| _ ->
+				result
 			end
 		) and calc_or_else (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value1, xr) as result = calc_and_then shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `or_else, xr)) ->
+			let value1, xs as result = calc_and_then shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `or_else, xs)) ->
 				let b1 = bool_of_leinteger value1 in
-				let (value2, xr) = calc_or_else (shortcircuit || b1) xr in
+				let value2, xs = calc_or_else (shortcircuit || b1) xs in
 				let r = leinteger_of_bool (b1 || bool_of_leinteger value2) in
-				r, xr
-			| _ -> result
+				r, xs
+			| _ ->
+				result
 			end
 		) and calc_cond (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let (value_c, xr) as result = calc_or_else shortcircuit xs in
-			begin match xr with
-			| lazy (`cons (_, `question, xr)) ->
+			let value_c, xs as result = calc_or_else shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `question, xs)) ->
 				let cond = bool_of_leinteger value_c in
-				let (value1, xr) = calc_or_else (shortcircuit || not cond) xr in
-				begin match xr with
-				| lazy (`cons (_, `colon, xr)) ->
-					let (value2, xr) = calc_or_else (shortcircuit || cond) xr in
-					(if cond then value1 else value2), xr
+				let value1, xs = calc_or_else (shortcircuit || not cond) xs in
+				begin match xs with
+				| lazy (`cons (_, `colon, xs)) ->
+					let value2, xs = calc_or_else (shortcircuit || cond) xs in
+					(if cond then value1 else value2), xs
 				| lazy (`cons (ps, _, _) | `nil (ps, _)) ->
 					error ps "colon is required.";
-					(if cond then value1 else Integer.zero), xr
+					(if cond then value1 else Integer.zero), xs
 				end
-			| _ -> result
+			| _ ->
+				result
 			end
 		) in
-		let result, xr = calc_cond false xs in
-		begin match xr with
+		let result, xs = calc_cond false xs in
+		begin match xs with
 		| lazy (`cons (ps, _, _)) ->
 			error ps "extra token(s) exists in the expression.";
 		| lazy (`nil _) ->
@@ -293,105 +283,142 @@ struct
 		result
 	);;
 	
+	let is_not_endif (x: LexicalElement.t): bool = (
+		x <> `sharp_ENDIF
+	);;
+	
+	let is_not_else_or_endif (x: LexicalElement.t): bool = (
+		begin match x with
+		| `sharp_ELIF | `sharp_ELSE | `sharp_ENDIF ->
+			false
+		| _ ->
+			true
+		end
+	);;
+	
+	type comma_token = ranged_position * [`comma];;
+	
+	let take_arguments
+		(error: ranged_position -> string -> unit)
+		(xs: in_t)
+		: (in_t * comma_token option) list * in_t =
+	(
+		let rec loop xs rs =
+			begin match xs with
+			| lazy (`cons (ps, `r_paren, xs)) ->
+				let rs = (lazy (`nil (ps, ())), None) :: rs in
+				List.rev rs, xs (* MACRO(..., EMPTY) *)
+			| _ ->
+				let arg, xs = take_assignment_expression 0 xs in
+				begin match xs with
+				| lazy (`cons (comma_p, (`comma as comma_e), xs)) ->
+					let rs = (arg, Some (comma_p, comma_e)) :: rs in
+					loop xs rs
+				| lazy (`cons (_, `r_paren, xs)) ->
+					let rs = (arg, None) :: rs in
+					List.rev rs, xs
+				| lazy (`cons (ps, _, _)) | lazy (`nil (ps, ())) ->
+					error ps "parenthesis mismatched.";
+					let rs = (arg, None) :: rs in
+					rs, xs
+				end
+			end
+		in
+		begin match xs with
+		| lazy (`cons (_, `r_paren, xs)) ->
+			[], xs
+		| _ ->
+			loop xs []
+		end
+	);;
+	
+	let concat_with_comma (xs: (in_t * comma_token option) list): in_prim = (
+		let ys = List.map
+			begin fun (tokens, comma) ->
+				begin match comma with
+				| Some (comma_p, comma_e) ->
+					lazy (LazyList.append
+						tokens
+						(lazy (`cons (comma_p, (comma_e :> LexicalElement.t),
+							lazy (`nil (comma_p, ()))))))
+				| None ->
+					tokens
+				end
+			end
+			xs
+		in
+		LazyList.concat ys
+	);;
+	
 	let rec preprocess
 		(error: ranged_position -> string -> unit)
 		(lang: language)
-		(read: current:string -> ?next:bool -> include_from -> string -> in_prim)
+		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim)
 		(in_macro_expr: bool)
 		(predefined: define_map)
-		(macro_arguments: out_t StringMap.t)
-		(xs: in_t): out_prim =
+		(macro_arguments: (in_t * out_t) StringMap.t)
+		(xs: in_t)
+		: out_prim =
 	(
 		let rec process_if (cond: bool) (xs: in_t): out_prim = (
-			let is_not_endif (x: LexicalElement.t): bool = (
-				x <> `sharp_ENDIF
-			) in
-			let is_not_sep (x: LexicalElement.t): bool = (
-				begin match x with
-				| `sharp_ELIF | `sharp_ELSE | `sharp_ENDIF -> false
-				| _ -> true
-				end
-			) in
 			if cond then (
-				let cs, xr = take_structure_while is_not_sep 0 xs in
+				let cs, xs = take_structure_while is_not_else_or_endif 0 xs in
 				let cs' = lazy (preprocess error lang read false predefined StringMap.empty cs) in
-				let _, xr = take_structure_while is_not_endif 0 xr in
-				let xr =
-					begin match xr with
-					| lazy (`cons (_, `sharp_ENDIF, xr)) ->
-						let _, xr = take_line xr in
-						xr
+				let _, xs = take_structure_while is_not_endif 0 xs in
+				let xs =
+					begin match xs with
+					| lazy (`cons (_, `sharp_ENDIF, xs)) ->
+						let _, xs = take_line xs in
+						xs
 					| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
 						error ps "#endif mismatched.";
-						xr
+						xs
 					end
 				in
 				LazyList.append_f cs' (fun (_, predefined) ->
-					preprocess error lang read false predefined StringMap.empty xr)
+					preprocess error lang read false predefined StringMap.empty xs)
 			) else (
-				let _, xr = take_structure_while is_not_sep 0 xs in
-				begin match xr with
-				| lazy (`cons (_, `sharp_ELIF, xr)) ->
-					let expr, xr = take_line xr in
+				let _, xs = take_structure_while is_not_else_or_endif 0 xs in
+				begin match xs with
+				| lazy (`cons (_, `sharp_ELIF, xs)) ->
+					let expr, xs = take_line xs in
 					let expr' = lazy (preprocess error lang read true predefined StringMap.empty expr) in
 					let cond = bool_of_leinteger (calc_expr error expr') in
-					process_if cond xr
-				| lazy (`cons (_, `sharp_ELSE, xr)) ->
-					let _, xr = take_line xr in
-					process_if true xr
-				| lazy (`cons (_, `sharp_ENDIF, xr)) ->
-					let _, xr = take_line xr in
-					preprocess error lang read false predefined StringMap.empty xr
+					process_if cond xs
+				| lazy (`cons (_, `sharp_ELSE, xs)) ->
+					let _, xs = take_line xs in
+					process_if true xs
+				| lazy (`cons (_, `sharp_ENDIF, xs)) ->
+					let _, xs = take_line xs in
+					preprocess error lang read false predefined StringMap.empty xs
 				| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
 					error ps "#endif mismatched.";
-					preprocess error lang read false predefined StringMap.empty xr
+					preprocess error lang read false predefined StringMap.empty xs
 				end
 			)
 		) in
-		let process_replace ps token name xs: out_prim = (
+		let process_replace (ps: ranged_position) (token: LexicalElement.t) (name: string) (xs: in_t): out_prim = (
 			let item = StringMap.find name predefined in
 			if item.df_has_arguments then (
 				begin match xs with
-				| lazy (`cons (_, `l_paren, xr)) ->
-					let xr, arguments =
-						begin match xr with
-						| lazy (`cons (_, `r_paren, xr)) ->
-							xr, []
-						| _ ->
-							let rec take_arguments xs rs = (
-								begin match xs with
-								| lazy (`cons (ps, `r_paren, xr)) ->
-									xr, List.rev (lazy (`nil (ps, ())) :: rs)
-								| _ ->
-									let arg, xr = take_assignment_expression 0 xs in
-									let rs = arg :: rs in
-									begin match xr with
-									| lazy (`cons (_, `r_paren, xr)) ->
-										xr, List.rev rs
-									| lazy (`cons (_, `comma, xr)) ->
-										take_arguments xr rs
-									| lazy (`cons (ps, _, _)) | lazy (`nil (ps, ())) ->
-										error ps "parenthesis mismatched.";
-										xs, rs
-									end
-								end
-							) in
-							take_arguments xr []
-						end
-					in
-					let (arguments: out_t list) = List.map (fun args ->
-						lazy (preprocess error lang read false predefined macro_arguments args)) arguments
-					in
+				| lazy (`cons (_, `l_paren, xs)) ->
+					let arguments, xs = take_arguments error xs in
 					let the_macro_arguments =
-						let rec loop names (arguments: out_t list) (defined: out_t StringMap.t): out_t StringMap.t = (
+						let rec loop
+							(names: (ranged_position * string) list)
+							(arguments: (in_t * comma_token option) list)
+							(defined: (in_t * out_t) StringMap.t)
+							: (in_t * out_t) StringMap.t =
+						(
 							begin match names, arguments with
 							| [], [] ->
 								defined
 							| [], _ ->
 								if item.df_varargs then (
-									let a = lazy (LazyList.concat arguments) in
 									let n = string_of_rw `__VA_ARGS__ in
-									StringMap.add n a defined
+									let a = lazy (concat_with_comma arguments) in
+									let expanded_a = lazy (preprocess error lang read false predefined macro_arguments a) in
+									StringMap.add n (a, expanded_a) defined
 								) else (
 									error ps "too many arguments.";
 									defined
@@ -399,25 +426,35 @@ struct
 							| _ :: _, [] ->
 								error ps "too few arguments.";
 								defined
-							| n :: nr, a :: ar ->
-								loop nr ar (StringMap.add (snd n) a defined)
+							| n :: nr, (a, _) :: ar ->
+								let a_pair =
+									begin match a with
+									| lazy (`cons (_, `ident a_name, lazy (`nil _))) when StringMap.mem a_name macro_arguments ->
+										StringMap.find a_name macro_arguments
+									| _ ->
+										let expanded_a = lazy (preprocess error lang read false predefined macro_arguments a) in
+										a, expanded_a
+									end
+								in
+								loop nr ar (StringMap.add (snd n) a_pair defined)
 							end
 						) in
 						loop item.df_args arguments StringMap.empty
 					in
-					let yr' =
+					let ys =
 						let removed = StringMap.remove name predefined in
-						let yr' = lazy (preprocess error lang read in_macro_expr removed the_macro_arguments item.df_contents) in
+						let ys = lazy (preprocess error lang read in_macro_expr removed the_macro_arguments item.df_contents) in
 						(* replace position-info to current *)
-						let ((filename, _, line, _), _) = ps in
-						lazy (
-							LazyList.map_a (fun ps' ->
-								let ((filename', _, line', _), _) = ps' in
+						let (filename, _, line, _), _ = ps in
+						lazy (LazyList.map_a
+							begin fun ps' ->
+								let (filename', _, line', _), _ = ps' in
 								if filename' = filename && line' >= line then ps' else ps
-							) yr')
+							end
+							ys)
 					in
-					LazyList.append yr' (lazy (
-						preprocess error lang read in_macro_expr predefined macro_arguments xr))
+					LazyList.append ys (lazy (
+						preprocess error lang read in_macro_expr predefined macro_arguments xs))
 				| _ ->
 					(* not expainding when the function macro used without arguments *)
 					`cons (ps, token, lazy (
@@ -425,8 +462,8 @@ struct
 				end
 			) else (
 				let removed = StringMap.remove name predefined in
-				let yr' = lazy (preprocess error lang read in_macro_expr removed StringMap.empty item.df_contents) in
-				begin match yr' with
+				let ys = lazy (preprocess error lang read in_macro_expr removed StringMap.empty item.df_contents) in
+				begin match ys with
 				| lazy (`cons (_, `ident replaced, lazy (`nil _)))
 					when StringMap.mem replaced removed &&
 						(StringMap.find replaced removed).df_has_arguments &&
@@ -434,54 +471,53 @@ struct
 				->
 					(* re-expanding function-macro with following arguments *)
 					(* replace position-info to current *)
-					let yr' = lazy (LazyList.map_a (fun _ -> ps) yr') in
+					let ys = lazy (LazyList.map_a (fun _ -> ps) ys) in
 					preprocess error lang read in_macro_expr predefined macro_arguments (lazy (
-						LazyList.append yr' xs))
+						LazyList.append ys xs))
 				| _ ->
 					(* replace position-info to current *)
-					let yr' = lazy (LazyList.map_a (fun _ -> ps) yr') in
-					LazyList.append yr' (lazy (
+					let ys = lazy (LazyList.map_a (fun _ -> ps) ys) in
+					LazyList.append ys (lazy (
 						preprocess error lang read in_macro_expr predefined macro_arguments xs))
 				end
 			)
 		) in
-		let process_d_sharp ps1 (`ident name1 as it1) ds_p xs: out_prim = (
+		let process_d_sharp (ps1: ranged_position) (`ident name1 as it1) (ds_p: ranged_position) (xs: in_t): out_prim = (
 			begin match xs with
-			| lazy (`cons (_, `ident name2, xr)) when StringMap.mem name2 macro_arguments ->
-				let yr = StringMap.find name2 macro_arguments in
-				begin match yr with
-				| lazy (`cons (ps2, `ident name2, yr)) ->
+			| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
+				let arg = StringMap.find name2 macro_arguments in
+				begin match fst arg with (* ## use unexpanded token *)
+				| lazy (`cons (ps2, `ident name2, ys)) ->
 					let merged_token = `ident (name1 ^ name2) in
 					let merged_ps = fst ps1, snd ps2 in
+					let rs = lazy (LazyList.append ys xs) in
 					`cons (merged_ps, merged_token, lazy (
-						LazyList.append yr (lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments xr))))
-				| lazy (`cons (ps2, (`chars_literal s as it2), yr)) ->
+						preprocess error lang read in_macro_expr predefined macro_arguments rs))
+				| lazy (`cons (ps2, (`chars_literal s), ys)) ->
 					if name1 = "L" then (
 						let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
 						let merged_token = `wchars_literal (WideString.of_array s) in
 						let merged_ps = fst ps1, snd ps2 in
+						let rs = lazy (LazyList.append ys xs) in
 						`cons (merged_ps, merged_token, lazy (
-							LazyList.append yr (lazy (
-								preprocess error lang read in_macro_expr predefined macro_arguments xr))))
+							preprocess error lang read in_macro_expr predefined macro_arguments rs))
 					) else (
 						error ds_p "## requires two identifiers.";
 						`cons (ps1, it1, lazy (
-							`cons (ps2, it2, lazy (
-								LazyList.append yr (lazy (
-									preprocess error lang read in_macro_expr predefined macro_arguments xr))))))
+							LazyList.append (snd arg) (lazy (
+								preprocess error lang read in_macro_expr predefined macro_arguments xs))))
 					)
 				| _ ->
 					error ds_p "## requires two identifiers.";
 					`cons (ps1, it1, lazy (
-						LazyList.append yr (lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments xr))))
+						LazyList.append (snd arg) (lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))))
 				end
-			| lazy (`cons (ps2, `ident name2, xr)) ->
+			| lazy (`cons (ps2, `ident name2, xs)) ->
 				let merged_token = `ident (name1 ^ name2) in
 				let merged_ps = fst ps1, snd ps2 in
 				`cons (merged_ps, merged_token, lazy (
-					preprocess error lang read in_macro_expr predefined macro_arguments xr))
+					preprocess error lang read in_macro_expr predefined macro_arguments xs))
 			| _ ->
 				error ds_p "## requires two identifiers.";
 				(* skip ## *)
@@ -490,38 +526,38 @@ struct
 			end
 		) in
 		begin match xs with
-		| lazy (`cons (ps, token, xr)) ->
+		| lazy (`cons (ps, token, xs)) ->
 			begin match token with
 			| `sharp_DEFINE ->
 				assert (not in_macro_expr);
-				begin match xr with
-				| lazy (`cons (name_ps, `ident name, xr)) ->
+				begin match xs with
+				| lazy (`cons (name_ps, `ident name, xs)) ->
 					let (_, (name_file, name_lpos, _, _)) = name_ps in
-					begin match xr with
-					| lazy (`cons (((lp_file, lp_fpos, _, _), _), `l_paren, xr))
+					begin match xs with
+					| lazy (`cons (((lp_file, lp_fpos, _, _), _), `l_paren, xs))
 						when lp_file = name_file && lp_fpos = name_lpos + 1 ->
 						(* function macro *)
-						let rec loop xr = (
-							begin match xr with
+						let rec loop xs = (
+							begin match xs with
 							| lazy (`cons (arg_p, `ident arg,
-								lazy (`cons (_, `comma, xr)))) ->
-								let args, varargs, xr = loop xr in
-								((arg_p, arg) :: args), varargs, xr
+								lazy (`cons (_, `comma, xs)))) ->
+								let args, varargs, xs = loop xs in
+								((arg_p, arg) :: args), varargs, xs
 							| lazy (`cons (arg_p, `ident arg,
-								lazy (`cons (_, `r_paren, xr)))) ->
-								[arg_p, arg], false, xr
+								lazy (`cons (_, `r_paren, xs)))) ->
+								[arg_p, arg], false, xs
 							| lazy (`cons (_, `varargs,
-								lazy (`cons (_, `r_paren, xr)))) ->
-								[], true, xr
-							| lazy (`cons (_, `r_paren, xr)) ->
-								[], false, xr
+								lazy (`cons (_, `r_paren, xs)))) ->
+								[], true, xs
+							| lazy (`cons (_, `r_paren, xs)) ->
+								[], false, xs
 							| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
 								error ps "parenthesis mismatched.";
-								[], false, xr
+								[], false, xs
 							end
 						) in
-						let args, varargs, xr = loop xr in
-						let cs, xr = take_line xr in
+						let args, varargs, xs = loop xs in
+						let cs, xs = take_line xs in
 						let predefined = StringMap.add name {
 							df_name = name;
 							df_position = name_ps;
@@ -530,10 +566,10 @@ struct
 							df_varargs = varargs;
 							df_contents = cs} predefined
 						in
-						preprocess error lang read false predefined StringMap.empty xr
+						preprocess error lang read false predefined StringMap.empty xs
 					| _ ->
 						(* simple macro *)
-						let cs, xr = take_line xr in
+						let cs, xs = take_line xs in
 						let predefined = StringMap.add name {
 							df_name = name;
 							df_position = name_ps;
@@ -542,12 +578,14 @@ struct
 							df_varargs = false;
 							df_contents = cs} predefined
 						in
-						preprocess error lang read false predefined StringMap.empty xr
+						preprocess error lang read false predefined StringMap.empty xs
 					end
 				| lazy (`cons (name_ps, (#extended_word as ew), xs)) ->
 					begin match ew with
-					| `__int64 -> ()
-					| _ -> error name_ps "extended keyword be re-defined.";
+					| `__int64 ->
+						()
+					| _ ->
+						error name_ps "extended keyword be re-defined.";
 					end;
 					let _, xs = take_line xs in
 					preprocess error lang read false predefined StringMap.empty xs
@@ -560,92 +598,97 @@ struct
 					preprocess error lang read false predefined StringMap.empty xs
 				| _ ->
 					error ps "#define requires name of macro.";
-					let _, xr = take_line xr in
-					preprocess error lang read false predefined StringMap.empty xr
+					let _, xs = take_line xs in
+					preprocess error lang read false predefined StringMap.empty xs
 				end
 			| `sharp_UNDEF ->
 				assert (not in_macro_expr);
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `ident name,
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let predefined = StringMap.remove name predefined in
-					preprocess error lang read in_macro_expr predefined StringMap.empty xr
+					preprocess error lang read in_macro_expr predefined StringMap.empty xs
+				| lazy (`cons (_, (#reserved_word as rw),
+					lazy (`cons (_, `end_of_line, xs)))) ->
+					let name = string_of_rw rw in
+					let predefined = StringMap.remove name predefined in
+					preprocess error lang read in_macro_expr predefined StringMap.empty xs
 				| lazy (`cons (_, (#extended_word as ew),
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let name = string_of_ew ew in
 					let predefined = StringMap.remove name predefined in
-					preprocess error lang read in_macro_expr predefined StringMap.empty xr
+					preprocess error lang read in_macro_expr predefined StringMap.empty xs
 				| _ ->
 					error ps "#undef requires single name of macro.";
-					let _, xr = take_line xr in
-					preprocess error lang read false predefined StringMap.empty xr
+					let _, xs = take_line xs in
+					preprocess error lang read false predefined StringMap.empty xs
 				end
 			| `sharp_IF ->
-				let expr, xr = take_line xr in
+				let expr, xs = take_line xs in
 				let expr' = lazy (preprocess error lang read true predefined StringMap.empty expr) in
 				let cond = bool_of_leinteger (calc_expr error expr') in
-				process_if cond xr
+				process_if cond xs
 			| `sharp_IFDEF ->
 				assert (not in_macro_expr);
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `ident name,
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let cond = StringMap.mem name predefined in
-					process_if cond xr
+					process_if cond xs
 				| lazy (`cons (_, (#extended_word as ew),
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let name = string_of_ew ew in
 					let cond = StringMap.mem name predefined in
-					process_if cond xr
+					process_if cond xs
 				| lazy (`cons (_, #compiler_macro,
-					lazy (`cons (_, `end_of_line, xr)))) ->
-					process_if true xr
+					lazy (`cons (_, `end_of_line, xs)))) ->
+					process_if true xs
 				| _ ->
 					error ps "#ifdef requires single name of macro.";
-					let _, xr = take_line xr in
-					preprocess error lang read false predefined StringMap.empty xr
+					let _, xs = take_line xs in
+					preprocess error lang read false predefined StringMap.empty xs
 				end
 			| `sharp_IFNDEF ->
 				assert (not in_macro_expr);
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `ident name,
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let cond = not (StringMap.mem name predefined) in
-					process_if cond xr
+					process_if cond xs
 				| lazy (`cons (_, (#extended_word as ew),
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let name = string_of_ew ew in
 					let cond = not (StringMap.mem name predefined) in
-					process_if cond xr
+					process_if cond xs
 				| lazy (`cons (_, #compiler_macro,
-					lazy (`cons (_, `end_of_line, xr)))) ->
-					process_if false xr
+					lazy (`cons (_, `end_of_line, xs)))) ->
+					process_if false xs
 				| _ ->
 					error ps "#ifndef requires single name of macro.";
-					let _, xr = take_line xr in
-					preprocess error lang read false predefined StringMap.empty xr
+					let _, xs = take_line xs in
+					preprocess error lang read false predefined StringMap.empty xs
 				end
 			| `sharp_ELIF ->
 				assert (not in_macro_expr);
 				error ps "#elif without #if.";
-				let _, xr = take_line xr in
-				preprocess error lang read false predefined StringMap.empty xr
+				let _, xs = take_line xs in
+				preprocess error lang read false predefined StringMap.empty xs
 			| `sharp_ELSE ->
 				assert (not in_macro_expr);
 				error ps "#else without #if.";
-				let _, xr = take_line xr in
-				preprocess error lang read false predefined StringMap.empty xr
+				let _, xs = take_line xs in
+				preprocess error lang read false predefined StringMap.empty xs
 			| `sharp_ENDIF ->
 				assert (not in_macro_expr);
 				error ps "#endif without #if.";
-				let _, xr = take_line xr in
-				preprocess error lang read false predefined StringMap.empty xr
+				let _, xs = take_line xs in
+				preprocess error lang read false predefined StringMap.empty xs
 			| `sharp_INCLUDE
 			| `sharp_INCLUDE_NEXT as token ->
 				assert (not in_macro_expr);
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `directive_parameter s,
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					let s_length = String.length s in
 					let from =
 						if s_length <= 2 then (
@@ -660,157 +703,189 @@ struct
 					in
 					begin try
 						let filename = String.sub s 1 (s_length - 2) in
-						let included =
+						let included: in_t =
 							let (current, _, _, _), _ = ps in
-							begin match token with
-							| `sharp_INCLUDE ->
-								lazy (read ~current from filename)
-							| `sharp_INCLUDE_NEXT ->
-								lazy (read ~current ~next:true from filename)
-							end
+							let next = token = `sharp_INCLUDE_NEXT in
+							lazy (read ~current ~next from filename (fun _ -> Lazy.force xs))
 						in
-						let included' = lazy (preprocess error lang read false predefined StringMap.empty included) in
-						LazyList.append_f included' (fun (_, predefined) ->
-							preprocess error lang read false predefined StringMap.empty xr)
+						preprocess error lang read false predefined StringMap.empty included
 					with Not_found ->
 						error ps (s ^ " is not found.");
-						preprocess error lang read false predefined StringMap.empty xr
+						preprocess error lang read false predefined StringMap.empty xs
 					end
-				| _ -> assert false
+				| _ ->
+					assert false
 				end
 			| `sharp_ERROR ->
 				assert (not in_macro_expr);
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `directive_parameter message,
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					error ps ("#error " ^ message);
-					preprocess error lang read false predefined StringMap.empty xr
-				| _ -> assert false
+					preprocess error lang read false predefined StringMap.empty xs
+				| _ ->
+					assert false
 				end
 			| `sharp_WARNING ->
 				assert (not in_macro_expr);
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `directive_parameter message,
-					lazy (`cons (_, `end_of_line, xr)))) ->
+					lazy (`cons (_, `end_of_line, xs)))) ->
 					error ps ("#warning " ^ message);
-					preprocess error lang read false predefined StringMap.empty xr
-				| _ -> assert false
+					preprocess error lang read false predefined StringMap.empty xs
+				| _ ->
+					assert false
 				end
 			| `sharp_LINE -> (* does not handle #line *)
 				assert (not in_macro_expr);
-				let _, xr = take_line xr in
-				preprocess error lang read false predefined StringMap.empty xr
-			| `sharp_PRAGMA -> (* #pragma should be handled by compiler, not preprocessor *)
+				let _, xs = take_line xs in
+				preprocess error lang read false predefined StringMap.empty xs
+			| `sharp_PRAGMA ->
 				assert (not in_macro_expr);
-				`cons (ps, token, lazy (
-					preprocess error lang read in_macro_expr predefined StringMap.empty xr))
+				begin match xs with
+				| lazy (`cons (_, `ident ("push_macro" | "pop_macro" as pragma), xs)) ->
+					begin match xs with
+					| lazy (`cons (_, `l_paren,
+						lazy (`cons (target_ps, `chars_literal target_name,
+							lazy (`cons (_, `r_paren,
+								lazy (`cons (_, `end_of_line, xs))))))))
+					->
+						if StringMap.mem target_name predefined then (
+							error target_ps (target_name ^ " is defined. (not supported)");
+						);
+						preprocess error lang read in_macro_expr predefined StringMap.empty xs
+					| _ ->
+						error ps ("#pragma " ^ pragma ^ " syntax error.");
+						let _, xs = take_line xs in
+						preprocess error lang read in_macro_expr predefined StringMap.empty xs
+					end
+				| _ ->
+					(* #pragma should be handled by compiler, not preprocessor *)
+					`cons (ps, token, lazy (
+						preprocess error lang read in_macro_expr predefined StringMap.empty xs))
+				end
 			| `sharp ->
-				begin match xr with
-				| lazy (`cons (_, `ident name2, xr)) when StringMap.mem name2 macro_arguments ->
-					let yr = StringMap.find name2 macro_arguments in
-					begin match yr with
-					| lazy (`cons (ps2, `ident name2, yr)) ->
+				begin match xs with
+				| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
+					let arg = StringMap.find name2 macro_arguments in
+					begin match fst arg with (* # use unexpanded token *)
+					| lazy (`cons (ps2, `ident name2, ys)) ->
 						let chars_token = `chars_literal name2 in
 						let merged_ps = fst ps, snd ps2 in
+						let rs = lazy (LazyList.append ys xs) in
 						`cons (merged_ps, chars_token, lazy (
-							LazyList.append yr (lazy (
-								preprocess error lang read in_macro_expr predefined macro_arguments xr))))
-					| lazy (`cons (ps2, `int_literal (_, n), yr)) ->
+							preprocess error lang read in_macro_expr predefined macro_arguments rs))
+					| lazy (`cons (ps2, `int_literal (_, n), ys)) ->
 						let chars_token = `chars_literal (Integer.to_based_string ~base:10 n) in
 						let merged_ps = fst ps, snd ps2 in
+						let rs = lazy (LazyList.append ys xs) in
 						`cons (merged_ps, chars_token, lazy (
-							LazyList.append yr (lazy (
-								preprocess error lang read in_macro_expr predefined macro_arguments xr))))
+							preprocess error lang read in_macro_expr predefined macro_arguments rs))
 					| _ ->
 						error ps "# requires one identifier.";
-						LazyList.append yr (lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments xr))
+						LazyList.append (snd arg) (lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
 					end
-				| lazy (`cons (ps2, `ident name2, xr)) ->
+				| lazy (`cons (ps2, `ident name2, xs)) ->
 					let chars_token = `chars_literal name2 in
 					let merged_ps = fst ps, snd ps2 in
 					`cons (merged_ps, chars_token, lazy (
-						preprocess error lang read in_macro_expr predefined macro_arguments xr))
+						preprocess error lang read in_macro_expr predefined macro_arguments xs))
 				| _ ->
 					error ps "# requires one identifier.";
-					preprocess error lang read in_macro_expr predefined macro_arguments xr
+					preprocess error lang read in_macro_expr predefined macro_arguments xs
 				end
 			| `ident "defined" when in_macro_expr ->
-				begin match xr with
+				begin match xs with
 				| lazy (`cons (_, `l_paren,
 					lazy (`cons (_, `ident name,
-						lazy (`cons ((_, p2), `r_paren, xr))))))
-				| lazy (`cons ((_, p2), `ident name, xr)) ->
+						lazy (`cons ((_, p2), `r_paren, xs))))))
+				| lazy (`cons ((_, p2), `ident name, xs)) ->
 					let (p1, _) = ps in
 					let cond = StringMap.mem name predefined in
 					let value = `int_literal (`signed_int, leinteger_of_bool cond) in
 					`cons ((p1, p2), value, lazy (
-						preprocess error lang read true predefined macro_arguments xr))
+						preprocess error lang read true predefined macro_arguments xs))
 				| lazy (`cons (_, `l_paren,
 					lazy (`cons (_, (#extended_word as ew),
-						lazy (`cons ((_, p2), `r_paren, xr))))))
-				| lazy (`cons ((_, p2), (#extended_word as ew), xr)) ->
+						lazy (`cons ((_, p2), `r_paren, xs))))))
+				| lazy (`cons ((_, p2), (#extended_word as ew), xs)) ->
 					let (p1, _) = ps in
 					let name = string_of_ew ew in
 					let cond = StringMap.mem name predefined in
 					let value = `int_literal (`signed_int, leinteger_of_bool cond) in
 					`cons ((p1, p2), value, lazy (
-						preprocess error lang read true predefined macro_arguments xr))
+						preprocess error lang read true predefined macro_arguments xs))
 				| lazy (`cons (_, `l_paren,
 					lazy (`cons (_, #compiler_macro,
-						lazy (`cons ((_, p2), `r_paren, xr))))))
-				| lazy (`cons ((_, p2), #compiler_macro, xr)) ->
+						lazy (`cons ((_, p2), `r_paren, xs))))))
+				| lazy (`cons ((_, p2), #compiler_macro, xs)) ->
 					let (p1, _) = ps in
 					let value = `int_literal (`signed_int, Integer.one) in
 					`cons ((p1, p2), value, lazy (
-						preprocess error lang read true predefined macro_arguments xr))
+						preprocess error lang read true predefined macro_arguments xs))
 				| _ ->
 					error ps "defined requires single name of macro.";
-					preprocess error lang read true predefined macro_arguments xr
+					preprocess error lang read true predefined macro_arguments xs
 				end
 			| `__STDC__ ->
 				`cons (ps, __STDC__, lazy (
-					preprocess error lang read in_macro_expr predefined macro_arguments xr))
+					preprocess error lang read in_macro_expr predefined macro_arguments xs))
 			| `__STDC_VERSION__ ->
 				`cons (ps, __STDC_VERSION__, lazy (
-					preprocess error lang read in_macro_expr predefined macro_arguments xr))
+					preprocess error lang read in_macro_expr predefined macro_arguments xs))
 			| `ident name when StringMap.mem name macro_arguments ->
-				let yr = StringMap.find name macro_arguments in
-				begin match yr with
-				| lazy (`cons (ps1, (`ident replaced as name1), lazy (`nil _))) ->
-					begin match xr with
-					| lazy (`cons (ds_p, `d_sharp, xr)) ->
-						process_d_sharp ps1 name1 ds_p xr
-					| lazy (`cons (_, `l_paren, _))
-						when StringMap.mem replaced predefined &&
-							(StringMap.find replaced predefined).df_has_arguments
-					->
-						(* re-expanding function-macro with following arguments *)
-						preprocess error lang read in_macro_expr predefined macro_arguments (lazy (
-							LazyList.append yr xr))
+				let arg = StringMap.find name macro_arguments in
+				begin match xs with
+				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+					begin match fst arg with (* ## use unexpanded token *)
+					| lazy (`cons (ps1, (`ident _ as name1), lazy (`nil _))) ->
+						process_d_sharp ps1 name1 ds_p xs
 					| _ ->
-						LazyList.append yr (lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments xr))
+						LazyList.append (snd arg) (lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
 					end
 				| _ ->
-					LazyList.append yr (lazy (
-						preprocess error lang read in_macro_expr predefined macro_arguments xr))
+					let has_following_arguments =
+						begin match snd arg with
+						| lazy (`cons (_, (`ident replaced), lazy (`nil _))) ->
+							begin match xs with
+							| lazy (`cons (_, `l_paren, _))
+								when StringMap.mem replaced predefined &&
+									(StringMap.find replaced predefined).df_has_arguments
+							->
+								true
+							| _ ->
+								false
+							end
+						| _ ->
+							false
+						end
+					in
+					if has_following_arguments then (
+						(* re-expanding function-macro with following arguments *)
+						let rs = lazy (LazyList.append (snd arg) xs) in
+						preprocess error lang read in_macro_expr predefined macro_arguments rs
+					) else (
+						LazyList.append (snd arg) (lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
+					)
 				end
 			| `ident name when StringMap.mem name predefined ->
-				process_replace ps token name xr
+				process_replace ps token name xs
 			| #extended_word as ew when StringMap.mem (string_of_ew ew) predefined ->
-				process_replace ps token (string_of_ew ew) xr
+				process_replace ps token (string_of_ew ew) xs
 			| `ident _ as name1 ->
-				begin match xr with
-				| lazy (`cons (ds_p, `d_sharp, xr)) ->
-					process_d_sharp ps name1 ds_p xr
+				begin match xs with
+				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+					process_d_sharp ps name1 ds_p xs
 				| _ ->
 					`cons (ps, token, lazy (
-						preprocess error lang read in_macro_expr predefined macro_arguments xr))
+						preprocess error lang read in_macro_expr predefined macro_arguments xs))
 				end
 			| _ ->
 				`cons (ps, token, lazy (
-					preprocess error lang read in_macro_expr predefined macro_arguments xr))
+					preprocess error lang read in_macro_expr predefined macro_arguments xs))
 			end
 		| lazy (`nil (ps, _)) ->
 			`nil (ps, predefined)
