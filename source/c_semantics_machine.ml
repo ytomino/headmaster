@@ -168,20 +168,7 @@ struct
 		| `named (_, _, `struct_type (alignment, items), _) ->
 			begin match alignment with
 			| `default | `explicit_aligned ->
-				let rec loop max_align items = (
-					begin match items with
-					| (_, item_type, _, _) :: items ->
-						begin match alignof item_type predefined_types with
-						| Some item_align ->
-							loop (max max_align item_align) items
-						| None ->
-							None
-						end
-					| [] ->
-						Some max_align
-					end
-				) in
-				loop 0 items
+				alignof_struct items predefined_types
 			| `aligned n ->
 				Some n
 			| `packed ->
@@ -217,6 +204,27 @@ struct
 		| `function_type _ ->
 			None
 		end
+	) and alignof_struct
+		(items: struct_item list)
+		(predefined_types: predefined_types)
+		: int option =
+	(
+		let rec loop max_align items = (
+			begin match items with
+			| (_, item_type, (None | Some (_, _, false)), _) :: items ->
+				begin match alignof item_type predefined_types with
+				| Some item_align ->
+					loop (max max_align item_align) items
+				| None ->
+					None
+				end
+			| (_, _, Some (_, _, true), _) :: items ->
+				loop max_align items
+			| [] ->
+				Some max_align
+			end
+		) in
+		loop 1 items
 	);;
 	
 	(* for analyzer *)

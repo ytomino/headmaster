@@ -9,6 +9,15 @@ struct
 	
 	(* expression *)
 	
+	let result_type_of_element_access
+		(route: Semantics.struct_item list)
+		: Semantics.all_type =
+	(
+		let last_route = List.fold_left (fun _ r -> r) (List.hd route) route in
+		let _, result_type, _, _ = last_route in
+		result_type
+	);;
+	
 	let lvalue_referenced_in_statement (variable: variable): statement -> bool =
 		let expr_f expr = (
 			begin match expr with
@@ -183,6 +192,56 @@ struct
 			fold_statement stmt_f expr_f rs stmt
 		| _ ->
 			rs
+		end
+	);;
+	
+	let rec find_all_sized_array_in_source_item
+		(rs : all_type list)
+		(item: source_item)
+		: all_type list =
+	(
+		begin match item with
+		| `named (_, _, `defined_element_access (_, route), _) ->
+			(* sized array as result type *)
+			let t = result_type_of_element_access route in
+			begin match t with
+			| `array (Some _, _) ->
+				if List.memq t rs then rs else t :: rs
+			| _ ->
+				rs
+			end
+		| `named (_, _, `defined_alias item, _) ->
+			find_all_sized_array_in_source_item rs (item :> Semantics.source_item)
+		| _ ->
+			rs
+		end
+	);;
+	
+	let find_all_sized_array_in_derived_type
+		(rs : all_type list)
+		(t: derived_type)
+		: all_type list =
+	(
+		let rec process rs (t: all_type) = (
+			begin match t with
+			| `array (Some _, _) as t ->
+				t :: rs
+			| `volatile t ->
+				process rs (t :> all_type)
+			| `const t ->
+				process rs (t :> all_type)
+			| `named (_, _, `typedef t, _) ->
+				process rs t
+			| _ ->
+				rs
+			end
+		) in
+		begin match t with
+		| `pointer t -> process rs (t :> all_type)
+		| `array (_, t) -> process rs (t :> all_type)
+		| `restrict t -> process rs (t :> all_type)
+		| `volatile t -> process rs (t :> all_type)
+		| `const t -> process rs (t :> all_type)
 		end
 	);;
 	

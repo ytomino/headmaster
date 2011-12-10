@@ -2495,6 +2495,20 @@ struct
 						items
 					end
 				in
+				(* adjust alignment *)
+				let alignment =
+					begin match alignment with
+					| `aligned n ->
+						begin match Machine.alignof_struct items predefined_types with
+						| Some good_n when good_n > n ->
+							`aligned good_n
+						| _ ->
+							alignment
+						end
+					| _ ->
+						alignment
+					end
+				in
 				(* type *)
 				begin match id with
 				| `some (id_p, `ident id_e) ->
@@ -2974,12 +2988,16 @@ struct
 			| `named (_, _, `variable (`void, _), _) :: [] ->
 				derived_types, []
 			| _ ->
-				(* rev and replace type to pointer instead of array *)
+				(* rev and replace type to pointer instead of array/function *)
 				List.fold_left (fun (derived_types, params) param ->
 					let `named (ps, name, `variable (the_type, init), attrs) = param in
 					begin match resolve_typedef (remove_type_qualifiers the_type :> all_type) with
 					| `array (_, base_type) ->
 						let t, derived_types = find_pointer_type (base_type :> all_type) derived_types in
+						let new_param = `named (ps, name, `variable (t, init), attrs) in
+						derived_types, new_param :: params
+					| `function_type _ as ft -> (* illegal, but some headers have this form *)
+						let t, derived_types = find_pointer_type (ft :> all_type) derived_types in
 						let new_param = `named (ps, name, `variable (t, init), attrs) in
 						derived_types, new_param :: params
 					| _ ->

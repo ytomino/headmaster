@@ -26,22 +26,74 @@ let ada_reserved_words =
 		"abs";
 		"accept";
 		"access";
+		"aliased";
+		"all";
+		"and";
+		"array";
+		"at";
+		"begin";
+		"body";
+		(* "case"; *)
+		"constant";
+		"declare";
+		"delay";
+		"delta";
+		"digits";
+		(* "do"; *)
+		(* "else"; *)
+		"elsif";
 		"end";
+		"entry";
+		"exception";
 		"exit";
+		(* "for"; *)
 		"function";
-		"if";
+		"generic";
+		(* "goto"; *)
+		(* "if"; *)
 		"in";
+		"interface";
+		"is";
+		"limited";
+		"loop";
+		"mod";
+		"new";
+		"not";
 		"null";
+		"of";
+		"or";
+		"others";
 		"out";
+		"overriding";
+		"package";
+		"pragma";
 		"private";
+		"procedure";
+		"protected";
 		"raise";
+		"range";
+		"record";
 		"rem";
+		"renames";
+		"requeue";
 		"return";
+		"reverse";
 		"select";
-		"terminate";
+		"separate";
+		"some";
+		"subtype";
+		"synchronized";
+		"tagged";
 		"task";
+		"terminate";
+		"then";
 		"type";
-		"use"]
+		"until";
+		"use";
+		"when";
+		(* "while"; *)
+		"with";
+		"xor"]
 	in List.fold_right StringSet.add list StringSet.empty;;
 
 let ada_name_of_int_prec (p: int_prec): string = (
@@ -214,6 +266,13 @@ let special_name_mapping = make_mapmap [
 		"PRIXPTR", "PRIXPTR_uppercase"]; (* darwin9 / conflicted with PRIxPTR *)
 	"libxml.tree", [
 		"xmlBufferWriteCHAR", "xmlBufferWriteCHAR_uppercase"]; (* libxml2 / conflicted with xmlBufferWriteChar *)
+	"mach.i386.thread_status", [
+		"I386_EXCEPTION_STATE_COUNT", "I386_EXCEPTION_STATE_COUNT_uppercase"; (* darwin9 / conflicated with i386_EXCEPTION_STATE_COUNT *)
+		"X86_DEBUG_STATE32_COUNT", "X86_DEBUG_STATE32_COUNT_uppercase"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
+		"X86_DEBUG_STATE64_COUNT", "X86_DEBUG_STATE64_COUNT_uppercase"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
+		"X86_EXCEPTION_STATE64_COUNT", "X86_EXCEPTION_STATE64_COUNT_uppercase"]; (* darwin9 / conflicted with x86_EXCEPTION_STATE64_COUNT *)
+	"mach.message", [
+		"MACH_MSG_OVERWRITE", "MACH_MSG_OVERWRITE_option"]; (* darwin9 / confilicted with mach_msg_overwrite *)
 	"mpfr", [
 		"mpfr_version", "get_mpfr_version"]; (* mpfr / conflicted with MPFR_VERSION *)
 	"png", [
@@ -676,47 +735,17 @@ struct
 	
 	(* expression /statment *)
 	
-	let result_type_of_element_access
-		(route: Semantics.struct_item list)
-		: Semantics.all_type =
-	(
-		let last_route = List.fold_left (fun _ r -> r) (List.hd route) route in
-		let _, result_type, _, _ = last_route in
-		result_type
-	);;
-	
 	let prototype_for_element_access
 		(ps: ranged_position)
 		(t: Semantics.struct_or_union_type)
 		(route: Semantics.struct_item list)
 		: Semantics.prototype =
 	(
-		let result_type = result_type_of_element_access route in
+		let result_type = Finding.result_type_of_element_access route in
 		let args = [
 			`named (ps, "Object", `variable ((t :> Semantics.all_type), None), Semantics.no_attributes)]
 		in
 		`cdecl, args, `none, result_type
-	);;
-	
-	let rec collect_sized_array
-		(rs : Semantics.all_type list)
-		(item: Semantics.source_item)
-		: Semantics.all_type list =
-	(
-		begin match item with
-		| `named (_, _, `defined_element_access (_, route), _) ->
-			let t = result_type_of_element_access route in
-			begin match t with
-			| `array (Some _, _) ->
-				if List.memq t rs then rs else t :: rs
-			| _ ->
-				rs
-			end
-		| `named (_, _, `defined_alias item, _) ->
-			collect_sized_array rs (item :> Semantics.source_item)
-		| _ ->
-			rs
-		end
 	);;
 	
 	(* pretty printer *)
@@ -1487,26 +1516,18 @@ struct
 				end
 			) fields;
 			pp_close_box ff ();
-			fprintf ff "@ end record;";
-			begin match attributes.Semantics.at_aligned with
-			| `default ->
-				()
-			| `explicit_aligned | `aligned _ | `packed ->
-				fprintf ff "@ **** alignment / unimplemented ****\n";
-				assert false
-			end
-		) else (
-			begin match attributes.Semantics.at_aligned with
-			| `default ->
-				()
-			| `explicit_aligned ->
-				fprintf ff "@ for %s'Alignment use Standard'Maximum_Alignment;" name (* ??? *)
-			| `aligned n ->
-				fprintf ff "@ for %s'Alignment use %d * Standard'Storage_Unit;" name n
-			| `packed ->
-				pp_pragma_pack ff name
-			end
+			fprintf ff "@ end record;"
 		);
+		begin match attributes.Semantics.at_aligned with
+		| `default ->
+			()
+		| `explicit_aligned ->
+			fprintf ff "@ for %s'Alignment use Standard'Maximum_Alignment;" name (* ??? *)
+		| `aligned n ->
+			fprintf ff "@ for %s'Alignment use %d;" name n
+		| `packed ->
+			pp_pragma_pack ff name
+		end;
 		pp_pragma_convention ff `c_pass_by_copy name
 	);;
 	
@@ -3399,7 +3420,8 @@ struct
 		let casts = List.fold_left Finding.find_all_cast_in_source_item [] items_having_bodies in
 		let casts = List.fold_left (Finding.find_all_pointer_arithmetic_in_source_item ptrdiff_t) casts items_having_bodies in
 		(* used sized arrays *)
-		let sized_arrays = List.fold_left collect_sized_array [] items in
+		let sized_arrays = List.fold_left Finding.find_all_sized_array_in_source_item [] items in
+		let sized_arrays = List.fold_left Finding.find_all_sized_array_in_derived_type sized_arrays derived_types in
 		(* with clauses *)
 		let with_packages =
 			let items = (items :> Semantics.all_item list) in
