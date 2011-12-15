@@ -191,10 +191,10 @@ let known_define_parser_errors = make_setmap [
 		"host_set_dynamic_pager_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_lockd_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_user_notification_port"]; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+	"in6.h", [
+		"IN6_ARE_ADDR_EQUAL"]; (* darwin9 / memcmp is undefined, #include <string.h> *)
 	"malloc.h", [
 		"_STATIC_ASSERT"]; (* mingw-w64 / parameterized declaration *)
-	"math.h", [
-		"__setusermatherr"]; (* mingw-w64 / duplicated by macro and normal function *)
 	"memory_object_types.h", [
 		"invalid_memory_object_flavor"]; (* darwin9 / OLD_MEMORY_OBJECT_BEHAVIOR_INFO and OLD_MEMORY_OBJECT_ATTRIBUTE_INFO are undefined *)
 	"_mingw.h", [
@@ -217,6 +217,8 @@ let known_define_parser_errors = make_setmap [
 	"mpfr.h", [
 		"__mpfr_default_fp_bit_precision"; (* MPFR / bug? mpfr_get_default_fp_bit_precision was undefined *)
 		"_MPFR_PROTO"]; (* MPFR / parameter list *)
+	"netdb.h", [
+		"h_addr"]; (* darwin9 / alias of element and dereferencing *)
 	"objbase.h", [
 		"WINOLEAPI"; (* mingw32 / storage class and type *)
 		"WINOLEAPI_"]; (* mingw32 / storage class and parameterized type *)
@@ -260,14 +262,6 @@ let known_define_parser_errors = make_setmap [
 	"stdint.h", [
 		"INTMAX_C"; (* mingw32 / ## *)
 		"UINTMAX_C"]; (* mingw32 / ## *)
-	"stdio.h", [
-		"_get_output_format"; (* mingw-w64 / duplicated by macro and normal function *)
-		"_set_output_format"]; (* mingw-w64 / duplicated by macro and normal function *)
-	"stdlib.h", [
-		"strtod"]; (* mingw-w64 / duplicated by macro and normal function *)
-	"string.h", [
-		"strcasecmp"; (* mingw-w64 / duplicated by macro and normal function *)
-		"strncasecmp"]; (* mingw-w64 / duplicated by macro and normal function *)
 	"_structs.h", [
 		"__DARWIN_FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"I386_MCONTEXT_SIZE"]; (* darwin9 / struct mcontext was undefined *)
@@ -382,7 +376,6 @@ let known_define_parser_errors = make_setmap [
 	"vm_types.h", [
 		"MACH_MSG_TYPE_INTEGER_T"]; (* darwin9 / MACH_MSG_TYPE_INTEGER_32 is undefined *)
 	"winbase.h", [
-		"GetEnvironmentStrings"; (* mingw32 / duplicated by macro and normal function *)
 		"GetVolumeNameForVolumeMountPoint"; (* mingw32 / out of #ifdef *)
 		"GetVolumePathName"; (* mingw32 / out of #ifdef *)
 		"GetVolumePathNamesForVolumeName"; (* mingw32 / out of #ifdef *)
@@ -399,7 +392,7 @@ let known_define_parser_errors = make_setmap [
 		"TEXT"]; (* mingw32 / ## *)
 	"winsock2.h", [
 		"FD_SET"; (* mingw32 / conflicted with typedef *)
-		"h_addr"; (* mingw32 / alias of element and dereferencing was unsupported *)
+		"h_addr"; (* mingw32 / alias of element and dereferencing *)
 		"timercmp"]; (* mingw32 / parameterized operator *)
 	"winspool.h", [
 		"DeletePrintProcessor"; (* mingw32 / bug? misspell of DeletePrint*er*ProcessorW *)

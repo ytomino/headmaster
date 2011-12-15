@@ -136,7 +136,7 @@ struct
 	);;
 	
 	type name_mapping_per_module =
-		string StringMap.t *
+		(string * bool) StringMap.t * (* bool means hidden by macro *)
 		string StringMap.t * (* enum *)
 		string StringMap.t * (* struct *)
 		string StringMap.t;; (* union *)
@@ -148,7 +148,7 @@ struct
 		StringMap.empty;;
 	
 	let add
-		(kind: [> opaque_type_var | non_opaque_type_var])
+		(kind: [> opaque_type_var | non_opaque_type_var | `defined_expression of expression])
 		(key: string)
 		(value: string)
 		(map: name_mapping_per_module)
@@ -162,8 +162,10 @@ struct
 			nmap, emap, StringMap.add key value smap, umap
 		| `opaque_union | `union _ ->
 			nmap, emap, smap, StringMap.add key value umap
+		| `defined_expression _ ->
+			StringMap.add key (value, true) nmap, emap, smap, umap
 		| _ ->
-			StringMap.add key value nmap, emap, smap, umap
+			StringMap.add key (value, false) nmap, emap, smap, umap
 		end
 	);;
 	
@@ -182,7 +184,22 @@ struct
 		| `opaque_union ->
 			StringMap.find key umap
 		| _ ->
-			StringMap.find key nmap
+			fst (StringMap.find key nmap)
+		end
+	);;
+	
+	let is_hidden_per_module
+		(item: named_item)
+		(map: name_mapping_per_module)
+		: bool =
+	(
+		let `named (_, key, kind, _) = item in
+		let nmap, _, _, _ = map in
+		begin match kind with
+		| `extern (#function_type, _) ->
+			snd (StringMap.find key nmap)
+		| _ ->
+			false
 		end
 	);;
 	
@@ -243,7 +260,7 @@ struct
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->
 					pair
 				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
-				| `named (_, name, kind, _) ->
+				| `named (_, name, kind, _) as item ->
 					if StringMap.mem name special_map then pair else
 					let s_name =
 						let s = short_f name in
@@ -260,6 +277,8 @@ struct
 							let rev = StringMap.add u `duplicated rev in
 							result, rev
 						end
+					) else if is_hidden_per_module item result then (
+						pair (* to use short name for macro *)
 					) else (
 						let result = add kind name s_name result in
 						let rev = StringMap.add u (`short (name, kind)) rev in
@@ -281,6 +300,17 @@ struct
 		let (filename, _, _, _), _ = ps in
 		let module_name, _ = StringMap.find filename name_mapping in
 		module_name
+	);;
+	
+	let is_hidden
+		(ps: ranged_position)
+		(item: named_item)
+		(name_mapping: name_mapping)
+		: bool =
+	(
+		let (filename, _, _, _), _ = ps in
+		let _, map = StringMap.find filename name_mapping in
+		is_hidden_per_module item map
 	);;
 	
 	let name_mapping
@@ -324,7 +354,6 @@ struct
 		(name_mapping: name_mapping)
 		: name_mapping =
 	(
-		let (_: string -> string) = long_f in (* ignore... currently, no care for confliction *)
 		let name_mapping, _ =
 			List.fold_left (fun (name_mapping, i) arg ->
 				let `named (ps, name, _, _) = arg in
@@ -334,7 +363,19 @@ struct
 					) else (
 						let (filename, _, _, _), _ = ps in
 						let mn, nmpm = StringMap.find filename name_mapping in
-						let nmpm = add `namespace name (short_f name) nmpm in
+						let a_name =
+							let a_name = short_f name in
+							(* avoiding confliction with type name *)
+							if a_name = name
+								&& (let nmap, _, _, _ = nmpm in
+								StringMap.mem (String.uppercase name) nmap)
+							then (
+								a_name
+							) else (
+								long_f name
+							)
+						in
+						let nmpm = add `namespace name a_name nmpm in
 						StringMap.add filename (mn, nmpm) name_mapping
 					)
 				in

@@ -506,9 +506,16 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	type predefined_types = (predefined_type * int) list * typedef_type list;;
 	
+	let find_predefined_type_with_size (e: [< predefined_type]) (predefined_types: predefined_types): [> predefined_type] * int = (
+		begin match List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types) with
+		| (#predefined_type, _) as result ->
+			result
+		end
+	);;
+	
 	let find_predefined_type (e: [< predefined_type]) (predefined_types: predefined_types): [> predefined_type] = (
-		begin match fst (List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types)) with
-		| #predefined_type as result ->
+		begin match List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types) with
+		| (#predefined_type as result), _ ->
 			result
 		end
 	);;

@@ -13,7 +13,7 @@ struct
 		(e: [< predefined_type])
 		(predefined_types: predefined_types): int =
 	(
-		snd (List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types))
+		snd (find_predefined_type_with_size e predefined_types)
 	) and alignof_predefined_type
 		(e: [< predefined_type])
 		(predefined_types: predefined_types): int =

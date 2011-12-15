@@ -1,3 +1,11 @@
+#if defined(__FreeBSD__)
+#include <sys/_types.h> /* __time_t for sys/timespec.h */
+#include <sys/timespec.h> /* avoiding circular dependency */
+#elif defined (__MINGW32__)
+#include <sys/types.h> /* _dev_t for _mingw_stat64.h */
+#include <sys/stat.h> /* avoiding circular dependency */
+#endif
+
 #include <stddef.h>
 #include <assert.h>
 #include <complex.h>

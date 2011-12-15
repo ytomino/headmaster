@@ -3774,12 +3774,10 @@ struct
 		: derived_types * source_item list =
 	(
 		let def_p, def_e = define in
-		if StringMap.mem name namespace.ns_namespace &&
-			(match def_e with `any _ -> false | _ -> true)
-		then (
-			(* suppressing inline-version macro *)
-			let has_same_prototype =
+		if StringMap.mem name namespace.ns_namespace
+			&& (
 				begin match def_e with
+				(* suppressing inline-version macro *)
 				| `function_expr (m_args, m_varargs, _)
 				| `function_stmt (m_args, m_varargs, _) when List.for_all (fun (_, k) -> k = `value) m_args ->
 					let existed = StringMap.find name namespace.ns_namespace in
@@ -3792,13 +3790,11 @@ struct
 					| _ ->
 						false
 					end
+				| `any _ (* if a duplicated item is `any_, it will be ignored. *)
 				| _ ->
 					false
-				end
-			in
-			if not has_same_prototype then (
-				error def_p (name ^ " was repeated by normal symbol and macro.")
-			);
+				end)
+		then (
 			derived_types, source
 		) else (
 			let new_any (message: string) =

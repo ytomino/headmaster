@@ -348,7 +348,8 @@ let pp_if
 	pp_open_vbox ff indent;
 	pp_open_box ff 0;
 	pp_open_box ff indent;
-	pp_print_string ff "if ";
+	pp_print_string ff "if";
+	pp_print_space ff ();
 	pp_cond ff ();
 	pp_close_box ff ();
 	pp_print_space ff ();
@@ -368,6 +369,64 @@ let pp_if
 	end;
 	pp_print_space ff ();
 	pp_print_string ff "end if;"
+);;
+
+let pp_loop
+	(ff: formatter)
+	~(pp_cond: (formatter -> unit -> unit) option)
+	~(pp_loop: formatter -> unit -> unit)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_vbox ff indent;
+	pp_open_box ff 0;
+	begin match pp_cond with
+	| Some pp_cond ->
+		pp_open_box ff indent;
+		pp_cond ff ();
+		pp_close_box ff ();
+		pp_print_space ff ();
+	| None ->
+		()
+	end;
+	pp_print_string ff "loop";
+	pp_close_box ff ();
+	pp_loop ff ();
+	pp_close_box ff ();
+	pp_print_space ff ();
+	pp_print_string ff "end loop;"
+);;
+
+let pp_while
+	(pp_cond: formatter -> unit -> unit)
+	: formatter -> unit -> unit =
+(
+	begin fun ff ->
+		pp_print_string ff "while";
+		pp_print_space ff ();
+		pp_cond ff
+	end
+);;
+
+let pp_exit
+	(ff: formatter)
+	~(pp_when: (formatter -> unit -> unit) option)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	pp_print_string ff "exit";
+	begin match pp_when with
+	| Some pp_when ->
+		pp_print_space ff ();
+		pp_print_string ff "when";
+		pp_print_space ff ();
+		pp_when ff ()
+	| None ->
+		()
+	end;
+	pp_print_char ff ';';
+	pp_close_box ff ()
 );;
 
 let pp_return

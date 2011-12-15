@@ -1027,10 +1027,11 @@ struct
 	let pp_predefined_type_raw
 		(ff: formatter)
 		(name: string)
-		(item: predefined_type)
+		(item: predefined_type * int)
 		: unit =
 	(
-		begin match item with
+		let t, size = item in
+		begin match t with
 		| `void ->
 			fprintf ff "@ --  type void (<>) is limited private;"
 		| `bool ->
@@ -1083,7 +1084,11 @@ struct
 			pp_type ff name pp_derived_type_definition "Character"
 			(* dirty hack: pragma Convention set word-size alignment...so omitted... *)
 		| `wchar ->
-			pp_type ff name pp_derived_type_definition "Wide_Character"
+			pp_type ff name pp_derived_type_definition (
+				match size with
+				| 2 -> "Wide_Character"
+				| 4 -> "Wide_Wide_Character"
+				| _ -> assert false)
 			(* dirty hack: pragma Convention set word-size alignment...so omitted... *)
 		| `__builtin_va_list ->
 			pp_type ff name pp_derived_type_definition "System.Address"
@@ -1093,16 +1098,17 @@ struct
 	let pp_predefined_type
 		(ff: formatter)
 		~(language_mapping: Semantics.language_mapping)
-		(item: predefined_type)
+		(item: predefined_type * int)
 		: unit =
 	(
+		let t, _ = item in
 		begin try
-			let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
-			pp_subtype ff (string_of_pp pp_predefined_type_name item) (fun ff -> pp_print_string ff alias)
+			let alias = Semantics.find_mapped_type (t :> Semantics.all_type) language_mapping in
+			pp_subtype ff (string_of_pp pp_predefined_type_name t) (fun ff -> pp_print_string ff alias)
 		with Not_found ->
-			pp_predefined_type_raw ff (string_of_pp pp_predefined_type_name item) item
+			pp_predefined_type_raw ff (string_of_pp pp_predefined_type_name t) item
 		end;
-		begin match item with
+		begin match t with
 		| #int_prec as p ->
 			let name = ada_name_of_int_prec p in
 			pp_print_space ff ();
@@ -1246,15 +1252,12 @@ struct
 					pp_subtype ff name (fun ff -> pp_print_string ff alias)
 				with Not_found ->
 					let resolved_base_type = Semantics.resolve_typedef (base_type :> Semantics.all_type) in
+					pp_type ff name pp_derived_type_definition base_name;
 					begin match resolved_base_type with
-					| #predefined_type as item ->
-						pp_predefined_type_raw ff name item
+					| #predefined_type ->
+						()
 					| _ ->
-						pp_print_space ff ();
-						pp_open_box ff indent;
-						fprintf ff "type %s is new %s;" name base_name;
-						pp_close_box ff ();
-						pp_pragma_convention ff `cdecl name;
+						pp_pragma_convention ff `cdecl name
 					end;
 					pp_pragma_volatile ff name
 				end
@@ -1606,6 +1609,56 @@ struct
 		end
 	);;
 	
+	let pp_typedef_without_language_mapping
+		(ff: formatter)
+		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
+		~(current: string)
+		~(where: [`typedef | `macro])
+		(ps: ranged_position)
+		(name: string)
+		(t: Semantics.all_type)
+		: unit =
+	(
+		let opaque_mapping, name_mapping, anonymous_mapping = mappings in
+		begin match Semantics.resolve_typedef t with
+		| `named (_, _, #Semantics.opaque_type_var, _) as resolved_t
+			when separated_forward_opaque_to_full resolved_t opaque_mapping <> None
+		->
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+			let target_type_name =
+				omit_long_word
+					(59 - String.length name)
+					(string_of_pp (pp_type_name ~mappings ~current ~where:`subtype) t)
+			in
+			fprintf ff "@ --  subtype %s is %s;" name target_type_name
+		| _ ->
+			begin match t with
+			| `void ->
+				fprintf ff "@ --  subtype %s is void (%s)" name
+					(match where with `typedef -> "typedef" | `macro -> "macro")
+			| `function_type _ ->
+				fprintf ff "@ --  subtype %s is ... (function type)" name
+			| _ ->
+				let name = ada_name_of current ps name `namespace name_mapping in
+				pp_subtype ff
+					name
+					(fun ff ->
+						match name with
+						| "ptrdiff_t" ->
+							pp_print_string ff "Standard.C.ptrdiff_t"
+						| "size_t" ->
+							pp_print_string ff "Standard.C.size_t"
+						| "wchar_t" ->
+							pp_print_string ff "Standard.C.wchar_t"
+						| "bool" ->
+							pp_print_string ff "Standard.C.bool"
+						| _ ->
+							let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+							pp_type_name ff ~mappings ~current ~where:`subtype t)
+			end
+		end
+	);;
+	
 	let pp_typedef
 		(ff: formatter)
 		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
@@ -1620,41 +1673,9 @@ struct
 			pp_subtype ff name (fun ff -> pp_print_string ff alias)
 		with Not_found ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			let `named (ps, name, `typedef t, _) = item in
-			begin match Semantics.resolve_typedef t with
-			| `named (_, _, #Semantics.opaque_type_var, _) as resolved_t
-				when separated_forward_opaque_to_full resolved_t opaque_mapping <> None
-			->
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				let target_type_name =
-					omit_long_word
-						(59 - String.length name)
-						(string_of_pp (pp_type_name ~mappings ~current ~where:`subtype) t)
-				in
-				fprintf ff "@ --  subtype %s is %s;" name target_type_name
-			| _ ->
-				begin match t with
-				| `void ->
-					fprintf ff "@ --  subtype %s is void (typedef void)" name
-				| `function_type _ ->
-					fprintf ff "@ --  subtype %s is ... (function type)" name
-				| _ ->
-					let name = ada_name_of current ps name `namespace name_mapping in
-					pp_subtype ff
-						name
-						(fun ff ->
-							match name with
-							| "ptrdiff_t" ->
-								pp_print_string ff "Standard.C.ptrdiff_t"
-							| "size_t" ->
-								pp_print_string ff "Standard.C.size_t"
-							| "wchar_t" ->
-								pp_print_string ff "Standard.C.wchar_t"
-							| _ ->
-								let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-								pp_type_name ff ~mappings ~current ~where:`subtype t)
-				end
-			end
+			pp_typedef_without_language_mapping ff ~mappings ~current ~where:`typedef ps name t
 		end
 	);;
 	
@@ -1941,6 +1962,54 @@ struct
 		)
 	);;
 	
+	let pp_wide_char_literal (ff: formatter) (c: WideString.elm): unit = (
+		if c <= 0x1fl || c >= 0x80l then (
+			fprintf ff "wchar_t'Val (%ld)" c
+		) else (
+			fprintf ff "\'%c\'" (char_of_int (Int32.to_int c))
+		)
+	);;
+	
+	let pp_wide_string_literal (ff: formatter) (t: [`c | `ada]) (s: WideString.t): unit = (
+		let rec loop q i = (
+			if i >= WideString.length s then (
+				if q then pp_print_char ff '\"'
+			) else (
+				let c = WideString.get s i in
+				if c <= 0x1fl || c >= 0x80l then (
+					if q then pp_print_char ff '\"';
+					if i > 0 then fprintf ff "@ & ";
+					begin match t with
+					| `c ->
+						fprintf ff "wchar_t'Val (%ld)" c
+					| `ada ->
+						fprintf ff "Wide_Character'Val (%ld)" c
+					end;
+					loop false (i + 1)
+				) else (
+					let c = char_of_int (Int32.to_int c) in
+					if not q then (
+						if i > 0 then fprintf ff "@ & ";
+						pp_print_char ff '\"'
+					);
+					if c = '\"' then (
+						pp_print_string ff "\"\"";
+					) else (
+						pp_print_char ff c
+					);
+					loop true (i + 1)
+				)
+			)
+		) in
+		if WideString.length s = 0 then (
+			fprintf ff "\"\""
+		) else if WideString.length s = 1 then (
+			fprintf ff "(0 => %a)" pp_wide_char_literal (WideString.get s 0)
+		) else (
+			loop false 0
+		)
+	);;
+	
 	let rec pp_expression
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping)
@@ -2014,9 +2083,11 @@ struct
 			let e16 = e / 4 in
 			let m = Real.scale value ~base:16 ~exponent:(- e16) in
 			fprintf ff "16#%s#e%+d" (Real.to_based_string ~base:16 m) e16
-		| `imaginary_literal _, _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `imaginary_literal (_, value), _ ->
+			let _, e = Real.frexp value in
+			let e16 = e / 4 in
+			let m = Real.scale value ~base:16 ~exponent:(- e16) in
+			fprintf ff "16#%s#e%+d" (Real.to_based_string ~base:16 m) e16;
 		| `char_literal value, _ ->
 			pp_char_literal ff value
 		| `chars_literal value, _ ->
@@ -2024,9 +2095,14 @@ struct
 		| `wchar_literal _, _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
-		| `wchars_literal _, _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `wchars_literal value, _ ->
+			let length = WideString.length value in
+			let z = Array.make (length + 1) 0l in
+			for i = 0 to length - 1 do
+				z.(i) <- WideString.get value i
+			done;
+			z.(length) <- 0l;
+			pp_wide_string_literal ff `c (WideString.of_array z)
 		| `objc_string_literal _, _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
@@ -2182,15 +2258,18 @@ struct
 		| `decrement _, _ as expr ->
 			let hash = hash_name expr in
 			fprintf ff "Assign_%s" hash
-		| `address _, _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `address expr, _ ->
+			pp_expression ff ~mappings ~current ~outside:`primary expr;
+			pp_print_string ff "'Access"
 		| `neg _, _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
-		| `bit_not _, _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `bit_not expr, _ ->
+			let paren = parenthesis_required ~outside ~inside:`factor in
+			if paren then pp_open_paren ff ();
+			pp_print_string ff "not ";
+			pp_expression ff ~mappings ~current ~outside:`factor expr;
+			if paren then pp_close_paren ff ()
 		| `not expr, _ ->
 			let paren = parenthesis_required ~outside ~inside:`factor in
 			if paren then pp_open_paren ff ();
@@ -2212,7 +2291,7 @@ struct
 			let resolved_t1 = Semantics.resolve_typedef t1 in
 			let resolved_t2 = Semantics.resolve_typedef t2 in
 			begin match expr, resolved_t1, resolved_t2 with
-			| (`float_literal _, _), _, #real_prec ->
+			| (`float_literal _, _), #real_prec, #real_prec ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in
@@ -2220,13 +2299,19 @@ struct
 				end;
 				fprintf ff "'(%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
+			| _, #real_prec, `complex _ ->
+				fprintf ff "(Re => %a,@ Im => 0.0)"
+					(pp_expression ~mappings ~current ~outside:`lowest) expr
+			| _, `imaginary _, `complex _ ->
+				fprintf ff "(Re => 0.0,@ Im => %a)"
+					(pp_expression ~mappings ~current ~outside:`lowest) expr
 			| _, `bool, #int_prec ->
 				fprintf ff "Boolean'Pos (%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
 			| _, `char, #int_prec ->
 				fprintf ff "char'Pos (%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
-			| (`int_literal _, _), _, #int_prec ->
+			| (`int_literal _, _), #int_prec, #int_prec ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in
@@ -2723,7 +2808,7 @@ struct
 				| x :: [] ->
 					handle x
 				| _ ->
-					fprintf ff "(";
+					pp_print_char ff '(';
 					let (_: int) =
 						List.fold_left (fun i x ->
 							if i > 0 then fprintf ff "@ ,";
@@ -2731,13 +2816,23 @@ struct
 							i + 1
 						) 0 in_args
 					in
-					fprintf ff ")"
+					pp_print_char ff ')'
 				end
 			);
 			if destructive <> [] then (
-				fprintf ff ",@ Clobber =>@ ";
-				fprintf ff "@ **** unimplemented. ****\n";
-				assert false
+				fprintf ff ",@ ";
+				pp_open_box ff indent;
+				fprintf ff "Clobber =>@ ";
+				pp_print_char ff '\"';
+				let (_: int) =
+					List.fold_left (fun i x ->
+						if i > 0 then pp_print_string ff " ,";
+						pp_print_string ff x;
+						i + 1
+					) 0 destructive
+				in
+				pp_print_char ff '\"';
+				pp_close_box ff ()
 			);
 			if volatile = `volatile ||
 				in_args = [] (* suppressing warning by gnat *)
@@ -2854,8 +2949,9 @@ struct
 						pp_end ff ()
 					end
 				| _ ->
-					fprintf ff "@ **** unimplemented. ****\n";
-					assert false
+					let opaque_mapping, name_mapping, _ = mappings in
+					let mappings = opaque_mapping, name_mapping in
+					pp_expression ff ~mappings ~current ~outside:`lowest expr
 				end
 			)
 		| `va_start _ ->
@@ -2889,12 +2985,32 @@ struct
 										~null_statement:true false_case
 								end))
 					end)
-		| `while_loop _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
-		| `do_loop _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `while_loop (cond, stmts) ->
+			let opaque_mapping, name_mapping, _ = mappings in
+			let mappings_for_expr = opaque_mapping, name_mapping in
+			pp_loop ff
+				~pp_cond:
+					(Some (pp_while (fun ff () ->
+						pp_expression ff ~mappings:mappings_for_expr ~current ~outside:`lowest cond)))
+				~pp_loop:
+					begin fun ff () ->
+						pp_statement_list ff ~mappings ~current
+							~null_statement:true stmts
+					end
+		| `do_loop (stmts, cond) ->
+			let opaque_mapping, name_mapping, _ = mappings in
+			let mappings_for_expr = opaque_mapping, name_mapping in
+			pp_loop ff
+				~pp_cond:None
+				~pp_loop:
+					begin fun ff () ->
+						pp_statement_list ff ~mappings ~current
+							~null_statement:true stmts;
+						pp_exit ff ~pp_when:(Some (fun ff () ->
+							pp_print_string ff "not";
+							pp_print_space ff ();
+							pp_expression ff ~mappings:mappings_for_expr ~current ~outside:`factor cond))
+					end
 		| `for_loop _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
@@ -2957,59 +3073,65 @@ struct
 			() (* it shell be declared with enum-type *)
 		| `named (_, _, #Semantics.named_type_var, _) as item ->
 			pp_named_type ff ~mappings ~current item
-		| `named (ps, name, `extern (t, alias), attrs) ->
+		| `named (ps, name, `extern (t, alias), attrs) as item ->
 			let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let ada_name = ada_name_of current ps name `namespace name_mapping in
-			begin match item with
-			| `named (_, _, `extern ((`function_type prototype), _), _) as item ->
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				let _, args, _, _ = prototype in
-				begin
-					let name_mapping = add_name_mapping_for_arguments args name_mapping in
-					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-					pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype
-				end;
-				pp_print_string ff ";";
-				pp_close_box ff ();
-				begin try
-					let overload = List.assq item language_mapping.Semantics.lm_overload in
-					List.iter (fun prototype ->
-						pp_print_space ff ();
-						pp_open_box ff indent;
-						let _, args, _, _ = prototype in
+			if Naming.is_hidden ps item name_mapping then (
+				fprintf ff "@ --  function %s ... (hidden by macro)" name
+			) else (
+				let ada_name = ada_name_of current ps name `namespace name_mapping in
+				begin match item with
+				| `named (_, _, `extern ((`function_type prototype), _), _) as item ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					let _, args, _, _ = prototype in
+					begin
 						let name_mapping = add_name_mapping_for_arguments args name_mapping in
 						let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-						pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype;
-						pp_print_string ff ";";
-						pp_close_box ff ()
-					) overload
-				with Not_found ->
-					()
+						pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype
+					end;
+					pp_print_string ff ";";
+					pp_close_box ff ();
+					begin try
+						let overload = List.assq item language_mapping.Semantics.lm_overload in
+						List.iter (fun prototype ->
+							pp_print_space ff ();
+							pp_open_box ff indent;
+							let _, args, _, _ = prototype in
+							let name_mapping = add_name_mapping_for_arguments args name_mapping in
+							let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+							pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype;
+							pp_print_string ff ";";
+							pp_close_box ff ()
+						) overload
+					with Not_found ->
+						()
+					end;
+					if attrs.Semantics.at_noreturn then pp_pragma_noreturn ff ada_name
+				| _ ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					pp_print_string ff ada_name;
+					pp_print_string ff " :";
+					pp_print_space ff ();
+					pp_print_string ff "aliased";
+					pp_print_space ff ();
+					let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+					pp_type_name ff ~mappings ~current ~where:`extern t;
+					pp_print_char ff ';';
+					pp_close_box ff ();
 				end;
-				if attrs.Semantics.at_noreturn then pp_pragma_noreturn ff ada_name
-			| _ ->
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				pp_print_string ff ada_name;
-				pp_print_string ff " :";
-				pp_print_space ff ();
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				pp_type_name ff ~mappings ~current ~where:`extern t;
-				pp_print_char ff ';';
-				pp_close_box ff ();
-			end;
-			let c_name =
-				begin match alias with
-				| `alias c_name ->
-					if c_name.[0] = '_' then String.sub c_name 1 (String.length c_name - 1) else
-					c_name
-				| `none ->
-					name
-				end
-			in
-			pp_pragma_import ff attrs.Semantics.at_conventions ada_name c_name
+				let c_name =
+					begin match alias with
+					| `alias c_name ->
+						if c_name.[0] = '_' then String.sub c_name 1 (String.length c_name - 1) else
+						c_name
+					| `none ->
+						name
+					end
+				in
+				pp_pragma_import ff attrs.Semantics.at_conventions ada_name c_name
+			)
 		| `named (ps, name, `variable (t, init), _) ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let ada_name = ada_name_of current ps name `namespace name_mapping in
@@ -3076,9 +3198,33 @@ struct
 				fprintf ff "@ **** %s / unimplemented. ****\n" name;
 				assert false
 			end
-		| `named (_, name, `defined_operator _, _) ->
-			fprintf ff "@ **** %s / unimplemented. ****\n" name;
-			assert false
+		| `named (_, name, `defined_operator op, _) ->
+			begin match op with
+			| `and_assign | `or_assign | `xor_assign as op ->
+				let op_s =
+					begin match op with
+					| `and_assign -> "&="
+					| `or_assign -> "|="
+					| `xor_assign -> "^="
+					end
+				in
+				fprintf ff "@ --  procedure %s (Left : in out T; Right : T) renames \"%s\"" name op_s
+			| `ampersand | `and_then | `caret | `exclamation
+			| `ne | `or_else | `tilde | `vertical as op ->
+				let op_s =
+					begin match op with
+					| `ampersand -> "&"
+					| `and_then -> "&&"
+					| `caret -> "^"
+					| `exclamation -> "!"
+					| `ne -> "!="
+					| `or_else -> "||"
+					| `tilde -> "~"
+					| `vertical -> "|"
+					end
+				in
+				fprintf ff "@ --  function %s (Left, Right : T) return T renames \"%s\"" name op_s
+			end
 		| `named (ps, name, `defined_specifiers storage_class, attrs) ->
 			begin match storage_class with
 			| `none ->
@@ -3087,8 +3233,9 @@ struct
 					let ada_name = ada_name_of current ps name `namespace name_mapping in
 					let conv = attrs.Semantics.at_conventions in
 					begin match conv with
-					| `fastcall ->
-						fprintf ff "@ --  %s (alias of fastcall)" name
+					| `fastcall | `thiscall ->
+						fprintf ff "@ --  pragma Convention_Identifier (%s, %s);"
+							name (convention_identifier conv)
 					| _ ->
 						pp_pragma_convention_identifier ff ada_name conv
 					end
@@ -3118,19 +3265,9 @@ struct
 				fprintf ff "@ --  %s (alias of volatile)" name
 			end
 		| `named (ps, name, `defined_typedef t, _) ->
-			begin match Semantics.resolve_typedef t with
-			| `void ->
-				fprintf ff "@ --  subtype %s is void (macro)" name
-			| `function_type _ ->
-				fprintf ff "@ --  subtype %s is ... (function type)" name
-			| _ ->
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-				let name = ada_name_of current ps name `namespace name_mapping in
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				pp_subtype ff
-					name
-					(fun ff -> pp_type_name ff ~mappings ~current ~where:`subtype t)
-			end
+			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+			pp_typedef_without_language_mapping ff ~mappings ~current ~where:`macro ps name t
 		| `named (_, name, `defined_opaque_type t, _) ->
 			let tag, kind =
 				match t with
@@ -3455,7 +3592,7 @@ struct
 			~pp_contents:(fun ff ->
 				if current = "" then (
 					(* predefined types *)
-					List.iter (fun (item, _) ->
+					List.iter (fun item ->
 						pp_predefined_type ff ~language_mapping item;
 					) (fst predefined_types);
 					pp_pragma_import ff `intrinsic "Shift_Left" "Shift_Left";
