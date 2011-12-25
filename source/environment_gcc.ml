@@ -143,8 +143,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 					let line_length = String.length line in
 					let nr = "not recognized" in
 					let nr_length = String.length nr in
-					line_length > nr_length &&
-					String.sub line (line_length - nr_length) nr_length = nr
+					line_length > nr_length
+					&& String.sub line (line_length - nr_length) nr_length = nr
 				) then (
 					let (_: Unix.process_status) = Unix.close_process_full ps in
 					raise (Failure command)
@@ -158,8 +158,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 					let item_length = String.length item in
 					let fw = " (framework directory)" in
 					let fw_length = String.length fw in
-					if item_length >= fw_length &&
-						String.sub item (item_length - fw_length) fw_length = fw
+					if item_length >= fw_length
+						&& String.sub item (item_length - fw_length) fw_length = fw
 					then (
 						(* not handling frameworks *)
 					) else (

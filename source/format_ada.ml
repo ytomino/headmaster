@@ -135,7 +135,10 @@ let pp_with_caluse
 	pp_print_char ff ';';
 	begin match use with
 	| `use ->
-		fprintf ff "@ use %s;" package
+		pp_print_space ff ();
+		pp_print_string ff "use ";
+		pp_print_string ff package;
+		pp_print_char ff ';'
 	| `none ->
 		()
 	end;
@@ -155,14 +158,16 @@ let pp_package_spec
 	pp_open_vbox ff 0;
 	List.iter (pp_with_caluse ff) with_packages;
 	pp_open_vbox ff indent;
-	fprintf ff "package %s is" name;
+	pp_print_string ff "package ";
+	pp_print_string ff name;
+	pp_print_string ff " is";
 	begin match kind with
 	| `pure ->
 		pp_print_space ff ();
-		fprintf ff "pragma Pure;"
+		pp_print_string ff "pragma Pure;"
 	| `preelaborate ->
 		pp_print_space ff ();
-		fprintf ff "pragma Preelaborate;"
+		pp_print_string ff "pragma Preelaborate;"
 	| `normal ->
 		()
 	end;
@@ -178,7 +183,11 @@ let pp_package_spec
 	| None ->
 		()
 	end;
-	fprintf ff "@ end %s;@," name;
+	pp_print_break ff 0 0;
+	pp_print_string ff "end ";
+	pp_print_string ff name;
+	pp_print_char ff ';';
+	pp_print_break ff 0 0;
 	pp_close_box ff ()
 );;
 
@@ -192,10 +201,16 @@ let pp_package_body
 	pp_open_vbox ff 0;
 	List.iter (pp_with_caluse ff) with_packages;
 	pp_open_vbox ff indent;
-	fprintf ff "package body %s is" name;
+	pp_print_string ff "package body ";
+	pp_print_string ff name;
+	pp_print_string ff " is";
 	pp_contents ff;
 	pp_close_box ff ();
-	fprintf ff "@ end %s;@," name;
+	pp_print_break ff 0 0;
+	pp_print_string ff "end ";
+	pp_print_string ff name;
+	pp_print_char ff ';';
+	pp_print_break ff 0 0;
 	pp_close_box ff ()
 );;
 
@@ -317,7 +332,8 @@ let pp_begin
 	pp_print_space ff ();
 	pp_open_vbox ff indent;
 	if label <> "" then (
-		fprintf ff "%s : " label
+		pp_print_string ff label;
+		pp_print_string ff " : "
 	);
 	pp_print_string ff "begin"
 );;
@@ -330,11 +346,12 @@ let pp_end
 (
 	pp_close_box ff ();
 	pp_print_space ff ();
+	pp_print_string ff "end";
 	if label <> "" then (
-		fprintf ff "end %s;" label
-	) else (
-		pp_print_string ff "end;"
-	)
+		pp_print_char ff ' ';
+		pp_print_string ff label
+	);
+	pp_print_char ff ';'
 );;
 
 let pp_if
@@ -464,6 +481,168 @@ let pp_open_paren ff () = (
 
 let pp_close_paren ff () = (
 	pp_print_char ff ')'
+);;
+
+let pp_character_literal (ff: formatter) (c: char): unit = (
+	begin match c with
+	| '\x00' ->
+		pp_print_string ff "ASCII.NUL"
+	| '\x01' ->
+		pp_print_string ff "ASCII.SOH"
+	| '\x02' ->
+		pp_print_string ff "ASCII.STX"
+	| '\x03' ->
+		pp_print_string ff "ASCII.ETX"
+	| '\x04' ->
+		pp_print_string ff "ASCII.EOT"
+	| '\x05' ->
+		pp_print_string ff "ASCII.ENQ"
+	| '\x06' ->
+		pp_print_string ff "ASCII.ACK"
+	| '\x07' ->
+		pp_print_string ff "ASCII.BEL"
+	| '\x08' ->
+		pp_print_string ff "ASCII.BS"
+	| '\x09' ->
+		pp_print_string ff "ASCII.HT"
+	| '\x0a' ->
+		pp_print_string ff "ASCII.LF"
+	| '\x0b' ->
+		pp_print_string ff "ASCII.VT"
+	| '\x0c' ->
+		pp_print_string ff "ASCII.FF"
+	| '\x0d' ->
+		pp_print_string ff "ASCII.CR"
+	| '\x0e' ->
+		pp_print_string ff "ASCII.SO"
+	| '\x0f' ->
+		pp_print_string ff "ASCII.SI"
+	| '\x10' ->
+		pp_print_string ff "ASCII.DLE"
+	| '\x11' ->
+		pp_print_string ff "ASCII.DC1"
+	| '\x12' ->
+		pp_print_string ff "ASCII.DC2"
+	| '\x13' ->
+		pp_print_string ff "ASCII.DC3"
+	| '\x14' ->
+		pp_print_string ff "ASCII.DC4"
+	| '\x15' ->
+		pp_print_string ff "ASCII.NAK"
+	| '\x16' ->
+		pp_print_string ff "ASCII.SYN"
+	| '\x17' ->
+		pp_print_string ff "ASCII.ETB"
+	| '\x18' ->
+		pp_print_string ff "ASCII.CAN"
+	| '\x19' ->
+		pp_print_string ff "ASCII.EM"
+	| '\x1a' ->
+		pp_print_string ff "ASCII.SUB"
+	| '\x1b' ->
+		pp_print_string ff "ASCII.ESC"
+	| '\x1c' ->
+		pp_print_string ff "ASCII.FS"
+	| '\x1d' ->
+		pp_print_string ff "ASCII.GS"
+	| '\x1e' ->
+		pp_print_string ff "ASCII.RS"
+	| '\x1f' ->
+		pp_print_string ff "ASCII.US"
+	| ' ' .. '~' ->
+		pp_print_char ff '\'';
+		pp_print_char ff c;
+		pp_print_char ff '\''
+	| '\x7f' ->
+		pp_print_string ff "ASCII.DEL"
+	| '\x80' .. '\xff' ->
+		pp_print_string ff "Character'Val ";
+		pp_open_paren ff ();
+		pp_print_int ff (int_of_char c);
+		pp_close_paren ff ()
+	end
+);;
+
+let pp_string_literal
+	(ff: formatter)
+	?(width: int = 73)
+	(pp_character_literal: formatter -> char -> unit)
+	(first: int)
+	(s: string)
+	: unit =
+(
+	let printable c = (c >= ' ' && c <= '~') in
+	let rec loop q w i = (
+		if i >= String.length s then (
+			if q then pp_print_char ff '\"'
+		) else (
+			let c = s.[i] in
+			if not (printable c) then (
+				if q then pp_print_char ff '\"';
+				if i > 0 then (
+					pp_print_space ff ();
+					pp_print_string ff "& ";
+				);
+				pp_character_literal ff c;
+				loop false 0 (i + 1)
+			) else if w >= width - 1 then ( (* -1 means closing double-quote *)
+				let w =
+					if not q then 0 else (
+						pp_print_char ff '\"';
+						pp_print_space ff ();
+						pp_print_string ff "& \"";
+						3
+					)
+				in
+				let w =
+					begin match c with
+					| '\"' ->
+						pp_print_string ff "\"\"";
+						w + 2
+					| _ ->
+						pp_print_char ff c;
+						w + 1
+					end
+				in
+				loop true w (i + 1)
+			) else (
+				let w =
+					if q then (
+						w
+					) else if i > 0 then (
+						pp_print_space ff ();
+						pp_print_string ff "& \"";
+						w + 3
+					) else (
+						pp_print_char ff '\"';
+						w + 1
+					)
+				in
+				let w =
+					begin match c with
+					| '\"' ->
+						pp_print_string ff "\"\"";
+						w + 2
+					| _ ->
+						pp_print_char ff c;
+						w + 1
+					end
+				in
+				loop true w (i + 1)
+			)
+		)
+	) in
+	if s = "" then (
+		pp_print_string ff "\"\""
+	) else if String.length s = 1 && (not (printable s.[0])) then (
+		pp_print_char ff '(';
+		pp_print_int ff first;
+		pp_print_string ff " => ";
+		pp_character_literal ff s.[0];
+		pp_print_char ff ')'
+	) else (
+		loop false 0 0
+	)
 );;
 
 (* pragma *)

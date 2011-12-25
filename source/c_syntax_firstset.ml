@@ -60,9 +60,10 @@ struct
 		| `period];;
 	type firstset_of_primary_expression = [
 		| identifier
-		| `int_literal of int_prec * Integer.t
-		| `float_literal of real_prec * Real.t
-		| `imaginary_literal of float_prec * Real.t (* extended *)
+		| `numeric_literal of string * [
+			| `int_literal of int_prec * Integer.t
+			| `float_literal of real_prec * Real.t
+			| `imaginary_literal of float_prec * Real.t] (* extended *)
 		| `char_literal of char
 		| `chars_literal of string
 		| `wchar_literal of WideString.elm

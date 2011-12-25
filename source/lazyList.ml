@@ -97,3 +97,12 @@ let rec map_a (f: 'a1 -> 'a2) (xs: ('a1, 'b, 'c) t): ('a2, 'b, 'c) prim = (
 		`nil (f a, c)
 	end
 );;
+
+let rec map_nil (f: 'c1 -> 'c2) (xs: ('a, 'b, 'c1) t): ('a, 'b, 'c2) prim = (
+	begin match xs with
+	| lazy (`cons (a, b, xr)) ->
+		`cons (a, b, lazy (map_nil f xr))
+	| lazy (`nil (a, c)) ->
+		`nil (a, f c)
+	end
+);;

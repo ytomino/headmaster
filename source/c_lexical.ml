@@ -467,6 +467,11 @@ type real_prec = [
 module LexicalElement (Literals: LiteralsType) = struct
 	open Literals;;
 	
+	type numeric_literal = [
+		| `int_literal of int_prec * Integer.t
+		| `float_literal of real_prec * Real.t
+		| `imaginary_literal of float_prec * Real.t];;
+	
 	type t = [
 		| reserved_word
 		| extended_word
@@ -475,9 +480,7 @@ module LexicalElement (Literals: LiteralsType) = struct
 		| `directive_parameter of string
 		| `end_of_line
 		| `ident of string
-		| `int_literal of int_prec * Integer.t
-		| `float_literal of real_prec * Real.t
-		| `imaginary_literal of float_prec * Real.t
+		| `numeric_literal of string * numeric_literal
 		| `char_literal of char
 		| `chars_literal of string
 		| `wchar_literal of WideString.elm

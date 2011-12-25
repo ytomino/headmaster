@@ -211,9 +211,7 @@ let rec loop (xs: PP.out_t): unit = (
 		| #preprocessor_directive
 		| `directive_parameter _
 		| `ident _
-		| `int_literal _
-		| `float_literal _
-		| `imaginary_literal _ ->
+		| `numeric_literal _ ->
 			O.print_element (print_word ps) token
 		| _ ->
 			O.print_element (print_symbol ps) token

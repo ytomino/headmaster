@@ -103,15 +103,17 @@ let known_define_parser_errors = make_setmap [
 		"__format_arg"; (* freebsd7 / parameterized attribute *)
 		"__IDSTRING"; (* darwin9 / generic declaration *)
 		"__nonnull"; (* freebsd7 / parameterized attribute *)
-		"__offsetof"; (* freebsd7 / generic, field *)
+		"__offsetof"; (* freebsd7 / parameterized field *)
 		"__printflike"; (* darwin9 / parameterized attribute *)
 		"__PROJECT_VERSION"; (* darwin9 / generic declaration *)
-		"__rangeof"; (* freebsd7 / generic, field *)
+		"__rangeof"; (* freebsd7 / parameterized field *)
 		"__RCSID"; (* darwin9 / generic declaration *)
 		"__RCSID_SOURCE"; (* freebsd7 / generic declaration *)
 		"__scanflike"; (* darwin9 / parameterized attribute *)
 		"__SCCSID"; (* darwin9 / generic declaration *)
 		"__section"]; (* freebsd7 / parameterized attribute *)
+	"commdlg.h", [
+		"CDSIZEOF_STRUCT"]; (* mingw-w64 / parameterized field *)
 	"complex.h", [
 		"complex"]; (* darwin9 / alias of _Complex *)
 	"ctype.h", [
@@ -137,6 +139,10 @@ let known_define_parser_errors = make_setmap [
 	"dirent.h", [
 		"__DARWIN_STRUCT_DIRENTRY"; (* darwin9 / partial declaration *)
 		"d_ino"]; (* freebsd7 / renaming field of struct in the other file *)
+	"excpt.h", [
+		"__except1"; (* mingw-w64 / extra semicolon *)
+		"exception_info"; (* mingw-w64 / alias of function and cast *)
+		"GetExceptionInformation"]; (* mingw-w64 / alias of function and cast *)
 	"expat.h", [
 		"XML_STATUS_ERROR"; (* conflicated with enum element *)
 		"XML_STATUS_OK"; (* conflicated with enum element *)
@@ -147,7 +153,7 @@ let known_define_parser_errors = make_setmap [
 		"GC_EXTRAS"; (* Boehm-GC / parameter list *)
 		"GC_EXTRA_PARAMS"]; (* Boehm-GC / formal parameter list *)
 	"gc_typed.h", [
-		"GC_WORD_OFFSET"]; (* Boehm-GC / generic, field *)
+		"GC_WORD_OFFSET"]; (* Boehm-GC / parameterized field *)
 	"gmp.h", [
 		"__GMP_CAST"; (* GMP / unclear cast or function call *)
 		"__GMP_DECLSPEC_EXPORT"; (* GMP / __declspec in no Windows *)
@@ -179,6 +185,16 @@ let known_define_parser_errors = make_setmap [
 		"mpz_inp_str"; (* GMP / #include <stdio.h> *)
 		"mpz_out_raw"; (* GMP / #include <stdio.h> *)
 		"mpz_out_str"]; (* GMP / #include <stdio.h> *)
+	"guiddef.h", [
+		"CLSID_NULL"; (* mingw-w64 / GUID_NULL is undefined on WIN32_LEAN_AND_MEAN mode *)
+		"FMTID_NULL"; (* mingw-w64 / GUID_NULL is undefined on WIN32_LEAN_AND_MEAN mode *)
+		"IID_NULL"; (* mingw-w64 / GUID_NULL is undefined on WIN32_LEAN_AND_MEAN mode *)
+		"REFCLSID"; (* mingw-w64 / declaration specifier and pointer *)
+		"REFFMTID"; (* mingw-w64 / declaration specifier and pointer *)
+		"REFGUID"; (* mingw-w64 / declaration specifier and pointer *)
+		"REFIID"; (* mingw-w64 / declaration specifier and pointer *)
+		"DEFINE_GUID"; (* mingw-w64 / parameterized declaration *)
+		"DEFINE_OLEGUID"]; (* mingw-w64 / parameterized declaration *)
 	"host_special_ports.h", [
 		"host_get_audit_control_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_dynamic_pager_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
@@ -191,6 +207,8 @@ let known_define_parser_errors = make_setmap [
 		"host_set_dynamic_pager_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_lockd_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_user_notification_port"]; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+	"_ip_types.h", [
+		"h_addr"]; (* mingw-w64 / alias of element and dereferencing *)
 	"in6.h", [
 		"IN6_ARE_ADDR_EQUAL"]; (* darwin9 / memcmp is undefined, #include <string.h> *)
 	"malloc.h", [
@@ -207,10 +225,9 @@ let known_define_parser_errors = make_setmap [
 		"__restrict_arr"; (* mingw32 / reserved word *)
 		"__UNUSED_PARAM"; (* mingw32 / parameterized attribute *)
 		"__USE_MINGW_ANSI_STDIO"]; (* mingw32 / __MINGW_FEATURES__ was undefined *)
-	"_mingw_stat64.h", [
-		"_fstat32"; (* mingw-w64 / _fstat is alias of tag (chaining is not supported) *)
-		"_fstat32i64"; (* mingw-w64 / _fstati64 is alias of tag (chaining is not supported) *)
-		"fstat64"]; (* mingw-w64 / _fstat64 is alias of tag (chaining is not supported) *)
+	"_mingw_unicode.h", [
+		"__MINGW_TYPEDEF_AW"; (* mingw-w64 / parameterized declaration *)
+		"__MINGW_TYPEDEF_UAW"]; (* mingw-w64 / parameterized declaration *)
 	"mpc.h", [
 		"mpfr_exp_t"; (* MPC / conflicted with typedef *)
 		"__MPC_PROTO"]; (* MPC / parameter list *)
@@ -220,6 +237,18 @@ let known_define_parser_errors = make_setmap [
 	"netdb.h", [
 		"h_addr"]; (* darwin9 / alias of element and dereferencing *)
 	"objbase.h", [
+		"DECLARE_INTERFACE_"; (* mingw-w64 / parameterized type *)
+		"DECLARE_INTERFACE_IID_"; (* mingw-w64 / parameterized type *)
+		"IFACEMETHOD"; (* mingw-w64 / parameterized declaration *)
+		"IFACEMETHOD_"; (* mingw-w64 / parameterized declaration *)
+		"IFACEMETHODV"; (* mingw-w64 / parameterized declaration *)
+		"IFACEMETHODV_"; (* mingw-w64 / parameterized declaration *)
+		"STDMETHOD"; (* mingw-w64 / parameterized declaration *)
+		"STDMETHOD_"; (* mingw-w64 / parameterized declaration *)
+		"STDMETHODV"; (* mingw-w64 / parameterized declaration *)
+		"STDMETHODV_"; (* mingw-w64 / parameterized declaration *)
+		"THIS"; (* mingw-w64 / parameter list *)
+		"THIS_"; (* mingw-w64 / parameter list *)
 		"WINOLEAPI"; (* mingw32 / storage class and type *)
 		"WINOLEAPI_"]; (* mingw32 / storage class and parameterized type *)
 	"oleauto.h", [
@@ -238,19 +267,44 @@ let known_define_parser_errors = make_setmap [
 		"png_benign_error"; (* libpng / circular dependency *)
 		"png_chunk_benign_error"; (* libpng / circular dependency *)
 		"PNG_EXPORT"]; (* libpng / parameterized declaration *)
+	"propidl.h", [
+		"REFPROPVARIANT"];  (* mingw-w64 / declaration specifier and pointer *)
+	"prsht.h", [
+		"CCSIZEOF_STRUCT"; (* mingw-w64 / parameterized field *)
+		"PROPSHEETPAGEA_V1_FIELDS"; (* mingw-w64 / partial declaration *)
+		"PROPSHEETPAGEW_V1_FIELDS"; (* mingw-w64 / partial declaration *)
+		"PROPSHEETHEADER_V2_SIZE"; (* mingw-w64 / does not have DUMMYUNION5_MEMBER *)
+		"PROPSHEETHEADERA_V2_SIZE"; (* mingw-w64 / does not have DUMMYUNION5_MEMBER *)
+		"PROPSHEETHEADERW_V2_SIZE"]; (* mingw-w64 / does not have DUMMYUNION5_MEMBER *)
 	"pthread.h", [
 		"pthread_cleanup_pop"; (* darwin9 / partial statement *)
 		"pthread_cleanup_push"]; (* darwin9 / partial statement *)
+	"rpc.h", [
+		"interface"; (* mingw-w64 / reserved word *)
+		"RpcEndFinally"; (* mingw-w64 / partial statement *)
+		"RpcEndExcept"; (* mingw-w64 / partial statement *)
+		"RpcExcept"; (* mingw-w64 / partial statement *)
+		"RpcFinally"; (* mingw-w64 / partial statement *)
+		"RpcTryExcept"; (* mingw-w64 / partial statement *)
+		"RpcTryFinally"]; (* mingw-w64 / partial statement *)
 	"rpcdce.h", [
 		"RPC_C_SECURITY_QOS_VERSION"]; (* mingw32 / L ?? *)
 	"rpcndr.h", [
+		"EXTERN_GUID"; (* mingw-w64 / parameterized declaration *)
 		"MIDL_INTERFACE"; (* mingw32 / reserved word *)
-		"NdrFieldPad"; (* mingw32 / generic, field *)
-		"NdrFieldOffset"; (* mingw32 / generic, field *)
+		"NdrFieldPad"; (* mingw32 / parameterized field *)
+		"NdrFieldOffset"; (* mingw32 / parameterized field *)
 		"NdrMarshSCtxtHdl"; (* mingw32 / bug? not enough "" *)
 		"NdrUnMarshSCtxtHdl"]; (* mingw32 / bug? misspell of N*DR*SContextUnMarshall *)
+	"sdkddkver.h", [
+		"NTDDI_VERSION_FROM_WIN32_WINNT"]; (* mingw-w64 / ## *)
 	"select.h", [
 		"FD_COPY"]; (* darwin9 / bcopy was undefined, #include <string.h> *)
+	"shellapi.h", [
+		"SHDOCAPI"; (* mingw-w64 / storage class and type *)
+		"SHDOCAPI_"; (* mingw-w64 / storage class and parameterized type *)
+		"SHSTDAPI"; (* mingw-w64 / storage class and type *)
+		"SHSTDAPI_"]; (* mingw-w64 / storage class and parameterized type *)
 	"socket.h", [
 		"CTL_NET_NAMES"; (* freebsd7 / partial initializer *)
 		"CTL_NET_RT_NAMES"]; (* freebsd7 / partial initializer *)
@@ -258,10 +312,12 @@ let known_define_parser_errors = make_setmap [
 		"__DARWIN_STRUCT_STAT64"; (* darwin9 / partial declaration *)
 		"__DARWIN_STRUCT_STAT64_TIMES"]; (* darwin9 / partial declaration *)
 	"stddef.h", [
-		"offsetof"]; (* darwin9 / generic, field *)
+		"offsetof"]; (* darwin9 / parameterized field *)
 	"stdint.h", [
 		"INTMAX_C"; (* mingw32 / ## *)
 		"UINTMAX_C"]; (* mingw32 / ## *)
+	"stralign.h", [
+		"__UA_STACKCOPY"]; (* mingw-w64 / _alloca is undefined *)
 	"_structs.h", [
 		"__DARWIN_FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"I386_MCONTEXT_SIZE"]; (* darwin9 / struct mcontext was undefined *)
@@ -366,7 +422,9 @@ let known_define_parser_errors = make_setmap [
 		"ILL_RESOP_FAULT"]; (* freebsd7 / T_RESOPFLT was undefined *)
 	"types.h", [
 		"FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
-		"__offsetof"]; (* darwin9 / generic, field *)
+		"__offsetof"]; (* darwin9 / parameterized field *)
+	"urlmon.h", [
+		"LPOINETPROTOCOLSINKSTACKABLE"]; (* mingw-w64 / bug? misspell of LPIINTERNETPROTOCOLSINKStackable *)
 	"vm_param.h", [
 		"i386_btop"; (* darwin9 / pmap_paddr_t is undefined *)
 		"i386_ptob"; (* darwin9 / pmap_paddr_t is undefined *)
@@ -376,6 +434,7 @@ let known_define_parser_errors = make_setmap [
 	"vm_types.h", [
 		"MACH_MSG_TYPE_INTEGER_T"]; (* darwin9 / MACH_MSG_TYPE_INTEGER_32 is undefined *)
 	"winbase.h", [
+		"EXCEPTION_POSSIBLE_DEADLOCK"; (* mingw-w64 / STATUS_POSSIBLE_DEADLOCK is undefined *)
 		"GetVolumeNameForVolumeMountPoint"; (* mingw32 / out of #ifdef *)
 		"GetVolumePathName"; (* mingw32 / out of #ifdef *)
 		"GetVolumePathNamesForVolumeName"; (* mingw32 / out of #ifdef *)
@@ -384,12 +443,43 @@ let known_define_parser_errors = make_setmap [
 	"windef.h", [
 		"DECLARE_STDCALL_P"; (* mingw32 / generic declaration-specifiers *)
 		"_declspec"]; (* mingw32 / parameterized attribute *)
+	"winerror.h", [
+		"GetScode"; (* mingw-w64 / SCODE is undefined on WIN32_LEAN_AND_MEAN mode *)
+		"MAKE_SCODE"]; (* mingw-w64 / SCODE is undefined on WIN32_LEAN_AND_MEAN mode *)
 	"winnt.h", [
+		"BitScanForward"; (* mingw-w64 / _BitScanForward is undefined on 32 bit mode *)
+		"BitScanReverse"; (* mingw-w64 / _BitScanReverse is undefined on 32 bit mode *)
+		"BitTest"; (* mingw-w64 / _bittest is undefined on 32 bit mode *)
+		"BitTestAndComplement"; (* mingw-w64 / _bittestandcomplement is undefined on 32 bit mode *)
+		"BitTestAndReset"; (* mingw-w64 / _bittestandreset is undefined on 32 bit mode *)
+		"BitTestAndSet"; (* mingw-w64 / _bittestandset is undefined on 32 bit mode *)
 		"C_ASSERT"; (* mingw32 / static assert *)
-		"CONTAINING_RECORD"; (* mingw32 / generic, field *)
+		"CONTAINING_RECORD"; (* mingw32 / parameterized field *)
 		"DECLSPEC_ALIGN"; (* mingw32 / parameterized attribute *)
-		"FIELD_OFFSET"; (* mingw32 / generic, field *)
-		"TEXT"]; (* mingw32 / ## *)
+		"FIELD_OFFSET"; (* mingw32 / parameterized field *)
+		"IFACEMETHODIMP_"; (* mingw-w64 / storage class and parameterized type *)
+		"IFACEMETHODIMPV_"; (* mingw-w64 / storage class and parameterized type *)
+		"InterlockedCompareExchange16"; (* mingw-w64 / _InterlockedCompareExchange16 is undefined on 32 bit mode *)
+		"InterlockedDecrement16"; (* mingw-w64 / _InterlockedDecrement16 is undefined on 32 bit mode *)
+		"InterlockedIncrement16"; (* mingw-w64 / _InterlockedIncrement16 is undefined on 32 bit mode *)
+		"NOP_FUNCTION"; (* mingw-w64 / (void)0 ??? *)
+		"PROBE_ALIGNMENT"; (* mingw-w64 / new struct in macro *)
+		"REPARSE_GUID_DATA_BUFFER_HEADER_SIZE"; (* mingw-w64 / accessing element of null *)
+		"RTL_BITS_OF_FIELD"; (* mingw-w64 / parameterized field *)
+		"RTL_CONTAINS_FIELD"; (* mingw-w64 / parameterized field *)
+		"RTL_FIELD_SIZE"; (* mingw-w64 / parameterized field *)
+		"RTL_FIELD_TYPE"; (* mingw-w64 / parameterized field *)
+		"RTL_NUMBER_OF_FIELD"; (* mingw-w64 / parameterized field *)
+		"RTL_PADDING_BETWEEN_FIELDS"; (* mingw-w64 / parameterized field *)
+		"RTL_SIZEOF_THROUGH_FIELD"; (* mingw-w64 / parameterized field *)
+		"STDAPI"; (* mingw-w64 / storage class and type *)
+		"STDAPI_"; (* mingw-w64 / storage class and parameterized type *)
+		"STDAPIV"; (* mingw-w64 / storage class and type *)
+		"STDAPIV_"; (* mingw-w64 / storage class and parameterized type *)
+		"STDMETHODIMP_"; (* mingw-w64 / storage class and parameterized type *)
+		"STDMETHODIMPV_"; (* mingw-w64 / storage class and parameterized type *)
+		"TEXT"; (* mingw32 / ## *)
+		"TYPE_ALIGNMENT"]; (* mingw-w64 / new struct in macro *)
 	"winsock2.h", [
 		"FD_SET"; (* mingw32 / conflicted with typedef *)
 		"h_addr"; (* mingw32 / alias of element and dereferencing *)

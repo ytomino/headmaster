@@ -1,5 +1,8 @@
+/* rare syntax */
+
 struct t {int e;} u = {.e = 10};
 int v[1] = {[0] = 20};
+short w[] = L"wi" L"de";
 
 int f(x, y)
 	int x;

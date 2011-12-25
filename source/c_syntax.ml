@@ -118,7 +118,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `inline of string
 		| `malloc
 		| `mode of string p * [`l_paren] p * bit_width_mode p * [`r_paren] p
-		| `noinline
+		| `noinline of string
 		| `nonnull of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
 		| `noreturn of string
 		| `nothrow
@@ -298,7 +298,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `__builtin_va_list] (* extended *)
 	and struct_or_union_specifier = [
 		(* (6.7.2.1) struct-or-union-specifier *)
-		| `with_body of struct_or_union p * identifier opt * [`l_curly] p * struct_declaration_list pe * [`r_curly] pe * attribute_list opt (* extended *)
+		| `with_body of struct_or_union p * attribute_list opt * identifier opt * [`l_curly] p * struct_declaration_list pe * [`r_curly] pe * attribute_list opt (* extended *)
 		| `no_body of struct_or_union p * identifier pe]
 	and struct_or_union = [
 		(* (6.7.2.1) struct-or-union *)

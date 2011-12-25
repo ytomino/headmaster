@@ -853,6 +853,8 @@ struct
 					`complex `long_double
 				) else if set = {no_type_specifier_set with ts_int64 = 1} then (
 					get_bit_width_int error predefined_types ps 8 `signed_long `signed_long_long
+				) else if set = {no_type_specifier_set with ts_signed = 1; ts_int64 = 1} then (
+					get_bit_width_int error predefined_types ps 8 `signed_long `signed_long_long
 				) else if set = {no_type_specifier_set with ts_unsigned = 1; ts_int64 = 1} then (
 					get_bit_width_int error predefined_types ps 8 `unsigned_long `unsigned_long_long
 				) else if set = {no_type_specifier_set with ts_builtin_va_list = 1} then (
@@ -1433,7 +1435,7 @@ struct
 			{attributes with at_malloc = true}
 		| `mode (_, _, (_, m), _) ->
 			{attributes with at_mode = Some m}
-		| `noinline ->
+		| `noinline _ ->
 			{attributes with at_inline = `noinline}
 		| `nonnull (_, _, list, _) ->
 			begin match list with
@@ -1737,7 +1739,10 @@ struct
 					derived_types, source, Some (`ref_object (item, request), t)
 				| `named (_, _, `generic_value t, _) as item ->
 					derived_types, source, Some (`ref_object (item, request), t)
-				| _ ->
+				| `named (_, _, #named_type_var, _) ->
+					error (fst x) ("a type name (" ^ name ^ ")is used as variable.");
+					derived_types, source, None
+				| _ -> (* `defined_* *)
 					error (fst x) "unimplemented!";
 					assert false
 				end
@@ -2310,7 +2315,8 @@ struct
 						begin try
 							let previous = StringMap.find id namespace.ns_namespace in
 							begin match previous with
-							| `named (_, _, `extern ((`function_type previous_prototype), _), _) ->
+							| `named (_, _, `extern ((`function_type previous_prototype), _), _)
+							| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) ->
 								(* no error when two external declaration has same prototype *)
 								if prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype <> `just then (
 									error ps ("\"" ^ id ^ "\" was conflicted.");
@@ -2456,7 +2462,7 @@ struct
 		: derived_types * namespace * source_item list * all_type option =
 	(
 		begin match snd x with
-		| `with_body (sou, id, _, decls, _, attrs) ->
+		| `with_body (sou, attrs1, id, _, decls, _, attrs2) ->
 			begin match decls with
 			| `some decls ->
 				(* ready opaque type for recursive *)
@@ -2477,7 +2483,9 @@ struct
 				in
 				(* attributes *)
 				let default_attributes = attributes_of_alignment alignment in
-				let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) default_attributes attrs in
+				let attributes = default_attributes in
+				let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs1 in
+				let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs2 in
 				let alignment = attributes.at_aligned in
 				(* items *)
 				let derived_types, namespace, source, items =

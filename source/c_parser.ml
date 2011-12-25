@@ -359,6 +359,37 @@ struct
 		end
 	);;
 	
+	let rec parse_wchars_literal
+		(_: ranged_position -> string -> unit)
+		(_: language)
+		(_: typedef_set)
+		(xs: [`cons of ranged_position * [`wchars_literal of WideString.t] * 'a in_t] lazy_t)
+		: [`wchars_literal of WideString.t] p * 'a in_t =
+	(
+		let rec loop (result: [`wchars_literal of WideString.t] p) xs = (
+			begin match xs with
+			| lazy (`cons (cs_p, (`wchars_literal str2 as cs_e), xs)) ->
+				let _, `wchars_literal str1 = result in
+				let `some (ps, ()) = (`some result) & (`some (cs_p, cs_e)) in
+				let length1 = WideString.length str1 in
+				let length2 = WideString.length str2 in
+				let m = Array.make (length1 + length2) 0l in
+				for i = 0 to length1 - 1 do
+					m.(i) <- WideString.get str1 i
+				done;
+				for i = 0 to length2 - 1 do
+					m.(length1 + i) <- WideString.get str2 i
+				done;
+				loop (ps, `wchars_literal (WideString.of_array m)) xs
+			| _ ->
+				result, xs
+			end
+		) in
+		let xs = (xs :> 'a in_t) in
+		let next_p = LazyList.hd_a xs in
+		loop (next_p, `wchars_literal (WideString.of_array [| |])) xs
+	);;
+	
 	let rec parse_pragma
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -449,7 +480,7 @@ struct
 							| lazy (`cons (comma_p, (`comma as comma_e), xs)) ->
 								let comma = `some (comma_p, comma_e) in
 								begin match xs with
-								| lazy (`cons (a_p, (`int_literal (_, a_e)), xs)) ->
+								| lazy (`cons (a_p, `numeric_literal (_, `int_literal (_, a_e)), xs)) ->
 									let n = `some (a_p, a_e) in
 									let `some (ps, ()) = (`some push) & n in
 									`some (ps, `push (push, comma, n)), xs
@@ -464,7 +495,7 @@ struct
 							end
 						| lazy (`cons (pop_p, `ident "pop", xs)) ->
 							`some (pop_p, `pop), xs
-						| lazy (`cons (a_p, (`int_literal (_, a_e)), xs)) ->
+						| lazy (`cons (a_p, `numeric_literal (_, `int_literal (_, a_e)), xs)) ->
 							`some (a_p, `set a_e), xs
 						| _ ->
 							`none, xs
@@ -637,7 +668,7 @@ struct
 				let n = p4, attr_keyword in
 				begin match xs with
 				| lazy (`cons (pa1, (`l_paren as ea1),
-					lazy (`cons (pa2, (`int_literal (_, arg)),
+					lazy (`cons (pa2, (`numeric_literal (_, `int_literal (_, arg))),
 					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
 				->
 					let l_paren = pa1, ea1 in
@@ -674,9 +705,9 @@ struct
 				| lazy (`cons (pa1, (`l_paren as ea1),
 					lazy (`cons (pa2, (#identifier as ea2),
 					lazy (`cons (pa3, (`comma as ea3),
-					lazy (`cons (pa4, (`int_literal (_, arg1)),
+					lazy (`cons (pa4, `numeric_literal (_, `int_literal (_, arg1)),
 					lazy (`cons (pa5, (`comma as ea5),
-					lazy (`cons (pa6, (`int_literal (_, arg2)),
+					lazy (`cons (pa6, `numeric_literal (_, `int_literal (_, arg2)),
 					lazy (`cons (pa7, (`r_paren as ea7), xs))))))))))))))
 				->
 					let n = p4, attr_keyword in
@@ -690,7 +721,7 @@ struct
 			| "__format_arg__" ->
 				begin match xs with
 				| lazy (`cons (pa1, (`l_paren as ea1),
-					lazy (`cons (pa2, (`int_literal (_, arg)),
+					lazy (`cons (pa2, `numeric_literal (_, (`int_literal (_, arg))),
 					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
 				->
 					let n = p4, attr_keyword in
@@ -737,8 +768,8 @@ struct
 					error (LazyList.hd_a xs) "attribute \"__mode__\" syntax error.";
 					`error, xs
 				end
-			| "__noinline__" ->
-				`some (p4, `noinline), xs
+			| "noinline" | "__noinline__" ->
+				`some (p4, `noinline attr_keyword), xs
 			| "nonnull" | "__nonnull__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
@@ -960,12 +991,8 @@ struct
 		begin match xs with
 		| lazy (`cons (id_p, (`ident _ as id_e), xs)) ->
 			(id_p, id_e), xs
-		| lazy (`cons (il_p, (`int_literal _ as il), xs)) ->
-			(il_p, il), xs
-		| lazy (`cons (fl_p, (`float_literal _ as fl_e), xs)) ->
-			(fl_p, fl_e), xs
-		| lazy (`cons (il_p, (`imaginary_literal _ as il_e), xs)) ->
-			(il_p, il_e), xs
+		| lazy (`cons (nl_p, `numeric_literal (_, nl), xs)) ->
+			(nl_p, (nl :> expression)), xs
 		| lazy (`cons (cl_p, (`char_literal _ as cl_e), xs)) ->
 			(cl_p, cl_e), xs
 		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
@@ -973,8 +1000,9 @@ struct
 			(parse_chars_literal error lang typedefs xs :> expression p * 'a in_t)
 		| lazy (`cons (wcl_p, (`wchar_literal _ as wcl_e), xs)) ->
 			(wcl_p, wcl_e), xs
-		| lazy (`cons (wcsl_p, (`wchars_literal _ as wcsl_e), xs)) ->
-			(wcsl_p, wcsl_e), xs
+		| lazy (`cons (a, (`wchars_literal _ as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			(parse_wchars_literal error lang typedefs xs :> expression p * 'a in_t)
 		| lazy (`cons (osl_p, (`objc_string_literal _ as osl_e), xs)) ->
 			(osl_p, osl_e), xs
 		| lazy (`cons (file_p, `__FILE__, xs)) ->
@@ -2037,27 +2065,34 @@ struct
 		(xs: [`cons of ranged_position * struct_or_union * 'a in_t] lazy_t)
 		: struct_or_union_specifier p * 'a in_t =
 	(
-		let handle_body h n l_c xs = (
+		let handle_body h attrs1 n l_c xs = (
 			let decls, xs = parse_struct_declaration_list_or_error error lang typedefs xs in
 			let r_curly, xs = parse_r_curly_or_error error xs in
-			let attrs, xs = parse_attribute_list_option error lang typedefs xs in
-			let `some (ps, ()) = (`some h) & (`some l_c) &^ decls &^ r_curly &^ attrs in
-			(ps, `with_body (h, n, l_c, decls, r_curly, attrs)), xs
+			let attrs2, xs = parse_attribute_list_option error lang typedefs xs in
+			let `some (ps, ()) = (`some h) & (`some l_c) &^ decls &^ r_curly &^ attrs2 in
+			(ps, `with_body (h, attrs1, n, l_c, decls, r_curly, attrs2)), xs
 		) in
 		begin match xs with
 		| lazy (`cons (su_p, (#struct_or_union as su_e), xs)) ->
 			let h = (su_p, su_e) in
+			let attrs1, xs = parse_attribute_list_option error lang typedefs xs in
 			begin match xs with
 			| lazy (`cons (lc_p, (`l_curly as lc_e), xs)) ->
 				let l_c = lc_p, lc_e in
-				handle_body h `none l_c xs
+				handle_body h attrs1 `none l_c xs
 			| _ ->
 				let id, xs = parse_identifier_or_error error xs in
 				begin match xs, id with
 				| lazy (`cons (lc_p, (`l_curly as lc_e), xs)), (`some _ as id) ->
 					let l_curly = lc_p, lc_e in
-					handle_body h id l_curly xs
+					handle_body h attrs1 id l_curly xs
 				| _ ->
+					begin match attrs1 with
+					| `some (attr1_p, _) ->
+						error attr1_p "attribute-list was specified without body."
+					| `none ->
+						()
+					end;
 					let `some (ps, ()) = (`some h) &^ id in
 					(ps, `no_body (h, id)), xs
 				end

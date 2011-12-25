@@ -145,7 +145,7 @@ struct
 			)
 		) in
 		let add_array (`array (_, e1) as t1) t2 rs = (
-			if List.exists 
+			if List.exists
 				begin fun (u1, u2) ->
 					match u1 with
 					| `array (_, f1) when f1 == e1 && u2 == t2 -> true

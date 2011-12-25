@@ -71,10 +71,11 @@ struct
 	let is_alias_of_other_macro
 		(macros: Preprocessor.define_map)
 		(macro: Preprocessor.define_item)
+		(contents: (ranged_position, LexicalElement.t, 'c) LazyList.t)
 		: Preprocessor.define_item option =
 	(
 		if macro.Preprocessor.df_has_arguments then None else
-		begin match macro.Preprocessor.df_contents with
+		begin match contents with
 		| lazy (`cons (_, `ident target_name, lazy (`nil _))) ->
 			begin try
 				let result = StringMap.find target_name macros in
@@ -107,8 +108,9 @@ struct
 				macro.Preprocessor.df_name
 			end
 		in
-		begin match is_alias_of_other_macro macros macro with
+		begin match is_alias_of_other_macro macros macro macro.Preprocessor.df_contents with
 		| Some target ->
+			(* deriving *)
 			let _, result = parse_define
 				~name
 				error
@@ -179,30 +181,44 @@ struct
 						)
 					) macro.Preprocessor.df_args last_f (ps, `any "parser error")
 				) else (
-					let op, xr = has_error := false; parse_operator_option xs in
-					if not !has_error && LazyList.is_empty xr && op <> None then (
-						begin match op with
-						| Some op -> ps, `operator (snd op)
-						| None -> assert false
-						end
-					) else
-					let spec, xr = has_error := false; Parser.parse_declaration_specifiers_option dummy_error lang typedefs xs in
-					if not !has_error && LazyList.is_empty xr && spec <> `none then (
-						begin match spec with
-						| `some spec -> ps, `declaration_specifiers (snd spec)
-						| `none -> assert false
-						end
-					) else
-					let expr, xr = has_error := false; Parser.parse_initializer_or_error dummy_error lang typedefs xs in
-					if not !has_error && LazyList.is_empty xr && expr <> `error then (
-						begin match expr with
-						| `some expr -> ps, `initializer_t (snd expr)
-						| `error -> assert false
-						end
-					) else (
-						error ps ("macro " ^ name ^ " could not be parsed.");
-						ps, `any "parser error"
-					)
+					begin match is_alias_of_other_macro macros macro xs with
+					| Some target ->
+						(* deriving *)
+						let _, result = parse_define
+							~name
+							error
+							lang
+							typedefs
+							(StringMap.remove macro.Preprocessor.df_name macros)
+							target
+						in
+						ps, result
+					| None ->
+						let op, xr = has_error := false; parse_operator_option xs in
+						if not !has_error && LazyList.is_empty xr && op <> None then (
+							begin match op with
+							| Some op -> ps, `operator (snd op)
+							| None -> assert false
+							end
+						) else
+						let spec, xr = has_error := false; Parser.parse_declaration_specifiers_option dummy_error lang typedefs xs in
+						if not !has_error && LazyList.is_empty xr && spec <> `none then (
+							begin match spec with
+							| `some spec -> ps, `declaration_specifiers (snd spec)
+							| `none -> assert false
+							end
+						) else
+						let expr, xr = has_error := false; Parser.parse_initializer_or_error dummy_error lang typedefs xs in
+						if not !has_error && LazyList.is_empty xr && expr <> `error then (
+							begin match expr with
+							| `some expr -> ps, `initializer_t (snd expr)
+							| `error -> assert false
+							end
+						) else (
+							error ps ("macro " ^ name ^ " could not be parsed.");
+							ps, `any "parser error"
+						)
+					end
 				)
 			with Assert_failure _ as e ->
 				prerr_string (Printexc.to_string e);

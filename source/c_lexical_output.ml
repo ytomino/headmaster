@@ -35,7 +35,7 @@ struct
 				"\n"
 			| `ident w ->
 				w
-			| `int_literal (prec, value) ->
+			| `numeric_literal (_, `int_literal (prec, value)) ->
 				Integer.to_based_string ~base:10 value ^
 				begin match prec with
 				| `signed_char -> ""
@@ -49,7 +49,7 @@ struct
 				| `signed_long_long -> "LL"
 				| `unsigned_long_long -> "ULL"
 				end
-			| `float_literal (prec, value) ->
+			| `numeric_literal (_, `float_literal (prec, value)) ->
 				let m, e = Real.frexp value in
 				"0x" ^
 				Real.to_based_string ~base:16 m ^
@@ -63,7 +63,7 @@ struct
 				| `decimal64 -> "DD"
 				| `decimal128 -> "DL"
 				end
-			| `imaginary_literal (prec, value) ->
+			| `numeric_literal (_, `imaginary_literal (prec, value)) ->
 				let m, e = Real.frexp value in
 				"0x" ^
 				Real.to_based_string ~base:16 m ^

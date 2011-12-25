@@ -132,8 +132,8 @@ let remove_include_dir (env: environment) (filename: string): string = (
 			let fn_length = String.length filename in
 			if x_length < fn_length then (
 				let parent_part = String.sub filename 0 x_length in
-				if parent_part = x &&
-					(filename.[x_length] = '/' || filename.[x_length] = '\\')
+				if parent_part = x
+					&& (filename.[x_length] = '/' || filename.[x_length] = '\\')
 				then (
 					let i = x_length + 1 in
 					let h_part = String.sub filename i (fn_length - i) in

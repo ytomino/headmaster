@@ -1,4 +1,5 @@
 open C_lexical;;
+open C_lexical_scanner;;
 open C_scanner_errors;;
 open Input;;
 open Position;;
@@ -9,6 +10,7 @@ module Scanner
 	(LexicalElement: LexicalElementType (Literals).S) =
 struct
 	open Literals;;
+	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
 	
 	type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
 	type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
@@ -33,17 +35,6 @@ struct
 		let unclosed_string_error (ps: ranged_position) (s: string): unit = (
 			error ps ("\"" ^ String.escaped s ^ "\" is not closed string.")
 		) in
-		let hexadecimal_literal_error (ps: ranged_position) (): unit = (
-			if not (is_known_hexadecimal_literal_error ps) then (
-				error ps "illegal hexadecimal literal."
-			)
-		) in
-		let not_10_based_float_literal_error (ps: ranged_position) (): unit = (
-			error ps "floating-point literal should be 10-based."
-		) in
-		let decimal_error (ps: ranged_position) (): unit = (
-			error ps "the suffix of decimal literal should be one of DF, DD, DL."
-		) in
 		let include_error (ps: ranged_position) (): unit = (
 			error ps "include form should be \"...\" or <...>."
 		) in
@@ -56,24 +47,6 @@ struct
 		let stream = TextStream.create filename tab_width input in
 		let tokens_in_line = ref 0 in
 		let need_eol = ref false in
-		let read_digits ~(base: int): string = (
-			let b = Buffer.create 16 in
-			while
-				begin match TextStream.hd stream with
-				| '0'..'9' as h when Char.code h - Char.code '0' < base ->
-					TextStream.junk stream;
-					Buffer.add_char b h;
-					true
-				| ('A'..'F' | 'a'..'f') as h when base = 16 ->
-					TextStream.junk stream;
-					Buffer.add_char b h;
-					true
-				| _ ->
-					false
-				end
-			do () done;
-			Buffer.contents b
-		) in
 		let read_string (p1: position) ~(quote: char): string = (
 			assert (TextStream.hd stream = quote);
 			TextStream.junk stream;
@@ -595,202 +568,45 @@ struct
 						`cons ((p1, p1), `sharp, lazy (process ()))
 					)
 				end
-			| '0'..'9' as h ->
+			| '0'..'9' ->
 				incr tokens_in_line;
 				let p1 = TextStream.position stream in
-				let base =
-					if h = '0' then (
-						TextStream.junk stream;
-						begin match TextStream.hd stream with
-						| 'x' | 'X' ->
-							TextStream.junk stream;
-							16
-						| '.' ->
-							10
-						| _ ->
-							8
-						end
-					) else (
-						10
-					)
+				let the_numeric_literal = NumericScanner.scan_numeric_literal
+					error
+					TextStream.position
+					TextStream.prev_position
+					TextStream.hd
+					TextStream.junk
+					stream
 				in
-				let integer_part =
-					let s = read_digits ~base in
-					if s <> "" then s else (
-						if base = 16 then (
-							hexadecimal_literal_error (p1, TextStream.prev_position stream) ()
-						);
-						"0"
-					)
-				in
-				begin match TextStream.hd stream with
-				| '.' | 'e' | 'E' | 'p' | 'P' as h ->
-					let v =
-						if h = '.' then (
-							TextStream.junk stream;
-							let decimal_part = read_digits ~base:10 in
-							Real.of_based_string ~base:10 (integer_part ^ "." ^ decimal_part)
-						) else (
-							Real.of_based_string ~base:10 integer_part
-						)
-					in
-					if base <> 10 then (
-						not_10_based_float_literal_error (p1, TextStream.prev_position stream) ()
-					);
-					let v =
-						begin match TextStream.hd stream with
-						| 'e' | 'E' ->
-							TextStream.junk stream;
-							let sign =
-								begin match TextStream.hd stream with
-								| '+' ->
-									TextStream.junk stream;
-									1
-								| '-' ->
-									TextStream.junk stream;
-									-1
-								| _ ->
-									1
-								end
-							in
-							let e = int_of_string (read_digits ~base:10) in
-							Real.scale v ~base:10 ~exponent:(sign * e)
-						| 'p' | 'P' ->
-							TextStream.junk stream;
-							let sign =
-								begin match TextStream.hd stream with
-								| '+' ->
-									TextStream.junk stream;
-									1
-								| '-' ->
-									TextStream.junk stream;
-									-1
-								| _ ->
-									1
-								end
-							in
-							let e = int_of_string (read_digits ~base:10) in
-							Real.scale v ~base:2 ~exponent:(sign * e)
-						| _ ->
-							v
-						end
-					in
-					begin match TextStream.hd stream with
-					| 'd' | 'D' ->
-						TextStream.junk stream;
-						begin match TextStream.hd stream with
-						| 'f' | 'F' ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `float_literal (`decimal32, v), lazy (process ()))
-						| 'd' | 'D' ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `float_literal (`decimal64, v), lazy (process ()))
-						| 'l' | 'L' ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `float_literal (`decimal128, v), lazy (process ()))
-						| _ ->
-							let p2 = TextStream.prev_position stream in
-							decimal_error (p1, p2) ();
-							`cons ((p1, p2), `float_literal (`decimal32, v), lazy (process ()))
-						end
-					| 'f' | 'F' ->
-						TextStream.junk stream;
-						let v = round_to_float v in
-						begin match TextStream.hd stream with
-						| 'i' | 'I' ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `imaginary_literal (`float, v), lazy (process ()))
-						| _ ->
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `float_literal (`float, v), lazy (process ()))
-						end
-					| 'i' | 'I' ->
-						(* is imaginary literal gcc's extended?? *)
-						TextStream.junk stream;
-						begin match TextStream.hd stream with
-						| 'f' | 'F' ->
-							TextStream.junk stream;
-							let v = round_to_float v in
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `imaginary_literal (`float, v), lazy (process ()))
-						| 'l' | 'L' ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `imaginary_literal (`long_double, v), lazy (process ()))
-						| _ ->
-							let v = round_to_double v in
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `imaginary_literal (`double, v), lazy (process ()))
-						end
-					| 'l' | 'L' ->
-						begin match TextStream.hd stream with
-						| 'i' | 'I' ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `imaginary_literal (`long_double, v), lazy (process ()))
-						| _ ->
-							TextStream.junk stream;
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `float_literal (`long_double, v), lazy (process ()))
-						end
-					| _ ->
-						let v = round_to_double v in
-						let p2 = TextStream.prev_position stream in
-						`cons ((p1, p2), `float_literal (`double, v), lazy (process ()))
-					end
-				| 'U' | 'u' ->
-					TextStream.junk stream;
-					begin match TextStream.hd stream with
-					| 'L' | 'l' ->
-						TextStream.junk stream;
-						begin match TextStream.hd stream with
-						| 'L' | 'l' ->
-							TextStream.junk stream;
-							let v = Integer.of_based_string ~base integer_part in
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `int_literal (`unsigned_long_long, v), lazy (process ()))
-						| _ ->
-							let v = Integer.of_based_string ~base integer_part in
-							let p2 = TextStream.prev_position stream in
-							`cons ((p1, p2), `int_literal (`unsigned_long, v), lazy (process ()))
-						end
-					| _ ->
-						let v = Integer.of_based_string ~base integer_part in
-						let p2 = TextStream.prev_position stream in
-						`cons ((p1, p2), `int_literal (`unsigned_int, v), lazy (process ()))
-					end
-				| 'L' | 'l' ->
-					TextStream.junk stream;
-					begin match TextStream.hd stream with
-					| 'L' | 'l' ->
-						TextStream.junk stream;
-						let v = Integer.of_based_string ~base integer_part in
-						let p2 = TextStream.prev_position stream in
-						`cons ((p1, p2), `int_literal (`signed_long_long, v), lazy (process ()))
-					| _ ->
-						let v = Integer.of_based_string ~base integer_part in
-						let p2 = TextStream.prev_position stream in
-						`cons ((p1, p2), `int_literal (`signed_long, v), lazy (process ()))
-					end
-				| _ ->
-					let v = Integer.of_based_string ~base integer_part in
-					let p2 = TextStream.prev_position stream in
-					`cons ((p1, p2), `int_literal (`signed_int, v), lazy (process ()))
-				end
+				let p2 = TextStream.prev_position stream in
+				`cons ((p1, p2), the_numeric_literal, lazy (process ()))
 			| '\'' ->
 				incr tokens_in_line;
 				let p1 = TextStream.position stream in
 				let s = read_string p1 ~quote:'\'' in
 				let p2 = TextStream.prev_position stream in
-				if String.length s <> 1 then (
-					char_literal_error (p1, p2) s
-				);
-				let c = (if s = "" then '\x00' else s.[0]) in
-				`cons ((p1, p2), `char_literal c, lazy (process ()))
+				let length = String.length s in
+				let the_char_literal =
+					if length = 0 then (
+						char_literal_error (p1, p2) s;
+						`char_literal '\x00'
+					) else if length = 1 then (
+						`char_literal s.[0]
+					) else (
+						(* 'abcd' = 'a' << 32 | 'b' << 16 | 'c' << 8 | 'd' *)
+						let rec loop i result =
+							if i >= length then result else
+							let result = Integer.logor
+								(Integer.shift_left result 8)
+								(Integer.of_int (int_of_char s.[i]))
+							in
+							loop (i + 1) result
+						in
+						`numeric_literal ("", `int_literal (`unsigned_int, loop 0 Integer.zero))
+					)
+				in
+				`cons ((p1, p2), the_char_literal, lazy (process ()))
 			| '\"' ->
 				incr tokens_in_line;
 				let p1 = TextStream.position stream in

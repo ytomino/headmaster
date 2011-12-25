@@ -1,4 +1,5 @@
 open C_lexical;;
+open C_lexical_scanner;;
 open C_preprocessor_errors;;
 open Position;;
 open Value;;
@@ -26,13 +27,17 @@ struct
 			df_varargs: bool;
 			df_contents: in_t};;
 		
+		type concatable_element = [
+			| `ident of string
+			| `numeric_literal of string * LexicalElement.numeric_literal];;
+		
 		val preprocess:
 			(ranged_position -> string -> unit) ->
 			language ->
 			(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
 			bool ->
 			define_map ->
-			(in_t * out_t) StringMap.t ->
+			((ranged_position * concatable_element) option * out_t) StringMap.t ->
 			in_t ->
 			out_prim;;
 		
@@ -45,11 +50,18 @@ module Preprocessor
 	: PreprocessorType (Literals) (LexicalElement).S =
 struct
 	open Literals;;
+	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
 	
 	type include_from = [`user | `system];;
 	
-	let __STDC__ = `int_literal (`signed_int, Integer.one);;
-	let __STDC_VERSION__ = `int_literal (`signed_long, Integer.of_int 199901);;
+	let the_one = `numeric_literal (
+		"1",
+		`int_literal (`signed_int, Integer.one));;
+	
+	let __STDC__ = the_one;;
+	let __STDC_VERSION__ = `numeric_literal (
+		"199901L",
+		`int_literal (`signed_long, Integer.of_int 199901));;
 	
 	type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
 	and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
@@ -63,7 +75,11 @@ struct
 		df_args: (ranged_position * string) list;
 		df_varargs: bool;
 		df_contents: in_t};;
-		
+	
+	type concatable_element = [
+		| `ident of string
+		| `numeric_literal of string * LexicalElement.numeric_literal];;
+	
 	let leinteger_of_bool (n: bool): Integer.t = (
 		if n then (
 			Integer.one
@@ -151,7 +167,7 @@ struct
 				let value, xs = calc_term shortcircuit xs in
 				let value' = leinteger_of_bool (not (bool_of_leinteger value)) in
 				value', xs
-			| lazy (`cons (_, `int_literal (_, value), xs)) ->
+			| lazy (`cons (_, `numeric_literal (_, `int_literal (_, value)), xs)) ->
 				value, xs
 			| lazy (`cons (_, `char_literal value, xs)) ->
 				let x =
@@ -161,7 +177,7 @@ struct
 				in
 				Integer.of_int x, xs
 			| lazy (`cons (ps, `ident name, xs)) ->
-				if not shortcircuit && not (is_known_preprocessor_error ps name) then (
+				if not shortcircuit && not (is_known_undefined_macros ps name) then (
 					error ps (name ^ " is undefined.")
 				);
 				Integer.zero, xs
@@ -350,13 +366,62 @@ struct
 		LazyList.concat ys
 	);;
 	
+	let merge_positions (ps1: ranged_position) (ps2: ranged_position): ranged_position = (
+		let (filename1, _, line1, column1 as ps1_fst), _ = ps1 in
+		let _, (filename2, _, line2, column2 as ps2_snd) = ps2 in
+		if filename1 = filename2 && (line1 < line2 || (line1 = line2 && column1 < column2)) then (
+			ps1_fst, ps2_snd
+		) else (
+			ps1
+		)
+	);;
+	
+	let rescan
+		(error: ranged_position -> string -> unit)
+		(ps: ranged_position)
+		(s: string)
+		: LexicalElement.t =
+	(
+		assert (String.length s > 0);
+		if s.[0] >= '0' && s.[0] <= '9' then (
+			let error_flag = ref false in
+			let cursor = ref 0 in
+			let result = NumericScanner.scan_numeric_literal
+				(fun _ _ -> error_flag := true)
+				(fun _ -> 0)
+				(fun _ -> 0)
+				(fun _ -> if !cursor >= String.length s then '\x1a' else s.[!cursor])
+				(fun _ -> incr cursor)
+				s
+			in
+			if !error_flag || !cursor <> String.length s then (
+				error ps "concatenated token by ## is not able to be re-parsed."
+			);
+			result
+		) else (
+			`ident s
+		)
+	);;
+	
+	let for_d_sharp
+		(xs: (ranged_position, LexicalElement.t, 'c) LazyList.t)
+		: (ranged_position * concatable_element) option =
+	(
+		begin match xs with
+		| lazy (`cons (ps, (`ident _ | `numeric_literal _ as e), lazy (`nil _))) ->
+			Some (ps, e)
+		| _ ->
+			None
+		end
+	);;
+	
 	let rec preprocess
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim)
 		(in_macro_expr: bool)
 		(predefined: define_map)
-		(macro_arguments: (in_t * out_t) StringMap.t)
+		(macro_arguments: ((ranged_position * concatable_element) option * out_t) StringMap.t)
 		(xs: in_t)
 		: out_prim =
 	(
@@ -402,44 +467,45 @@ struct
 			if item.df_has_arguments then (
 				begin match xs with
 				| lazy (`cons (_, `l_paren, xs)) ->
-					let arguments, xs = take_arguments error xs in
+					let in_arguments, xs = take_arguments error xs in
 					let the_macro_arguments =
 						let rec loop
 							(names: (ranged_position * string) list)
-							(arguments: (in_t * comma_token option) list)
-							(defined: (in_t * out_t) StringMap.t)
-							: (in_t * out_t) StringMap.t =
+							(in_arguments: (in_t * comma_token option) list)
+							(out_arguments: ((ranged_position * concatable_element) option * out_t) StringMap.t)
+							: ((ranged_position * concatable_element) option * out_t) StringMap.t =
 						(
-							begin match names, arguments with
+							begin match names, in_arguments with
 							| [], [] ->
-								defined
+								out_arguments
 							| [], _ ->
 								if item.df_varargs then (
 									let n = string_of_rw `__VA_ARGS__ in
-									let a = lazy (concat_with_comma arguments) in
+									let a = lazy (concat_with_comma in_arguments) in
 									let expanded_a = lazy (preprocess error lang read false predefined macro_arguments a) in
-									StringMap.add n (a, expanded_a) defined
+									StringMap.add n (for_d_sharp expanded_a, expanded_a) out_arguments
 								) else (
 									error ps "too many arguments.";
-									defined
+									out_arguments
 								)
 							| _ :: _, [] ->
 								error ps "too few arguments.";
-								defined
-							| n :: nr, (a, _) :: ar ->
+								out_arguments
+							| (_, n) :: nr, (a, _) :: ar ->
 								let a_pair =
 									begin match a with
 									| lazy (`cons (_, `ident a_name, lazy (`nil _))) when StringMap.mem a_name macro_arguments ->
-										StringMap.find a_name macro_arguments
+										let expanded_a = snd (StringMap.find a_name macro_arguments) in
+										for_d_sharp expanded_a, expanded_a
 									| _ ->
 										let expanded_a = lazy (preprocess error lang read false predefined macro_arguments a) in
-										a, expanded_a
+										for_d_sharp a, expanded_a
 									end
 								in
-								loop nr ar (StringMap.add (snd n) a_pair defined)
+								loop nr ar (StringMap.add n a_pair out_arguments)
 							end
 						) in
-						loop item.df_args arguments StringMap.empty
+						loop item.df_args in_arguments StringMap.empty
 					in
 					let ys =
 						let removed = StringMap.remove name predefined in
@@ -465,9 +531,9 @@ struct
 				let ys = lazy (preprocess error lang read in_macro_expr removed StringMap.empty item.df_contents) in
 				begin match ys with
 				| lazy (`cons (_, `ident replaced, lazy (`nil _)))
-					when StringMap.mem replaced removed &&
-						(StringMap.find replaced removed).df_has_arguments &&
-						(match xs with lazy (`cons (_, `l_paren, _)) -> true | _ -> false)
+					when StringMap.mem replaced removed
+						&& (StringMap.find replaced removed).df_has_arguments
+						&& (match xs with lazy (`cons (_, `l_paren, _)) -> true | _ -> false)
 				->
 					(* re-expanding function-macro with following arguments *)
 					(* replace position-info to current *)
@@ -482,46 +548,50 @@ struct
 				end
 			)
 		) in
-		let process_d_sharp (ps1: ranged_position) (`ident name1 as it1) (ds_p: ranged_position) (xs: in_t): out_prim = (
+		let process_d_sharp (ps1: ranged_position) (it1: concatable_element) (ds_p: ranged_position) (xs: in_t): out_prim = (
+			let name1 =
+				match it1 with
+				| `ident name1 -> name1
+				| `numeric_literal (name1, _) -> name1
+			in
 			begin match xs with
 			| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
 				let arg = StringMap.find name2 macro_arguments in
-				begin match fst arg with (* ## use unexpanded token *)
-				| lazy (`cons (ps2, `ident name2, ys)) ->
-					let merged_token = `ident (name1 ^ name2) in
-					let merged_ps = fst ps1, snd ps2 in
-					let rs = lazy (LazyList.append ys xs) in
-					`cons (merged_ps, merged_token, lazy (
-						preprocess error lang read in_macro_expr predefined macro_arguments rs))
-				| lazy (`cons (ps2, (`chars_literal s), ys)) ->
+				begin match arg with
+				| Some (ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* ## use unexpanded token *)
+					let merged_ps = merge_positions ps1 ps2 in
+					let merged_token = rescan error merged_ps (name1 ^ name2) in
+					preprocess error lang read in_macro_expr predefined macro_arguments
+						(lazy (`cons (merged_ps, merged_token, xs)))
+				| None, lazy (`cons (ps2, `chars_literal s, ys)) ->
 					if name1 = "L" then (
 						let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
+						let merged_ps = merge_positions ps1 ps2 in
 						let merged_token = `wchars_literal (WideString.of_array s) in
-						let merged_ps = fst ps1, snd ps2 in
 						let rs = lazy (LazyList.append ys xs) in
 						`cons (merged_ps, merged_token, lazy (
 							preprocess error lang read in_macro_expr predefined macro_arguments rs))
 					) else (
 						error ds_p "## requires two identifiers.";
-						`cons (ps1, it1, lazy (
+						`cons (ps1, (it1 :> LexicalElement.t), lazy (
 							LazyList.append (snd arg) (lazy (
 								preprocess error lang read in_macro_expr predefined macro_arguments xs))))
 					)
 				| _ ->
 					error ds_p "## requires two identifiers.";
-					`cons (ps1, it1, lazy (
+					`cons (ps1, (it1 :> LexicalElement.t), lazy (
 						LazyList.append (snd arg) (lazy (
 							preprocess error lang read in_macro_expr predefined macro_arguments xs))))
 				end
-			| lazy (`cons (ps2, `ident name2, xs)) ->
-				let merged_token = `ident (name1 ^ name2) in
-				let merged_ps = fst ps1, snd ps2 in
-				`cons (merged_ps, merged_token, lazy (
-					preprocess error lang read in_macro_expr predefined macro_arguments xs))
+			| lazy (`cons (ps2, (`ident name2 | `numeric_literal (name2, _)), xs)) ->
+				let merged_ps = merge_positions ps1 ps2 in
+				let merged_token = rescan error merged_ps (name1 ^ name2) in
+				preprocess error lang read in_macro_expr predefined macro_arguments
+					(lazy (`cons (merged_ps, merged_token, xs)))
 			| _ ->
 				error ds_p "## requires two identifiers.";
 				(* skip ## *)
-				`cons (ps1, `ident name1, lazy (
+				`cons (ps1, (it1 :> LexicalElement.t), lazy (
 					preprocess error lang read in_macro_expr predefined macro_arguments xs))
 			end
 		) in
@@ -750,9 +820,22 @@ struct
 							lazy (`cons (_, `r_paren,
 								lazy (`cons (_, `end_of_line, xs))))))))
 					->
-						if StringMap.mem target_name predefined then (
-							error target_ps (target_name ^ " is defined. (not supported)");
-						);
+						let push_or_pop =
+							if pragma = "push_macro" then `push else `pop
+						in
+						let predefined =
+							begin match push_or_pop with
+							| `push ->
+								if StringMap.mem target_name predefined
+									&& not (is_known_defined_push_macros ps target_name)
+								then (
+									error target_ps (target_name ^ " is defined. (not supported)");
+								);
+								predefined
+							| `pop ->
+								StringMap.remove target_name predefined
+							end
+						in
 						preprocess error lang read in_macro_expr predefined StringMap.empty xs
 					| _ ->
 						error ps ("#pragma " ^ pragma ^ " syntax error.");
@@ -768,19 +851,12 @@ struct
 				begin match xs with
 				| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
 					let arg = StringMap.find name2 macro_arguments in
-					begin match fst arg with (* # use unexpanded token *)
-					| lazy (`cons (ps2, `ident name2, ys)) ->
+					begin match arg with
+					| Some (ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* # use unexpanded token *)
 						let chars_token = `chars_literal name2 in
-						let merged_ps = fst ps, snd ps2 in
-						let rs = lazy (LazyList.append ys xs) in
+						let merged_ps = merge_positions ps ps2 in
 						`cons (merged_ps, chars_token, lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments rs))
-					| lazy (`cons (ps2, `int_literal (_, n), ys)) ->
-						let chars_token = `chars_literal (Integer.to_based_string ~base:10 n) in
-						let merged_ps = fst ps, snd ps2 in
-						let rs = lazy (LazyList.append ys xs) in
-						`cons (merged_ps, chars_token, lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments rs))
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
 					| _ ->
 						error ps "# requires one identifier.";
 						LazyList.append (snd arg) (lazy (
@@ -788,7 +864,7 @@ struct
 					end
 				| lazy (`cons (ps2, `ident name2, xs)) ->
 					let chars_token = `chars_literal name2 in
-					let merged_ps = fst ps, snd ps2 in
+					let merged_ps = merge_positions ps ps2 in
 					`cons (merged_ps, chars_token, lazy (
 						preprocess error lang read in_macro_expr predefined macro_arguments xs))
 				| _ ->
@@ -802,8 +878,9 @@ struct
 						lazy (`cons ((_, p2), `r_paren, xs))))))
 				| lazy (`cons ((_, p2), `ident name, xs)) ->
 					let (p1, _) = ps in
-					let cond = StringMap.mem name predefined in
-					let value = `int_literal (`signed_int, leinteger_of_bool cond) in
+					let cond = leinteger_of_bool (StringMap.mem name predefined) in
+					let image = Integer.to_based_string ~base:10 cond in
+					let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
 					`cons ((p1, p2), value, lazy (
 						preprocess error lang read true predefined macro_arguments xs))
 				| lazy (`cons (_, `l_paren,
@@ -812,8 +889,9 @@ struct
 				| lazy (`cons ((_, p2), (#extended_word as ew), xs)) ->
 					let (p1, _) = ps in
 					let name = string_of_ew ew in
-					let cond = StringMap.mem name predefined in
-					let value = `int_literal (`signed_int, leinteger_of_bool cond) in
+					let cond = leinteger_of_bool (StringMap.mem name predefined) in
+					let image = Integer.to_based_string ~base:10 cond in
+					let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
 					`cons ((p1, p2), value, lazy (
 						preprocess error lang read true predefined macro_arguments xs))
 				| lazy (`cons (_, `l_paren,
@@ -821,8 +899,7 @@ struct
 						lazy (`cons ((_, p2), `r_paren, xs))))))
 				| lazy (`cons ((_, p2), #compiler_macro, xs)) ->
 					let (p1, _) = ps in
-					let value = `int_literal (`signed_int, Integer.one) in
-					`cons ((p1, p2), value, lazy (
+					`cons ((p1, p2), the_one, lazy (
 						preprocess error lang read true predefined macro_arguments xs))
 				| _ ->
 					error ps "defined requires single name of macro.";
@@ -838,9 +915,9 @@ struct
 				let arg = StringMap.find name macro_arguments in
 				begin match xs with
 				| lazy (`cons (ds_p, `d_sharp, xs)) ->
-					begin match fst arg with (* ## use unexpanded token *)
-					| lazy (`cons (ps1, (`ident _ as name1), lazy (`nil _))) ->
-						process_d_sharp ps1 name1 ds_p xs
+					begin match arg with
+					| Some (ps1, it1), _ -> (* ## use unexpanded token *)
+						process_d_sharp ps1 it1 ds_p xs
 					| _ ->
 						LazyList.append (snd arg) (lazy (
 							preprocess error lang read in_macro_expr predefined macro_arguments xs))
@@ -851,8 +928,8 @@ struct
 						| lazy (`cons (_, (`ident replaced), lazy (`nil _))) ->
 							begin match xs with
 							| lazy (`cons (_, `l_paren, _))
-								when StringMap.mem replaced predefined &&
-									(StringMap.find replaced predefined).df_has_arguments
+								when StringMap.mem replaced predefined
+									&& (StringMap.find replaced predefined).df_has_arguments
 							->
 								true
 							| _ ->
@@ -875,10 +952,10 @@ struct
 				process_replace ps token name xs
 			| #extended_word as ew when StringMap.mem (string_of_ew ew) predefined ->
 				process_replace ps token (string_of_ew ew) xs
-			| `ident _ as name1 ->
+			| `ident _ | `numeric_literal _ as it1 -> (* ##-able *)
 				begin match xs with
 				| lazy (`cons (ds_p, `d_sharp, xs)) ->
-					process_d_sharp ps name1 ds_p xs
+					process_d_sharp ps it1 ds_p xs
 				| _ ->
 					`cons (ps, token, lazy (
 						preprocess error lang read in_macro_expr predefined macro_arguments xs))

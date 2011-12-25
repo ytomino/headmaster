@@ -297,12 +297,15 @@ let special_name_mapping = make_mapmap [
 		"_exit", "C_exit"; (* darwin9 / conflicted with _Exit *)
 		"_Exit", "C_Exit2"; (* darwin9 / conflicted with _exit *)
 		"execvP", "execvP2"]; (* darwin9 / conflicted with execvp *)
+	"windef", [
+		"FLOAT", "C_FLOAT"]; (* mingw-w64 / conflicted with float *)
 	"zlib", [
 		"zlib_version", "get_zlib_version"]; (* zlib / conflicted with ZLIB_VERSION *)
 	"", [ (* predefined *)
 		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
 		"__MACH__", "defined_MACH"; (* darwin9 / conflicted with include dir <mach/...> *)
-		"__PIC__", "PIC"]];; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
+		"__PIC__", "PIC"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
+		"WINNT", "defined_WINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
 
 module Translate
 	(Literals: LiteralsType)
@@ -1460,6 +1463,46 @@ struct
 		) duplicated
 	);;
 	
+	let make_pp_struct_items
+		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
+		~(current: string)
+		(fields: (string * Semantics.struct_item) list)
+		: (formatter -> unit) list =
+	(
+		List.map (fun (field_name, (_, field_type, field_bits_info, _)) (ff: formatter) ->
+			pp_print_space ff ();
+			pp_open_box ff indent;
+			pp_print_string ff field_name;
+			pp_print_string ff " :";
+			pp_print_space ff ();
+			begin match field_bits_info with
+			| Some (_, _, true) ->
+				()
+			| Some (_, _, false) | None ->
+				pp_print_string ff "aliased "
+			end;
+			pp_type_name ff ~mappings ~current ~where:`subtype field_type;
+			begin match field_bits_info with
+			| Some (_, field_bits, true) ->
+				begin match Semantics.resolve_typedef field_type with
+				| #signed_int_prec ->
+					fprintf ff " range %s .. %s"
+						(Integer.to_based_string ~base:10 (Integer.neg (Integer.shift_left Integer.one (field_bits - 1))))
+						(Integer.to_based_string ~base:10 (Integer.sub (Integer.shift_left Integer.one (field_bits - 1)) Integer.one))
+				| #unsigned_int_prec ->
+					fprintf ff " range 0 .. %s"
+						(Integer.to_based_string ~base:10 (Integer.sub (Integer.shift_left Integer.one field_bits) Integer.one))
+				| _ ->
+					assert false (* bit field has non-integer type *)
+				end
+			| Some (_, _, false) | None ->
+				()
+			end;
+			pp_print_char ff ';';
+			pp_close_box ff ()
+		) fields
+	);;
+	
 	let pp_struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
@@ -1470,39 +1513,8 @@ struct
 		: unit =
 	(
 		let _, fields = name_mapping_for_struct_items items in
-		pp_type ff name pp_record_definition (
-			List.map (fun (field_name, (_, field_type, field_bits_info, _)) (ff: formatter) ->
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				pp_print_string ff field_name;
-				pp_print_string ff " :";
-				pp_print_space ff ();
-				begin match field_bits_info with
-				| Some (_, _, true) ->
-					()
-				| Some (_, _, false) | None ->
-					pp_print_string ff "aliased "
-				end;
-				pp_type_name ff ~mappings ~current ~where:`subtype field_type;
-				begin match field_bits_info with
-				| Some (_, field_bits, true) ->
-					begin match Semantics.resolve_typedef field_type with
-					| #signed_int_prec ->
-						fprintf ff " range %s .. %s"
-							(Integer.to_based_string ~base:10 (Integer.neg (Integer.shift_left Integer.one (field_bits - 1))))
-							(Integer.to_based_string ~base:10 (Integer.sub (Integer.shift_left Integer.one (field_bits - 1)) Integer.one))
-					| #unsigned_int_prec ->
-						fprintf ff " range 0 .. %s"
-							(Integer.to_based_string ~base:10 (Integer.sub (Integer.shift_left Integer.one field_bits) Integer.one))
-					| _ ->
-						assert false (* bit field has non-integer type *)
-					end
-				| Some (_, _, false) | None ->
-					()
-				end;
-				pp_print_char ff ';';
-				pp_close_box ff ()
-			) fields);
+		pp_type ff name pp_record_definition
+			(make_pp_struct_items ~mappings ~current fields);
 		if Semantics.is_bitfield items then (
 			pp_print_space ff ();
 			pp_open_vbox ff indent;
@@ -1542,6 +1554,7 @@ struct
 		(items: Semantics.struct_item list)
 		: unit =
 	(
+		let has_bitfield = ref false in
 		let field_map, _ = name_mapping_for_struct_items items in
 		pp_type ff name
 			~pp_discriminants:[
@@ -1562,8 +1575,19 @@ struct
 							fprintf ff "when others =>"
 						);
 						if item_name = "" then (
-							fprintf ff "@ **** anonymous struct in union / unimplemented. ****\n";
-							assert false
+							(* anonymous struct in union *)
+							begin match item_type with
+							| `anonymous (_, (`struct_type (_, items)))
+							| `named (_, _, (`struct_type (_, items)), _) ->
+								let _, fields = name_mapping_for_struct_items items in
+								List.iter (fun (pp_item: formatter -> unit) ->
+									pp_item ff
+								) (make_pp_struct_items ~mappings ~current fields);
+								(* bitfield ? *)
+								has_bitfield := !has_bitfield || Semantics.is_bitfield items
+							| _ ->
+								assert false (* does not come here *)
+							end
 						) else (
 							assert (StringMap.mem item_name field_map);
 							let item_name = StringMap.find item_name field_map in
@@ -1580,7 +1604,10 @@ struct
 				pp_close_box ff ();
 				fprintf ff "@ end case;"];
 		pp_pragma_unchecked_union ff name;
-		pp_pragma_convention ff `c_pass_by_copy name
+		pp_pragma_convention ff `c_pass_by_copy name;
+		if !has_bitfield then (
+			fprintf ff "@ --  attention: %s has bit-field member!" name;
+		);
 	);;
 	
 	let pp_anonymous_type
@@ -1917,57 +1944,8 @@ struct
 		end
 	);;
 	
-	let pp_string_literal (ff: formatter) (t: [`c | `ada]) (s: string): unit = (
-		let rec loop q i = (
-			if i >= String.length s then (
-				if q then pp_print_char ff '\"'
-			) else (
-				begin match s.[i] with
-				| '\x00' .. '\x1f' | '\x80' .. '\xff' as c ->
-					if q then pp_print_char ff '\"';
-					if i > 0 then fprintf ff "@ & ";
-					begin match t with
-					| `c ->
-						fprintf ff "char'Val (%d)" (int_of_char c)
-					| `ada ->
-						begin match c with
-						| '\t' -> fprintf ff "ASCII.HT";
-						| '\r' -> fprintf ff "ASCII.CR";
-						| '\n' -> fprintf ff "ASCII.LF"; (* @\n *)
-						| _ -> fprintf ff "Character'Val (%d)" (int_of_char c)
-						end
-					end;
-					loop false (i + 1)
-				| c ->
-					if not q then (
-						if i > 0 then fprintf ff "@ & ";
-						pp_print_char ff '\"'
-					);
-					begin match c with
-					| '\"' ->
-						pp_print_string ff "\"\"";
-					| _ ->
-						pp_print_char ff c
-					end;
-					loop true (i + 1)
-				end
-			)
-		) in
-		if s = "" then (
-			fprintf ff "\"\""
-		) else if String.length s = 1 then (
-			fprintf ff "(0 => %a)" pp_char_literal s.[0]
-		) else (
-			loop false 0
-		)
-	);;
-	
-	let pp_wide_char_literal (ff: formatter) (c: WideString.elm): unit = (
-		if c <= 0x1fl || c >= 0x80l then (
-			fprintf ff "wchar_t'Val (%ld)" c
-		) else (
-			fprintf ff "\'%c\'" (char_of_int (Int32.to_int c))
-		)
+	let pp_wchar_literal (ff: formatter) (c: WideString.elm): unit = (
+		fprintf ff "wchar_t'Val (%ld)" c
 	);;
 	
 	let pp_wide_string_literal (ff: formatter) (t: [`c | `ada]) (s: WideString.t): unit = (
@@ -2004,7 +1982,7 @@ struct
 		if WideString.length s = 0 then (
 			fprintf ff "\"\""
 		) else if WideString.length s = 1 then (
-			fprintf ff "(0 => %a)" pp_wide_char_literal (WideString.get s 0)
+			fprintf ff "(0 => %a)" pp_wchar_literal (WideString.get s 0)
 		) else (
 			loop false 0
 		)
@@ -2091,10 +2069,9 @@ struct
 		| `char_literal value, _ ->
 			pp_char_literal ff value
 		| `chars_literal value, _ ->
-			pp_string_literal ff `c (value ^ "\x00")
-		| `wchar_literal _, _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+			pp_string_literal ff pp_char_literal 0 (value ^ "\x00")
+		| `wchar_literal value, _ ->
+			pp_wchar_literal ff value
 		| `wchars_literal value, _ ->
 			let length = WideString.length value in
 			let z = Array.make (length + 1) 0l in
@@ -2580,10 +2557,10 @@ struct
 		let assignment_expressions = Finding.find_all_assignment_in_expression [] expr in
 		let conditional_expressions = Finding.find_all_conditional_in_expression [] expr in
 		let statement_expressions = Finding.find_all_extension_statement_expression_in_expression [] expr in
-		if chars_literals <> [] ||
-			assignment_expressions <> [] ||
-			conditional_expressions <> [] ||
-			statement_expressions <> []
+		if chars_literals <> []
+			|| assignment_expressions <> []
+			|| conditional_expressions <> []
+			|| statement_expressions <> []
 		then (
 			pp_print_space ff ();
 			pp_open_vbox ff indent;
@@ -2597,7 +2574,7 @@ struct
 				| `chars_literal value ->
 					pp_open_box ff indent;
 					fprintf ff "const_%s : constant char_array := " hash;
-					pp_string_literal ff `c (value ^ "\x00");
+					pp_string_literal ff pp_char_literal 0 (value ^ "\x00");
 					fprintf ff ";";
 					pp_close_box ff ()
 				| _ ->
@@ -2767,7 +2744,7 @@ struct
 			pp_print_space ff ();
 			pp_open_box ff indent;
 			fprintf ff "Asm (";
-			pp_string_literal ff `ada template;
+			pp_string_literal ff pp_character_literal 1 template;
 			if out_args <> [] then (
 				let handle (n, expr) = (
 					pp_type_name ff ~mappings ~current ~where:`name (snd expr);
@@ -2834,8 +2811,8 @@ struct
 				pp_print_char ff '\"';
 				pp_close_box ff ()
 			);
-			if volatile = `volatile ||
-				in_args = [] (* suppressing warning by gnat *)
+			if volatile = `volatile
+				|| in_args = [] (* suppressing warning by gnat *)
 			then (
 				fprintf ff ",@ Volatile => True"
 			);
@@ -3557,8 +3534,8 @@ struct
 		let casts = List.fold_left Finding.find_all_cast_in_source_item [] items_having_bodies in
 		let casts = List.fold_left (Finding.find_all_pointer_arithmetic_in_source_item ptrdiff_t) casts items_having_bodies in
 		(* used sized arrays *)
-		let sized_arrays = List.fold_left Finding.find_all_sized_array_in_source_item [] items in
-		let sized_arrays = List.fold_left Finding.find_all_sized_array_in_derived_type sized_arrays derived_types in
+		let used_sized_arrays = List.fold_left Finding.find_all_sized_array_in_source_item [] items in
+		let all_sized_arrays = List.fold_left Finding.find_all_sized_array_in_derived_type used_sized_arrays derived_types in
 		(* with clauses *)
 		let with_packages =
 			let items = (items :> Semantics.all_item list) in
@@ -3610,7 +3587,7 @@ struct
 					(* derived types of predefined types *)
 					List.iter (fun (item, _) ->
 						pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, [])
-							~casts ~sized_arrays
+							~casts ~sized_arrays:all_sized_arrays
 							~current (item :> Semantics.all_type) derived_types
 					) (fst predefined_types)
 				) else (
@@ -3662,7 +3639,7 @@ struct
 						| _ ->
 							assert false (* does not come here *)
 						end
-					) sized_arrays
+					) used_sized_arrays
 				);
 				(* items *)
 				let rec extern_exists_before
@@ -3705,7 +3682,7 @@ struct
 						| #Semantics.anonymous_type
 						| `named (_, _, #Semantics.named_type_var, _) as t ->
 							pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping)
-								~casts ~sized_arrays
+								~casts ~sized_arrays:all_sized_arrays
 								~current (t :> Semantics.all_type) derived_types
 						| _ ->
 							()
