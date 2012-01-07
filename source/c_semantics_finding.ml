@@ -7,90 +7,227 @@ module Finding
 struct
 	open Semantics;;
 	
-	(* expression *)
+	(* types *)
 	
-	let result_type_of_element_access
-		(route: Semantics.struct_item list)
-		: Semantics.all_type =
+	let rec find_all_sized_array_in_source_item
+		(rs : all_type list)
+		(item: source_item)
+		: all_type list =
 	(
-		let last_route = List.fold_left (fun _ r -> r) (List.hd route) route in
-		let _, result_type, _, _ = last_route in
-		result_type
+		begin match item with
+		| `named (_, _, `defined_element_access (_, route), _) ->
+			(* sized array as result type *)
+			let t = tail_type_of_element_access route in
+			begin match t with
+			| `array (Some _, _) ->
+				if List.memq t rs then rs else t :: rs
+			| _ ->
+				rs
+			end
+		| `named (_, _, `defined_alias item, _) ->
+			find_all_sized_array_in_source_item rs (item :> Semantics.source_item)
+		| _ ->
+			rs
+		end
 	);;
 	
-	let lvalue_referenced_in_statement (variable: variable): statement -> bool =
+	let find_all_sized_array_in_derived_type
+		(rs : all_type list)
+		(t: derived_type)
+		: all_type list =
+	(
+		let rec process rs (t: all_type) = (
+			begin match t with
+			| `array (Some _, _) as t ->
+				t :: rs
+			| `volatile t ->
+				process rs (t :> all_type)
+			| `const t ->
+				process rs (t :> all_type)
+			| `named (_, _, `typedef t, _) ->
+				process rs t
+			| _ ->
+				rs
+			end
+		) in
+		begin match t with
+		| `pointer t -> process rs (t :> all_type)
+		| `array (_, t) -> process rs (t :> all_type)
+		| `restrict t -> process rs (t :> all_type)
+		| `volatile t -> process rs (t :> all_type)
+		| `const t -> process rs (t :> all_type)
+		end
+	);;
+	
+	let rec compare_types_by_structure (a: all_type) (b: all_type): bool = (
+		begin match a with
+		| `pointer a_t ->
+			begin match b with
+			| `pointer b_t ->
+				compare_types_by_structure a_t b_t
+			| _ ->
+				false
+			end
+		| `array (a_n, a_t) ->
+			begin match b with
+			| `array (b_n, b_t) when a_n = b_n ->
+				compare_types_by_structure (a_t :> all_type) (b_t :> all_type)
+			| _ ->
+				false
+			end
+		| `restrict a_t ->
+			begin match b with
+			| `restrict b_t ->
+				compare_types_by_structure (a_t :> all_type) (b_t :> all_type)
+			| _ ->
+				false
+			end
+		| `volatile a_t ->
+			begin match b with
+			| `volatile b_t ->
+				compare_types_by_structure (a_t :> all_type) (b_t :> all_type)
+			| _ ->
+				false
+			end
+		| `const a_t ->
+			begin match b with
+			| `const b_t ->
+				compare_types_by_structure (a_t :> all_type) (b_t :> all_type)
+			| _ ->
+				false
+			end
+		| `named (_, a_name, (`opaque_enum | `enum _), _) ->
+			begin match b with
+			| `named (_, b_name, (`opaque_enum | `enum _), _) ->
+				a_name = b_name
+			| _ ->
+				false
+			end
+		| `named (_, a_name, (`opaque_struct | `struct_type _), _) ->
+			begin match b with
+			| `named (_, b_name, (`opaque_struct | `struct_type _), _) ->
+				a_name = b_name
+			| _ ->
+				false
+			end
+		| `named (_, a_name, (`opaque_union | `union _), _) ->
+			begin match b with
+			| `named (_, b_name, (`opaque_union | `union _), _) ->
+				a_name = b_name
+			| _ ->
+				false
+			end
+		| _ ->
+			a == b
+		end
+	);;
+	
+	let rec is_typedef (base_type: all_type) (t: all_type): typedef_type option = (
+		begin match t with
+		| `named (_, _, `typedef source_t, _) as td ->
+			if source_t == base_type then Some td else
+			is_typedef base_type source_t
+		| _ ->
+			None
+		end
+	);;
+	
+	let rec expand_typedef (typedef: typedef_type) (t: all_type): all_type = (
+		begin match t with
+		| `pointer t ->
+			`pointer (expand_typedef typedef t)
+		| `array (n, t) ->
+			`array (n,
+				match expand_typedef typedef (t :> all_type) with
+				| #not_qualified_type as t -> t
+				| _ -> assert false)
+		| `restrict t ->
+			`restrict (
+				match expand_typedef typedef (t :> all_type) with
+				| #pointer_type as t -> t
+				| _ -> assert false)
+		| `volatile t ->
+			`volatile (
+				match expand_typedef typedef (t :> all_type) with
+				| #not_qualified_type as t -> t
+				| _ -> assert false)
+		| `const t ->
+			`const (
+				match expand_typedef typedef (t :> all_type) with
+				| #not_const_type as t -> t
+				| _ -> assert false)
+		| `named (_, _, `typedef raw_t, _) ->
+			if t == (typedef :> all_type) then raw_t else
+			expand_typedef typedef raw_t
+		| _ ->
+			assert false
+		end
+	);;
+	
+	let recursive_fold_derived_types
+		~(including_typedef: bool)
+		(f: 'a -> derived_type -> 'a) (* argument is not unique type *)
+		(a: 'a)
+		(base_type: all_type)
+		(derived_types: derived_type list)
+		: 'a =
+	(
+		let rec loop (m: derived_type -> derived_type) a base_type xs = (
+			begin match xs with
+			| x :: xr ->
+				let process (t: all_type): 'a = (
+					let a =
+						if t == base_type then (
+							let a = f a (m x) in
+							loop m a (x :> all_type) xr
+						) else if including_typedef then (
+							begin match is_typedef base_type t with
+							| Some typedef ->
+								let m t =
+									m (
+										match expand_typedef typedef (t :> all_type) with
+										| #derived_type as t -> t
+										| _ -> assert false)
+								in
+								loop m a t derived_types
+							| _ ->
+								a
+							end
+						) else (
+							a
+						)
+					in
+					loop m a base_type xr
+				) in
+				begin match x with
+				| `pointer t ->
+					process t
+				| `array (_, t) ->
+					process (t :> all_type)
+				| `restrict t ->
+					process (t :> all_type)
+				| `volatile t ->
+					process (t :> all_type)
+				| `const t ->
+					process (t :> all_type)
+				end
+			| [] ->
+				a
+			end
+		) in
+		loop (fun t -> t) a base_type derived_types
+	);;
+	
+	(* expression *)
+	
+	let lvalue_referenced_in_statement (variable: variable): statement -> bool = (
 		let expr_f expr = (
 			begin match expr with
 			| `ref_object (v, `lvalue), _ when v == (variable :> object_var with_name) -> true
 			| _ -> false
 			end
 		) in
-		exists_in_statement (fun _ -> false) expr_f;;
-	
-	let find_all_chars_literal_as_pointer_in_statement
-		(rs: (literal_value * all_type) list)
-		(stmt: statement)
-		: (literal_value * all_type) list =
-	(
-		let stmt_f result (_: statement) = result in
-		let expr_f result (expr: expression): (literal_value * all_type) list = (
-			begin match expr with
-			| `implicit_conv (`chars_literal _, _ as e), `pointer (`const `char)
-			| `implicit_conv (`wchars_literal _, _ as e), `pointer (`const `wchar) ->
-				e :: result
-			| _ ->
-				result
-			end
-		) in
-		fold_statement stmt_f expr_f rs stmt
-	);;
-	
-	let find_all_chars_literal_as_pointer_in_expression
-		(rs: (literal_value * all_type) list)
-		(expr: expression)
-		: (literal_value * all_type) list =
-	(
-		find_all_chars_literal_as_pointer_in_statement rs (`expression expr)
-	);;
-	
-	let find_all_assignment_in_statement
-		(rs: any_assignment_expression list)
-		(stmt: statement)
-		: any_assignment_expression list =
-	(
-		let stmt_f (included, excluded as result) stmt = (
-			let module L = struct type aaev = any_assignment_expression_var end in
-			begin match stmt with
-			| `expression (#L.aaev, _ as e) ->
-				included, e :: excluded
-			| `for_loop (Some (#L.aaev, _ as e1), _, Some (#L.aaev, _ as e2), _) ->
-				included, e1 :: e2 :: excluded
-			| `for_loop (Some (#L.aaev, _ as e), _, _, _) ->
-				included, e :: excluded
-			| `for_loop (_, _, Some (#L.aaev, _ as e), _) ->
-				included, e :: excluded
-			| _ ->
-				result
-			end
-		) in
-		let expr_f (included, excluded as result) expr = (
-			begin match expr with
-			| #any_assignment_expression_var, _ as e ->
-				e :: included, excluded
-			| _ ->
-				result
-			end
-		) in
-		let included, excluded = fold_statement stmt_f expr_f (rs, []) stmt in
-		List.rev (List.filter (fun x -> not (List.memq x excluded)) included)
-	);;
-	
-	let find_all_assignment_in_expression
-		(rs: any_assignment_expression list)
-		(expr: expression)
-		: any_assignment_expression list =
-	(
-		find_all_assignment_in_statement rs (`expression expr)
+		exists_in_statement (fun _ -> false) expr_f
 	);;
 	
 	let find_all_pointer_arithmetic_in_source_item
@@ -195,54 +332,70 @@ struct
 		end
 	);;
 	
-	let rec find_all_sized_array_in_source_item
-		(rs : all_type list)
-		(item: source_item)
-		: all_type list =
+	let find_all_chars_literal_as_pointer_in_statement
+		(rs: (literal_value * all_type) list)
+		(stmt: statement)
+		: (literal_value * all_type) list =
 	(
-		begin match item with
-		| `named (_, _, `defined_element_access (_, route), _) ->
-			(* sized array as result type *)
-			let t = result_type_of_element_access route in
-			begin match t with
-			| `array (Some _, _) ->
-				if List.memq t rs then rs else t :: rs
+		let stmt_f result (_: statement) = result in
+		let expr_f result (expr: expression): (literal_value * all_type) list = (
+			begin match expr with
+			| `implicit_conv (`chars_literal _, _ as e), `pointer (`const `char)
+			| `implicit_conv (`wchars_literal _, _ as e), `pointer (`const `wchar) ->
+				e :: result
 			| _ ->
-				rs
-			end
-		| `named (_, _, `defined_alias item, _) ->
-			find_all_sized_array_in_source_item rs (item :> Semantics.source_item)
-		| _ ->
-			rs
-		end
-	);;
-	
-	let find_all_sized_array_in_derived_type
-		(rs : all_type list)
-		(t: derived_type)
-		: all_type list =
-	(
-		let rec process rs (t: all_type) = (
-			begin match t with
-			| `array (Some _, _) as t ->
-				t :: rs
-			| `volatile t ->
-				process rs (t :> all_type)
-			| `const t ->
-				process rs (t :> all_type)
-			| `named (_, _, `typedef t, _) ->
-				process rs t
-			| _ ->
-				rs
+				result
 			end
 		) in
-		begin match t with
-		| `pointer t -> process rs (t :> all_type)
-		| `array (_, t) -> process rs (t :> all_type)
-		| `restrict t -> process rs (t :> all_type)
-		| `volatile t -> process rs (t :> all_type)
-		| `const t -> process rs (t :> all_type)
-		end
+		fold_statement stmt_f expr_f rs stmt
+	);;
+	
+	let find_all_chars_literal_as_pointer_in_expression
+		(rs: (literal_value * all_type) list)
+		(expr: expression)
+		: (literal_value * all_type) list =
+	(
+		find_all_chars_literal_as_pointer_in_statement rs (`expression expr)
+	);;
+	
+	let find_all_assignment_in_statement
+		(rs: any_assignment_expression list)
+		(stmt: statement)
+		: any_assignment_expression list =
+	(
+		let stmt_f (included, excluded as result) stmt = (
+			let module L = struct type aaev = any_assignment_expression_var end in
+			begin match stmt with
+			| `expression (#L.aaev, _ as e) ->
+				included, e :: excluded
+			| `for_loop (Some (#L.aaev, _ as e1), _, Some (#L.aaev, _ as e2), _) ->
+				included, e1 :: e2 :: excluded
+			| `for_loop (Some (#L.aaev, _ as e), _, _, _) ->
+				included, e :: excluded
+			| `for_loop (_, _, Some (#L.aaev, _ as e), _) ->
+				included, e :: excluded
+			| _ ->
+				result
+			end
+		) in
+		let expr_f (included, excluded as result) expr = (
+			begin match expr with
+			| #any_assignment_expression_var, _ as e ->
+				e :: included, excluded
+			| _ ->
+				result
+			end
+		) in
+		let included, excluded = fold_statement stmt_f expr_f (rs, []) stmt in
+		List.rev (List.filter (fun x -> not (List.memq x excluded)) included)
+	);;
+	
+	let find_all_assignment_in_expression
+		(rs: any_assignment_expression list)
+		(expr: expression)
+		: any_assignment_expression list =
+	(
+		find_all_assignment_in_statement rs (`expression expr)
 	);;
 	
 	let find_all_conditional_in_statement

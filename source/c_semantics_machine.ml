@@ -192,13 +192,8 @@ struct
 			loop 0 items
 		| `named (_, _, `typedef base, _) ->
 			alignof base predefined_types
-		| `array (Some n, base) ->
-			begin match alignof (base :> all_type) predefined_types with
-			| Some item_align ->
-				Some (item_align * Integer.to_int n)
-			| None ->
-				None
-			end
+		| `array (Some _, base) ->
+			alignof (base :> all_type) predefined_types
 		| `array (None, _)
 		| `named (_, _, (`generic_type | `opaque_enum | `opaque_struct | `opaque_union), _)
 		| `function_type _ ->

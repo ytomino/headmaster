@@ -2,6 +2,8 @@ open C_semantics;;
 open Position;;
 open Value;;
 
+module StringSet = Set.Make (String);;
+
 module Naming
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType (Literals).S) =
@@ -206,6 +208,7 @@ struct
 	let name_mapping_per_module
 		~(long_f: string -> string)
 		~(short_f: string -> string)
+		~(foldcase: string -> string)
 		(special_map: string StringMap.t)
 		(opaque_mapping: opaque_mapping)
 		(items: source_item list)
@@ -245,7 +248,7 @@ struct
 						end
 					in
 					let result = add kind name l_name result in
-					let rev = StringMap.add (String.uppercase l_name) `origin rev in
+					let rev = StringMap.add (foldcase l_name) `origin rev in
 					result, rev
 				end
 			) (empty_name_mapping_per_module, StringMap.empty) items
@@ -266,7 +269,7 @@ struct
 						let s = short_f name in
 						prefix_for_esu s kind
 					in
-					let u = String.uppercase s_name in
+					let u = foldcase s_name in
 					if StringMap.mem u rev then (
 						begin match StringMap.find u rev with
 						| `origin | `duplicated ->
@@ -316,6 +319,7 @@ struct
 	let name_mapping
 		~(long_f: string -> string)
 		~(short_f: string -> string)
+		~(foldcase: string -> string)
 		(special_name_mapping: string StringMap.t StringMap.t)
 		(filename_mapping: string StringMap.t)
 		(opaque_mapping: opaque_mapping)
@@ -331,7 +335,7 @@ struct
 						StringMap.empty
 					end
 				in
-				name_mapping_per_module ~long_f ~short_f special_map opaque_mapping items
+				name_mapping_per_module ~long_f ~short_f ~foldcase special_map opaque_mapping items
 			) items_per_module
 		in
 		StringMap.mapi (fun k _ ->
@@ -350,39 +354,32 @@ struct
 	let add_name_mapping_for_arguments
 		~(long_f: string -> string)
 		~(short_f: string -> string)
+		~(anonymous_f: int -> string)
 		(args: variable list)
 		(name_mapping: name_mapping)
-		: name_mapping =
+		: name_mapping * (string * variable) list =
 	(
-		let name_mapping, _ =
-			List.fold_left (fun (name_mapping, i) arg ->
-				let `named (ps, name, _, _) = arg in
-				let name_mapping =
-					if name = "" then (
-						name_mapping
-					) else (
-						let (filename, _, _, _), _ = ps in
-						let mn, nmpm = StringMap.find filename name_mapping in
-						let a_name =
-							let a_name = short_f name in
-							(* avoiding confliction with type name *)
-							if a_name = name
-								&& (let nmap, _, _, _ = nmpm in
-								StringMap.mem (String.uppercase name) nmap)
-							then (
-								a_name
-							) else (
-								long_f name
-							)
-						in
-						let nmpm = add `namespace name a_name nmpm in
-						StringMap.add filename (mn, nmpm) name_mapping
-					)
-				in
-				name_mapping, (i + 1)
-			) (name_mapping, 1) args
-		in
-		name_mapping
+		let (_: string -> string) = long_f in (* ignore... currently, no care for confliction *)
+		let rec loop index xs name_mapping rs = (
+			begin match xs with
+			| [] ->
+				name_mapping, List.rev rs
+			| x :: xr ->
+				let `named (ps, name, _, _) = x in
+				if name = "" then (
+					let a_name = anonymous_f index in
+					loop (index + 1) xr name_mapping ((a_name, x) :: rs)
+				) else (
+					let a_name = short_f name in
+					let (filename, _, _, _), _ = ps in
+					let mn, nmpm = StringMap.find filename name_mapping in
+					let nmpm = add `namespace name a_name nmpm in
+					let name_mapping = StringMap.add filename (mn, nmpm) name_mapping in
+					loop (index + 1) xr name_mapping ((a_name, x) :: rs)
+				)
+			end
+		) in
+		loop 1 args name_mapping []
 	);;
 	
 	let name_mapping_for_struct_items
@@ -393,7 +390,7 @@ struct
 		: string StringMap.t * (string * struct_item) list =
 	(
 		let _ = long_f in (* ignore... currently, no care for confliction *)
-		let rec loop anonymous_index map rs xs = (
+		let rec loop anonymous_index xs map rs = (
 			begin match xs with
 			| [] ->
 				map, List.rev rs
@@ -402,16 +399,16 @@ struct
 				if name = "" then (
 					let an = anonymous_f anonymous_index in
 					let rs = (an, x) :: rs in
-					loop (anonymous_index + 1) map rs xr
+					loop (anonymous_index + 1) xr map rs
 				) else (
 					let sn = short_f name in
 					let map = StringMap.add name sn map in
 					let rs = (sn, x) :: rs in
-					loop anonymous_index map rs xr
+					loop anonymous_index xr map rs
 				)
 			end
 		) in
-		loop 1 StringMap.empty [] items
+		loop 1 items StringMap.empty []
 	);;
 	
 end;;

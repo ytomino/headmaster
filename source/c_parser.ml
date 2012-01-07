@@ -15,6 +15,7 @@ struct
 	module FirstSet = FirstSet (Literals) (Syntax);;
 	open Literals;;
 	open Syntax;;
+	open PositionOperators;;
 	
 	type 'a in_t = (ranged_position, LexicalElement.t, 'a) LazyList.t;;
 	type 'a nil = (ranged_position, 'a) LazyList.nil;;
@@ -24,54 +25,7 @@ struct
 		List.fold_left (fun r x -> StringSet.add x r) StringSet.empty xs
 	);;
 	
-	let ( & ) (a: [`some of ranged_position * 'a]) (b: [`some of ranged_position * 'b]): [`some of ranged_position * unit] = (
-		let first =
-			let `some a = a in
-			let ((first, _), _) = a in first
-		in
-		let last =
-			let `some b = b in
-			let ((_, last), _) = b in last
-		in
-		`some ((first, last), ())
-	);;
-	
-	let ( &^ ) (a: [`some of ranged_position * 'a]) (b: [> `some of ranged_position * 'b]): [`some of ranged_position * unit] = (
-		let first =
-			let `some a = a in
-			let ((first, _), _) = a in first
-		in
-		let last =
-			begin match b with
-			| `some b ->
-				let ((_, last), _) = b in last
-			| _ ->
-				let `some a = a in
-				let ((_, last), _) = a in last
-			end
-		in
-		`some ((first, last), ())
-	);;
-	
-	(* right to left *)
-	let ( ^& ) (a: [> `some of ranged_position * 'a]) (b: [`some of ranged_position * 'b]): [`some of ranged_position * unit] = (
-		let first =
-			begin match a with
-			| `some a ->
-				let ((first, _), _) = a in first
-			| _ ->
-				let `some b = b in
-				let ((first, _), _) = b in first
-			end
-		in
-		let last =
-			let `some b = b in
-			let ((_, last), _) = b in last
-		in
-		`some ((first, last), ())
-	);;
-	
-	let add_declarators (xs: init_declarator_list opt) (set: typedef_set): typedef_set = (
+	let add_declarators_to_typedef_set (xs: init_declarator_list opt) (set: typedef_set): typedef_set = (
 		let add (x: init_declarator) (set: typedef_set): typedef_set = (
 			let rec name_of_declarator (dd: direct_declarator): string option = (
 				begin match dd with
@@ -379,6 +333,19 @@ struct
 				done;
 				for i = 0 to length2 - 1 do
 					m.(length1 + i) <- WideString.get str2 i
+				done;
+				loop (ps, `wchars_literal (WideString.of_array m)) xs
+			| lazy (`cons (cs_p, (`chars_literal str2 as cs_e), xs)) ->
+				let _, `wchars_literal str1 = result in
+				let `some (ps, ()) = (`some result) & (`some (cs_p, cs_e)) in
+				let length1 = WideString.length str1 in
+				let length2 = String.length str2 in
+				let m = Array.make (length1 + length2) 0l in
+				for i = 0 to length1 - 1 do
+					m.(i) <- WideString.get str1 i
+				done;
+				for i = 0 to length2 - 1 do
+					m.(length1 + i) <- Int32.of_int (int_of_char str2.[i])
 				done;
 				loop (ps, `wchars_literal (WideString.of_array m)) xs
 			| _ ->
@@ -1895,7 +1862,7 @@ struct
 		let spec, xs = parse_declaration_specifiers error lang typedefs xs in
 		let decl, xs = parse_init_declarator_list_option error lang typedefs xs in
 		let typedefs =
-			if has_typedef spec then add_declarators decl typedefs else
+			if has_typedef spec then add_declarators_to_typedef_set decl typedefs else
 			typedefs
 		in
 		let semicolon, xs = parse_semicolon_or_error error xs in
@@ -3437,7 +3404,7 @@ struct
 				let `some (ps, ()) = (`some specifiers) &^ declarators &^ semicolon in
 				let result = ps, `declaration (specifiers, declarators, semicolon) in
 				let typedefs =
-					if has_typedef specifiers then add_declarators declarators typedefs else
+					if has_typedef specifiers then add_declarators_to_typedef_set declarators typedefs else
 					typedefs
 				in
 				result, typedefs, xs

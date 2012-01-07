@@ -1,3 +1,4 @@
+open Ada_translator;;
 open C_analyzer;;
 open C_define_parser;;
 open C_lexical;;
@@ -9,7 +10,6 @@ open C_syntax;;
 open Environment;;
 open Environment_gcc;;
 open Position;;
-open Translator_to_ada;;
 
 let source_filename = ref "../c-lib.h";;
 let gcc_command = ref "gcc";;

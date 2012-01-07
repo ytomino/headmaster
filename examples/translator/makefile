@@ -29,10 +29,10 @@ HFLAGS=
 
 $(TEST)$(EXEEXT): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
 else
 	-ln -s $(SOURCEDIR) .
-	ocamlbuild -X $(BUILDDIR) -I source $(TEST).byte
+	ocamlbuild -X $(BUILDDIR) -I source -I source/ada $(TEST).byte
 	ln -sf $(TEST).byte $(TEST)$(EXEEXT)
 endif
 

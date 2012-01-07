@@ -151,8 +151,8 @@ let pp_package_spec
 	~(with_packages: with_clause list)
 	~(name: string)
 	~(kind: [`pure | `preelaborate | `normal])
-	~(pp_contents: formatter -> unit)
-	~(pp_private: (formatter -> unit) option)
+	~(pp_contents: formatter -> unit -> unit)
+	~(pp_private: (formatter -> unit -> unit) option)
 	: unit =
 (
 	pp_open_vbox ff 0;
@@ -171,14 +171,14 @@ let pp_package_spec
 	| `normal ->
 		()
 	end;
-	pp_contents ff;
+	pp_contents ff ();
 	pp_close_box ff ();
 	begin match pp_private with
 	| Some pp_private ->
 		pp_print_break ff 0 0;
 		pp_open_vbox ff indent;
 		pp_print_string ff "private";
-		pp_private ff;
+		pp_private ff ();
 		pp_close_box ff ()
 	| None ->
 		()
@@ -195,7 +195,7 @@ let pp_package_body
 	(ff: formatter)
 	~(with_packages: with_clause list)
 	~(name: string)
-	~(pp_contents: formatter -> unit)
+	~(pp_contents: formatter -> unit -> unit)
 	: unit =
 (
 	pp_open_vbox ff 0;
@@ -204,7 +204,7 @@ let pp_package_body
 	pp_print_string ff "package body ";
 	pp_print_string ff name;
 	pp_print_string ff " is";
-	pp_contents ff;
+	pp_contents ff ();
 	pp_close_box ff ();
 	pp_print_break ff 0 0;
 	pp_print_string ff "end ";
@@ -233,7 +233,7 @@ let pp_incomplete_type
 let pp_type
 	(ff: formatter)
 	(name: string)
-	?(pp_discriminants: (formatter -> unit) list = [])
+	?(pp_discriminants: (formatter -> unit -> unit) list = [])
 	(pp_definition: formatter -> 'a)
 	: 'a =
 (
@@ -246,7 +246,7 @@ let pp_type
 	pp_print_space ff ();
 	if pp_discriminants <> [] then (
 		pp_print_char ff '(';
-		List.iter (fun pp_d -> pp_d ff) pp_discriminants;
+		List.iter (fun pp_d -> pp_d ff ()) pp_discriminants;
 		pp_print_char ff ')';
 		pp_print_space ff ()
 	);
@@ -273,11 +273,54 @@ let pp_private_type_declaration
 
 let pp_derived_type_definition
 	(ff: formatter)
-	(name: string)
+	(pp_type_name: formatter -> 'a -> unit)
+	(type_name: 'a)
 	: unit =
 (
 	pp_print_string ff "new ";
-	pp_print_string ff name;
+	pp_type_name ff type_name;
+	pp_print_char ff ';';
+	pp_close_box ff ();
+	pp_close_box ff ()
+);;
+
+let pp_access_definition
+	(ff: formatter)
+	(mode: [`constant | `all | `none])
+	(pp_target: formatter -> 'a -> 'b)
+	(target: 'a)
+	: 'b =
+(
+	pp_print_string ff "access ";
+	begin match mode with
+	| `constant -> pp_print_string ff "constant ";
+	| `all -> pp_print_string ff "all ";
+	| `none -> ()
+	end;
+	let result = pp_target ff target in
+	pp_print_char ff ';';
+	pp_close_box ff ();
+	pp_close_box ff ();
+	result
+);;
+
+let pp_array_definition
+	(ff: formatter)
+	(pp_index: formatter -> unit -> unit)
+	(aliased: [`aliased | `none])
+	(pp_element_type_name: formatter -> 'a -> unit)
+	(element_type_name: 'a)
+	: unit =
+(
+	pp_print_string ff "array (";
+	pp_index ff ();
+	pp_print_string ff ") of";
+	pp_print_space ff ();
+	begin match aliased with
+	| `aliased -> pp_print_string ff "aliased "
+	| `none -> ()
+	end;
+	pp_element_type_name ff element_type_name;
 	pp_print_char ff ';';
 	pp_close_box ff ();
 	pp_close_box ff ()
@@ -285,7 +328,7 @@ let pp_derived_type_definition
 
 let pp_record_definition
 	(ff: formatter)
-	(pp_elements: (formatter -> unit) list)
+	(pp_elements: (formatter -> unit -> unit) list)
 	: unit =
 (
 	if pp_elements = [] then (
@@ -295,7 +338,7 @@ let pp_record_definition
 	) else (
 		pp_print_string ff "record";
 		pp_close_box ff ();
-		List.iter (fun pp_e -> pp_e ff) pp_elements;
+		List.iter (fun pp_e -> pp_e ff ()) pp_elements;
 		pp_close_box ff ();
 		pp_print_space ff ();
 		pp_print_string ff "end record;"
@@ -305,7 +348,8 @@ let pp_record_definition
 let pp_subtype
 	(ff: formatter)
 	(name: string)
-	(pp_type: formatter -> unit)
+	(pp_type_name: formatter -> 'a -> unit)
+	(type_name: 'a)
 	: unit =
 (
 	pp_print_space ff ();
@@ -316,8 +360,30 @@ let pp_subtype
 	pp_print_space ff ();
 	pp_print_string ff "is";
 	pp_print_space ff ();
-	pp_type ff;
+	pp_type_name ff type_name;
 	pp_print_string ff ";";
+	pp_close_box ff ()
+);;
+
+(* object *)
+
+let pp_universal_constant_object
+	(ff: formatter)
+	(name: string)
+	(pp_expr: formatter -> unit -> unit)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	pp_open_box ff indent;
+	pp_print_string ff name;
+	pp_print_string ff " :";
+	pp_print_space ff ();
+	pp_print_string ff "constant :=";
+	pp_close_box ff ();
+	pp_print_space ff ();
+	pp_expr ff ();
+	pp_print_char ff ';';
 	pp_close_box ff ()
 );;
 
@@ -645,6 +711,79 @@ let pp_string_literal
 	)
 );;
 
+let pp_array_literal
+	(ff: formatter)
+	(pp_element: formatter -> 'e -> unit)
+	(first: int)
+	(length: 'a -> int)
+	(get: 'a -> int -> 'e)
+	(item: 'a)
+	: unit =
+(
+	let length = length item in
+	if length = 0 then (
+		pp_print_char ff '(';
+		pp_print_int ff first;
+		pp_print_string ff " .. ";
+		pp_print_int ff (first - 1);
+		pp_print_string ff " => <>)";
+	) else if length = 1 then (
+		pp_print_char ff '(';
+		pp_print_int ff first;
+		pp_print_string ff " => ";
+		pp_element ff (get item 0);
+		pp_print_char ff ')'
+	) else (
+		pp_print_char ff '(';
+		pp_print_break ff 0 0;
+		for i = 0 to length - 1 do
+			if i > 0 then (
+				pp_print_char ff ',';
+				pp_print_space ff ()
+			);
+			pp_element ff (get item i);
+		done;
+		pp_print_char ff ')'
+	)
+);;
+
+(* representation *)
+
+let pp_for_type_storage_size
+	(ff: formatter)
+	(name: string)
+	(size: int)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	pp_open_box ff indent;
+	pp_print_string ff "for ";
+	pp_print_string ff name;
+	pp_print_char ff '\'';
+	pp_print_break ff 0 0;
+	pp_print_string ff "Storage_Size";
+	pp_close_box ff ();
+	pp_print_space ff ();
+	pp_print_string ff "use ";
+	pp_print_int ff size;
+	pp_print_char ff ';';
+	pp_close_box ff ()
+);;
+
+let pp_for_type_alignment
+	(ff: formatter)
+	(name: string)
+	(pp_align: formatter -> 'a -> unit)
+	(align: 'a)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	fprintf ff "for %s'Alignment@ use %a;" name pp_align align;
+	pp_close_box ff ()
+);;
+
 (* pragma *)
 
 let pp_pragma_complex_representation
@@ -742,7 +881,7 @@ let pp_pragma_no_strict_aliasing
 (
 	pp_print_space ff ();
 	pp_open_box ff indent;
-	fprintf ff "pragma No_Strict_Aliasing (%s);" name;
+	fprintf ff "pragma No_Strict_Aliasing (@,%s);" name;
 	pp_close_box ff ()
 );;
 

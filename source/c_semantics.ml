@@ -696,6 +696,12 @@ module Semantics (Literals: LiteralsType) = struct
 		end
 	);;
 	
+	let tail_type_of_element_access (route: struct_item list): all_type = (
+		let last_route = List.fold_left (fun _ r -> r) (List.hd route) route in
+		let _, result_type, _, _ = last_route in
+		result_type
+	);;
+	
 	(* generic types *)
 	
 	let rec is_generic_type (t: all_type): bool = (

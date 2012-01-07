@@ -28,10 +28,10 @@ EXENAME=headmaster$(EXEEXT)
 
 $(EXENAME): main.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -O -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -o $@ -O -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
 else
 	-ln -s ../source .
-	ocamlbuild -X $(BUILDDIR) -I source main.native
+	ocamlbuild -X $(BUILDDIR) -I source -I source/ada main.native
 	ln -sf main.native $(EXENAME)
 endif
 

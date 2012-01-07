@@ -1,3 +1,4 @@
+open Ada_translator;;
 open C_analyzer;;
 open C_define_parser;;
 open C_lexical;;
@@ -9,7 +10,6 @@ open C_syntax;;
 open Environment;;
 open Environment_gcc;;
 open Position;;
-open Translator_to_ada;;
 open Version;;
 
 let print_exception (e: exn): unit = (
@@ -169,7 +169,6 @@ module PP = Preprocessor (Literals) (LE);;
 module DP = DefineParser (Literals) (LE) (PP) (AST);;
 module P = DP.Parser;;
 module A = Analyzer (Literals) (AST) (SEM);;
-module T = Translate (Literals) (SEM);;
 
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let h = open_in name in
@@ -233,6 +232,7 @@ if options.create_dest_dir && not (Sys.file_exists options.dest_dir) then (
 
 begin match options.to_lang with
 | `ada ->
+	let module T = Translate (Literals) (SEM) in
 	let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options in
 	let filename_mapping = T.filename_mapping (remove_include_dir env) ada_mapping sources in
 	let dirs = T.dir_packages filename_mapping in

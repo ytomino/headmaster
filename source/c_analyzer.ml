@@ -430,34 +430,45 @@ struct
 		: [> array_type | `volatile of [> array_type]
 			| `const of [> array_type | `volatile of [> array_type]]] * derived_types =
 	(
-		let make_array (t: not_qualified_type) (xs: derived_types)
+		let make_array (n: Integer.t option) (t: not_qualified_type) (xs: derived_types)
 			: [> array_type] * derived_types =
 		(
-			begin try
-				let rec loop xs = (
-					begin match xs with
-					| [] ->
-						raise Not_found
-					| x :: xr ->
-						begin match x with
-						| `array (m, u) as x when n = m && u == t ->
-							(x :> [> array_type])
-						| _ ->
-							loop xr
+			let make_n_array (n: Integer.t option) (t: not_qualified_type) (xs: derived_types)
+				: [> array_type] * derived_types =
+			(
+				begin try
+					let rec loop xs = (
+						begin match xs with
+						| [] ->
+							raise Not_found
+						| x :: xr ->
+							begin match x with
+							| `array (m, u) as x when n = m && u == t ->
+								(x :> [> array_type])
+							| _ ->
+								loop xr
+							end
 						end
-					end
-				) in
-				loop xs, xs
-			with Not_found ->
-				let new_item: [> array_type] = `array (n, t) in
-				new_item, ((new_item :> derived_type) :: xs)
+					) in
+					loop xs, xs
+				with Not_found ->
+					let new_item: [> array_type] = `array (n, t) in
+					new_item, ((new_item :> derived_type) :: xs)
+				end
+			) in
+			begin match n with
+			| Some _ ->
+				let _, xs = make_n_array None t xs in
+				make_n_array n t xs
+			| None ->
+				make_n_array n t xs
 			end
 		) in
 		begin match t with
 		| #not_qualified_type as t ->
-			make_array t xs
+			make_array n t xs
 		| `volatile (#not_qualified_type as t) ->
-			let t, xs = make_array t xs in
+			let t, xs = make_array n t xs in
 			begin match find_volatile_type (t :> all_type) xs with
 			| (`volatile (#array_type)), _ as result ->
 				result
@@ -465,18 +476,18 @@ struct
 				assert false (* does not come here *)
 			end
 		| `const (`volatile (#not_qualified_type as t)) ->
-			let t, xs = make_array t xs in
+			let t, xs = make_array n t xs in
+			let t, xs = find_volatile_type t xs in
 			begin match find_const_type t xs with
-			| (`const (#array_type)), _ as result ->
+			| (`const (`volatile (#array_type))), _ as result ->
 				result
 			| _ ->
 				assert false (* does not come here *)
 			end
 		| `const (#not_qualified_type as t) ->
-			let t, xs = make_array t xs in
-			let t, xs = find_volatile_type t xs in
+			let t, xs = make_array n t xs in
 			begin match find_const_type t xs with
-			| (`const (`volatile (#array_type))), _ as result ->
+			| (`const (#array_type)), _ as result ->
 				result
 			| _ ->
 				assert false (* does not come here *)
@@ -2491,9 +2502,21 @@ struct
 				let derived_types, namespace, source, items =
 					Traversing.fold_sdnl (fun (derived_types, namespace, sources, rs) decl ->
 						let derived_types, namespace, sources, items = handle_struct_declaration error predefined_types derived_types namespace sources alignment decl in
-						derived_types, namespace, sources, (List.append rs items)
+						derived_types, namespace, sources, (List.rev_append items rs)
 					) (derived_types, namespace, source, []) decls
 				in
+				(* if last member is unsized array, replace to sized [0] *)
+				let derived_types, items =
+					begin match items with
+					| (m_name, `array (None, m_element_t), m_bw, m_attr) :: items_r ->
+						let sized_array, derived_types = find_array_type (Some Integer.zero) (m_element_t :> all_type) derived_types in
+						derived_types, ((m_name, sized_array, m_bw, m_attr) :: items_r)
+					| _ ->
+						derived_types, items
+					end
+				in
+				(* reverse items *)
+				let items = List.rev items in
 				(* check bit-field or not *)
 				let items =
 					begin match Machine.is_bitfield items with
@@ -2508,9 +2531,9 @@ struct
 					begin match alignment with
 					| `aligned n ->
 						begin match Machine.alignof_struct items predefined_types with
-						| Some good_n when good_n > n ->
-							`aligned good_n
-						| _ ->
+						| Some good_n ->
+							if good_n > n then `aligned good_n else alignment
+						| None ->
 							alignment
 						end
 					| _ ->
@@ -2520,6 +2543,7 @@ struct
 				(* type *)
 				begin match id with
 				| `some (id_p, `ident id_e) ->
+					let attributes = {attributes with at_aligned = alignment} in
 					let item, namespace =
 						begin match snd sou with
 						| `STRUCT ->
@@ -4094,7 +4118,10 @@ struct
 				derived_types, sources
 			) defines (derived_types, sources)
 		in
+		(* reverse items *)
 		let sources = StringMap.map (fun (items, info) -> List.rev items, info) sources in
+		let derived_types = List.rev derived_types in
+		(* finished *)
 		predefined_types, derived_types, namespace, sources, mapping_options
 	);;
 	
