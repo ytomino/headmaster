@@ -56,14 +56,22 @@ let parse
 		let arg = argv.(i) in
 		if arg.[0] = '-' then (
 			let p, param =
-				begin try
-					let p = String.index arg '=' in
-					let n = p + 1 in
-					let param = String.sub arg n (String.length arg - n) in
-					p, Some param
-				with Not_found ->
-					String.length arg, None
-				end
+				let rec loop arg i = (
+					if i >= String.length arg then String.length arg, None else
+					begin match arg.[i] with
+					| '=' ->
+						let n = i + 1 in
+						let param = String.sub arg n (String.length arg - n) in
+						i, Some param
+					| '.' | '/' ->
+						let n = i in
+						let param = String.sub arg n (String.length arg - n) in
+						i, Some param
+					| _ ->
+						loop arg (i + 1)
+					end
+				) in
+				loop arg 1
 			in
 			let opt, lors =
 				if arg.[1] = '-' then (

@@ -37,7 +37,7 @@ type type_for_builtin = [
 	| `long_double
 	| `bool
 	| `void
-	| `pointer of [`void | `char | `const of [`char]]];;
+	| `pointer of [`void | `char | `const of [`void | `char]]];;
 
 type environment = {
 	en_sizeof: sizeof;
@@ -138,13 +138,9 @@ let remove_include_dir (env: environment) (filename: string): string = (
 					let i = x_length + 1 in
 					let h_part = String.sub filename i (fn_length - i) in
 					begin match r with
-					| Some prev ->
-						if String.length prev > String.length h_part then (
-							loop (Some h_part) xr
-						) else (
-							loop r xr
-						)
-					| None ->
+					| Some prev when String.length prev < String.length h_part ->
+						loop r xr
+					| _ ->
 						loop (Some h_part) xr
 					end
 				) else (

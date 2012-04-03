@@ -160,6 +160,21 @@ struct
 		end
 	);;
 	
+	let parse_keyword_or_error (type v)
+		(vs: (string * v) list)
+		(error: ranged_position -> string -> unit)
+		(xs: 'a in_t)
+		: v pe * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (id_p, (`ident s), xs)) when List.mem_assoc s vs ->
+			`some (id_p, List.assoc s vs), xs
+		| _ ->
+			error (LazyList.hd_a xs) "identifier was expected.";
+			`error, xs
+		end
+	);;
+	
 	let parse_l_paren_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
@@ -226,6 +241,20 @@ struct
 			`some (rc_p, rc_e), xs
 		| _ ->
 			error (LazyList.hd_a xs) "\"}\" was expected.";
+			`error, xs
+		end
+	);;
+	
+	let parse_comma_or_error
+		(error: ranged_position -> string -> unit)
+		(xs: 'a in_t)
+		: [`comma] pe * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (c_p, (`comma as c_e), xs)) ->
+			`some (c_p, c_e), xs
+		| _ ->
+			error (LazyList.hd_a xs) "\",\" was expected.";
 			`error, xs
 		end
 	);;
@@ -634,27 +663,33 @@ struct
 			| "__aligned__" ->
 				let n = p4, attr_keyword in
 				begin match xs with
-				| lazy (`cons (pa1, (`l_paren as ea1),
-					lazy (`cons (pa2, (`numeric_literal (_, `int_literal (_, arg))),
-					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
-				->
-					let l_paren = pa1, ea1 in
-					let r_paren = pa3, ea3 in
-					let `some (a_ps, ()) = (`some l_paren) & (`some r_paren) in
-					let `some (ps, ()) = (`some n) & (`some r_paren) in
-					`some (ps, `aligned (n, `some (a_ps, (l_paren, (pa2, arg), r_paren)))), xs
+				| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
+					let l_paren = lp_p, lp_e in
+					let arg, xs = parse_assignment_expression_or_error error lang typedefs xs in
+					let r_paren, xs = parse_r_paren_or_error error xs in
+					let `some (param_p, ()) = (`some l_paren) &^ arg &^ r_paren in
+					let param = `some (param_p, (l_paren, arg, r_paren)) in
+					let `some (ps, ()) = (`some n) & param in
+					`some (ps, `aligned (n, param)), xs
 				| _ ->
 					`some (p4, `aligned (n, `none)), xs
 				end
-			| "alloc_size" ->
+			| "alloc_size" | "__alloc_size__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let args, xs = parse_argument_expression_list_or_error error lang typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ args &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ args &^ r_paren in
 				`some (ps, `alloc_size (n, l_paren, args, r_paren)), xs
 			| "always_inline" | "__always_inline__" ->
 				`some (p4, `always_inline attr_keyword), xs
+			| "__blocks__" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_keyword_or_error ["byref", `BYREF] error xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
+				`some (ps, `blocks (n, l_paren, arg, r_paren)), xs
 			| "cdecl" | "__cdecl__" ->
 				`some (p4, `cdecl attr_keyword), xs
 			| "__const__" ->
@@ -668,73 +703,43 @@ struct
 			| "__fastcall__" ->
 				`some (p4, `fastcall), xs
 			| "format" | "__format__" ->
-				begin match xs with
-				| lazy (`cons (pa1, (`l_paren as ea1),
-					lazy (`cons (pa2, (#identifier as ea2),
-					lazy (`cons (pa3, (`comma as ea3),
-					lazy (`cons (pa4, `numeric_literal (_, `int_literal (_, arg1)),
-					lazy (`cons (pa5, (`comma as ea5),
-					lazy (`cons (pa6, `numeric_literal (_, `int_literal (_, arg2)),
-					lazy (`cons (pa7, (`r_paren as ea7), xs))))))))))))))
-				->
-					let n = p4, attr_keyword in
-					let r_paren = pa7, ea7 in
-					let `some (ps, ()) = (`some n) & (`some r_paren) in
-					`some (ps, `format (n, (pa1, ea1), (pa2, ea2), (pa3, ea3), (pa4, arg1), (pa5, ea5), (pa6, arg2), r_paren)), xs
-				| _ ->
-					error (LazyList.hd_a xs) "attribute \"__format__\" syntax error.";
-					`error, xs
-				end
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg1, xs = parse_identifier_or_error error xs in
+				let comma1, xs = parse_comma_or_error error xs in
+				let arg2, xs = parse_assignment_expression_or_error error lang typedefs xs in
+				let comma2, xs = parse_comma_or_error error xs in
+				let arg3, xs = parse_assignment_expression_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg1 &^ comma1 &^ arg2 &^ comma2 &^ arg3 &^ r_paren in
+				`some (ps, `format (n, l_paren, arg1, comma1, arg2, comma2, arg3, r_paren)), xs
 			| "__format_arg__" ->
-				begin match xs with
-				| lazy (`cons (pa1, (`l_paren as ea1),
-					lazy (`cons (pa2, `numeric_literal (_, (`int_literal (_, arg))),
-					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
-				->
-					let n = p4, attr_keyword in
-					let r_paren = pa3, ea3 in
-					let `some (ps, ()) = (`some n) & (`some r_paren) in
-					`some (ps, `format_arg (n, (pa1, ea1), (pa2, arg), r_paren)), xs
-				| _ ->
-					error (LazyList.hd_a xs) "attribute \"__format_arg__\" syntax error.";
-					`error, xs
-				end
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_assignment_expression_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				`some (ps, `format_arg (n, l_paren, arg, r_paren)), xs
 			| "__gnu_inline__" ->
 				`some (p4, `inline attr_keyword), xs
 			| "__malloc__" ->
 				`some (p4, `malloc), xs
 			| "__mode__" ->
-				begin match xs with
-				| lazy (`cons (pa1, (`l_paren as ea1),
-					lazy (`cons (pa2, `ident arg,
-					lazy (`cons (pa3, (`r_paren as ea3), xs))))))
-				->
-					let bwm =
-						begin match arg with
-						| "__QI__" -> Some `__QI__
-						| "__HI__" -> Some `__HI__
-						| "__SI__" -> Some `__SI__
-						| "__DI__" -> Some `__DI__
-						| "__pointer__" -> Some `__pointer__
-						| "__unwind_word__" -> Some `__unwind_word__
-						| "__word__" -> Some `__word__
-						| _ -> None
-						end
-					in
-					begin match bwm with
-					| Some bwm ->
-						let n = p4, attr_keyword in
-						let r_paren = pa3, ea3 in
-						let `some (ps, ()) = (`some n) & (`some r_paren) in
-						`some (ps, `mode (n, (pa1, ea1), (pa2, bwm), r_paren)), xs
-					| None ->
-						error (LazyList.hd_a xs) "invalid symbol of bit width for attribute \"__mode__\".";
-						`error, xs
-					end
-				| _ ->
-					error (LazyList.hd_a xs) "attribute \"__mode__\" syntax error.";
-					`error, xs
-				end
+				let modes: (string * bit_width_mode) list = [
+					"__QI__", `__QI__;
+					"__HI__", `__HI__;
+					"__SI__", `__SI__;
+					"__DI__", `__DI__;
+					"__pointer__", `__pointer__;
+					"__unwind_word__", `__unwind_word__;
+					"__word__", `__word__]
+				in
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_keyword_or_error modes error xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
+				`some (ps, `mode (n, l_paren, arg, r_paren)), xs
 			| "noinline" | "__noinline__" ->
 				`some (p4, `noinline attr_keyword), xs
 			| "nonnull" | "__nonnull__" ->
@@ -748,6 +753,13 @@ struct
 				`some (p4, `noreturn attr_keyword), xs
 			| "__nothrow__" ->
 				`some (p4, `nothrow), xs
+			| "objc_gc" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_keyword_or_error ["weak", `WEAK] error xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
+				`some (ps, `objc_gc (n, l_paren, arg, r_paren)), xs
 			| "__optimize__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
@@ -775,6 +787,13 @@ struct
 				`some (p4, `unused attr_keyword), xs
 			| "__used__" ->
 				`some (p4, `used), xs
+			| "visibility" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_chars_literal_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				`some (ps, `visibility (n, l_paren, arg, r_paren)), xs
 			| "__warn_unused_result__" ->
 				`some (p4, `warn_unused_result), xs
 			| "weak_import" ->
@@ -1021,13 +1040,6 @@ struct
 		->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_initializer (lp_p, lp_e) xs
-		| lazy (`cons (b_p, (`__builtin_constant_p as b_e), xs)) ->
-			let builtin = b_p, b_e in
-			let l_paren, xs = parse_l_paren_or_error error xs in
-			let arg, xs = parse_assignment_expression_or_error error lang typedefs xs in
-			let r_paren, xs = parse_r_paren_or_error error xs in
-			let `some (ps, _) = `some builtin &^ l_paren &^ arg &^ r_paren in
-			(ps, `__builtin_constant_p (builtin, l_paren, arg, r_paren)), xs
 		| lazy (`cons (b_p, (`__builtin_va_arg as b_e), xs)) ->
 			let builtin = b_p, b_e in
 			let l_paren, xs = parse_l_paren_or_error error xs in
@@ -1061,16 +1073,46 @@ struct
 					let r_paren, xs = parse_r_paren_or_error error xs in
 					let `some (ps, ()) = (`some left) & (`some l_paren) &^ args &^ r_paren in
 					let item =
-						match left with
-						| (fn_p, `ident (
-							"__builtin_isgreater"
+						begin match left with
+						| fn_p, `ident "__builtin_constant_p" ->
+							let fn = fn_p, `__builtin_constant_p in
+							begin match args with
+							| `some (arg_p, `nil arg_e) ->
+								let arg = `some (arg_p, arg_e) in
+								`__builtin_constant_p (fn, `some l_paren, arg, r_paren)
+							| _ ->
+								error (LazyList.hd_a xs) "arguments mismatch for __builtin_constant_p.";
+								`__builtin_constant_p (fn, `error, `error, `error)
+							end
+						| fn_p, `ident "__builtin_expect" ->
+							let fn = fn_p, `__builtin_expect in
+							begin match args with
+							| `some (_, `cons ((arg1_p, `nil arg1_e), comma, arg2)) ->
+								let arg1 = `some (arg1_p, arg1_e) in
+								`__builtin_expect (fn, `some l_paren, arg1, `some comma, arg2, r_paren)
+							| _ ->
+								error (LazyList.hd_a xs) "arguments mismatch for __builtin_expect.";
+								`__builtin_expect (fn, `error, `error, `error, `error, `error)
+							end
+						| fn_p, `ident "__builtin_object_size" ->
+							let fn = fn_p, `__builtin_object_size in
+							begin match args with
+							| `some (_, `cons ((arg1_p, `nil arg1_e), comma, arg2)) ->
+								let arg1 = `some (arg1_p, arg1_e) in
+								`__builtin_object_size (fn, `some l_paren, arg1, `some comma, arg2, r_paren)
+							| _ ->
+								error (LazyList.hd_a xs) "arguments mismatch for __builtin_object_size.";
+								`__builtin_object_size (fn, `error, `error, `error, `error, `error)
+							end
+						| fn_p, `ident (
+							  "__builtin_isgreater"
 							| "__builtin_isgreaterequal"
 							| "__builtin_isless"
 							| "__builtin_islessequal"
 							| "__builtin_islessgreater"
-							| "__builtin_isunordered" as funcname))
+							| "__builtin_isunordered" as funcname)
 						->
-							let builtin : builtin_comparator =
+							let builtin: builtin_comparator =
 								match funcname with
 								| "__builtin_isgreater" -> `__builtin_isgreater
 								| "__builtin_isgreaterequal" -> `__builtin_isgreaterequal
@@ -1080,21 +1122,18 @@ struct
 								| "__builtin_isunordered" -> `__builtin_isunordered
 								| _ -> assert false
 							in
+							let fn = fn_p, builtin in
 							begin match args with
 							| `some (_, `cons ((left_p, `nil left_e), comma, right)) ->
-								`__builtin_compare (
-									(fn_p, builtin),
-									`some l_paren,
-									(`some (left_p, left_e) :> expression pe),
-									`some comma,
-									(right :> expression pe),
-									r_paren)
+								let left = `some (left_p, left_e) in
+								`__builtin_compare (fn, `some l_paren, left, `some comma, right, r_paren)
 							| _ ->
 								error (LazyList.hd_a xs) "arguments mismatch for builtin comparator.";
-								`__builtin_compare ((fn_p, builtin), `error, `error, `error, `error, `error)
+								`__builtin_compare (fn, `error, `error, `error, `error, `error)
 							end
 						| _ ->
 							`function_call (left, l_paren, args, r_paren)
+						end
 					in
 					loop (ps, item) xs
 				| lazy (`cons (period_p, (`period as period_e), xs)) ->
@@ -1869,50 +1908,50 @@ struct
 		let `some (ps, ()) = (`some spec) &^ decl &^ semicolon in
 		(ps, (spec, decl, semicolon)), typedefs, xs
 	) and parse_declaration_specifiers
-		?(has_typedef: bool = false)
+		?(has_type: bool = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier] * 'a in_t] lazy_t)
 		: declaration_specifiers p * 'a in_t =
 	(
-		let handle_type_specifier (has_typedef: bool) xs = (
+		let handle_type_specifier xs = (
 			let spec, xs = parse_type_specifier error lang typedefs xs in
-			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
+			let next, xs = parse_declaration_specifiers_option ~has_type:true error lang typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
 			(ps, `type_specifier (spec, next)), xs
 		) in
 		begin match xs with
 		| lazy (`cons (spec_p, (#storage_class_specifier as spec_e), xs)) ->
 			let spec = (spec_p, spec_e) in
-			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
+			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
 			(ps, `storage_class_specifier (spec, next)), xs
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			handle_type_specifier has_typedef xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_typedef && StringSet.mem name typedefs ->
+			handle_type_specifier xs
+		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
-			handle_type_specifier true xs
+			handle_type_specifier xs
 		| lazy (`cons (q_p, (#type_qualifier as q_e), xs)) ->
 			let q = (q_p, q_e) in
-			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
+			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some q) &^ next in
 			(ps, `type_qualifier (q, next)), xs
 		| lazy (`cons (spec_p, (#function_specifier as spec_e), xs)) ->
 			let spec = (spec_p, spec_e) in
-			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
+			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
 			(ps, `function_specifier (spec, next)), xs
 		| lazy (`cons (a, (`__attribute__ as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let attr, xs = parse_attribute error lang typedefs xs in
-			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
+			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some attr) &^ next in
 			(ps, `attributes (attr, next)), xs
 		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
 			let ex = ex_p, ex_e in
-			let next, xs = parse_declaration_specifiers_option ~has_typedef error lang typedefs xs in
+			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some ex) &^ next in
 			(ps, `extension (ex, next)), xs
 		| lazy (`cons ((first, _ as ps), (`ident _), _)) ->
@@ -1921,7 +1960,7 @@ struct
 			(f_p, `type_specifier ((f_p, `typedef_name (`ident "")), `none)), (xs :> 'a in_t)
 		end
 	) and parse_declaration_specifiers_option
-		?(has_typedef: bool = false)
+		?(has_type: bool = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
@@ -1931,11 +1970,11 @@ struct
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_declaration_specifiers ~has_typedef error lang typedefs xs in
+			let r, xs = parse_declaration_specifiers ~has_type error lang typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_typedef && StringSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_declaration_specifiers ~has_typedef error lang typedefs xs in
+			let r, xs = parse_declaration_specifiers ~has_type error lang typedefs xs in
 			`some r, xs
 		| _ ->
 			`none, xs
@@ -2118,23 +2157,54 @@ struct
 		(xs: [`cons of ranged_position * [FirstSet.firstset_of_struct_declaration | identifier] * 'a in_t] lazy_t)
 		: struct_declaration p * 'a in_t =
 	(
+		let merge_specifier_qualifier_list sou q = (
+			let sou_p, sou_e = sou in
+			let q1 = sou_p, `struct_or_union_specifier sou_e in
+			let `some (q_ps, ()) = (`some q1) &^ q in
+			`some (q_ps, `type_specifier (q1, q))
+		) in
 		begin match xs with
 		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
-			let ex = ex_p, ex_e in
+			let ex = `some (ex_p, ex_e) in
 			begin match xs with
 			| lazy (`cons (a, (#struct_or_union as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				let sou, xs = parse_struct_or_union_specifier error lang typedefs xs in
-				let semicolon, xs = parse_semicolon_or_error error xs in
-				let `some (ps, ()) = (`some ex) &^ (`some sou) &^ semicolon in
-				(ps, `anonymous_struct_or_union (ex, sou, semicolon)), xs
+				begin match xs with
+				| lazy (`cons (semicolon_p, (`semicolon as semicolon_e), xs)) ->
+					let semicolon = `some (semicolon_p, semicolon_e) in
+					let `some (ps, ()) = ex ^& (`some sou) &^ semicolon in
+					(ps, `anonymous_struct_or_union (ex, sou, semicolon)), xs
+				| _ ->
+					let q, xs = parse_specifier_qualifier_list_option ~has_type:true error lang typedefs xs in
+					let q = merge_specifier_qualifier_list sou q in
+					let d, xs = parse_struct_declarator_list_or_error error lang typedefs xs in
+					let semicolon, xs = parse_semicolon_or_error error xs in
+					let `some (ps, ()) = ex & q &^ d &^ semicolon in
+					(ps, `named (`none, q, d, semicolon)), xs
+				end
 			| _ ->
-				let ex = `some ex in
 				let q, xs = parse_specifier_qualifier_list_or_error error lang typedefs xs in
 				let d, xs = parse_struct_declarator_list_or_error error lang typedefs xs in
 				let semicolon, xs = parse_semicolon_or_error error xs in
 				let `some (ps, ()) = ex &^ q &^ d &^ semicolon in
 				(ps, `named (ex, q, d, semicolon)), xs
+			end
+		| lazy (`cons (a, (#struct_or_union as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let sou, xs = parse_struct_or_union_specifier error lang typedefs xs in
+			begin match xs with
+			| lazy (`cons (semicolon_p, (`semicolon as semicolon_e), xs)) ->
+				let semicolon = `some (semicolon_p, semicolon_e) in
+				let `some (ps, ()) = (`some sou) &^ semicolon in
+				(ps, `anonymous_struct_or_union (`none, sou, semicolon)), xs
+			| _ ->
+				let q, xs = parse_specifier_qualifier_list_option ~has_type:true error lang typedefs xs in
+				let q = merge_specifier_qualifier_list sou q in
+				let d, xs = parse_struct_declarator_list_or_error error lang typedefs xs in
+				let semicolon, xs = parse_semicolon_or_error error xs in
+				let `some (ps, ()) = q &^ d &^ semicolon in
+				(ps, `named (`none, q, d, semicolon)), xs
 			end
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | #type_qualifier | #identifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
@@ -2146,34 +2216,36 @@ struct
 			(ps, `named (`none, q, d, semicolon)), xs
 		end
 	) and parse_specifier_qualifier_list
+		?(has_type: bool = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: [`cons of ranged_position * [FirstSet.firstset_of_type_specifier | type_qualifier | identifier] * 'a in_t] lazy_t)
 		: specifier_qualifier_list p * 'a in_t =
 	(
-		let handle_specifier xs = (
+		let handle_type_specifier xs = (
 			let spec, xs = parse_type_specifier error lang typedefs xs in
-			let next, xs = parse_specifier_qualifier_list_option error lang typedefs xs in
+			let next, xs = parse_specifier_qualifier_list_option ~has_type:true error lang typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
 			(ps, `type_specifier (spec, next)), xs
 		) in
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			handle_specifier xs
-		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
+			handle_type_specifier xs
+		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
-			handle_specifier xs
+			handle_type_specifier xs
 		| lazy (`cons (q_p, (#type_qualifier as q_e), xs)) ->
 			let q = q_p, q_e in
-			let next, xs = parse_specifier_qualifier_list_option error lang typedefs xs in
+			let next, xs = parse_specifier_qualifier_list_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some q) &^ next in
 			(ps, `type_qualifier (q, next)), xs
 		| lazy (`cons (_, `ident _, _)) ->
 			failwith "parse_specifier_qualifier_list"
 		end
 	) and parse_specifier_qualifier_list_option
+		?(has_type: bool = false)
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
@@ -2183,11 +2255,11 @@ struct
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | #type_qualifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_specifier_qualifier_list error lang typedefs xs in
+			let r, xs = parse_specifier_qualifier_list ~has_type error lang typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_specifier_qualifier_list error lang typedefs xs in
+			let r, xs = parse_specifier_qualifier_list ~has_type error lang typedefs xs in
 			`some r, xs
 		| _ ->
 			`none, xs
@@ -2238,9 +2310,7 @@ struct
 			loop (p, (`nil d)) xs
 		| _ ->
 			let ps = LazyList.hd_a xs in
-			if not (is_known_struct_declarator_list_error ps) then (
-				error ps "struct-declarator-list was expected."
-			);
+			error ps "struct-declarator-list was expected.";
 			`error, xs
 		end
 	) and parse_struct_declarator
@@ -2399,7 +2469,7 @@ struct
 		: declarator p * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`asterisk as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_pointer as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let pointer, xs = parse_pointer error lang typedefs xs in
 			let dd, xs = parse_direct_declarator_or_error ~use_string error lang typedefs xs in
@@ -2543,23 +2613,23 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [`asterisk] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.firstset_of_pointer * 'a in_t] lazy_t)
 		: pointer p * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a_p, (`asterisk as a_e), xs)) ->
-			let asterisk = a_p, a_e in
+		| lazy (`cons (a_p, (#FirstSet.firstset_of_pointer as a_e), xs)) ->
+			let pointer_mark = a_p, a_e in
 			let q, xs = parse_type_qualifier_list_option error lang typedefs xs in
 			begin match xs with
-			| lazy (`cons (a, (`asterisk as it), xr)) ->
+			| lazy (`cons (a, (#FirstSet.firstset_of_pointer as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				let next, xs = parse_pointer error lang typedefs xs in
-				let `some (ps, ()) = (`some asterisk) & (`some next) in
-				(ps, `cons (asterisk, q, next)), xs
+				let `some (ps, ()) = (`some pointer_mark) & (`some next) in
+				(ps, `cons (pointer_mark, q, next)), xs
 			| _ ->
 				let attrs, xs = parse_attribute_list_option error lang typedefs xs in
-				let `some (ps, ()) = (`some asterisk) &^ q &^ attrs in
-				(ps, `nil (asterisk, q, attrs)), xs
+				let `some (ps, ()) = (`some pointer_mark) &^ q &^ attrs in
+				(ps, `nil (pointer_mark, q, attrs)), xs
 			end
 		end
 	) and parse_type_qualifier_list_option
@@ -2750,7 +2820,7 @@ struct
 			let dd, xs = parse_direct_abstract_declarator error lang typedefs xs in
 			let ps = fst dd in
 			(ps, `declarator (`none, dd)), xs
-		| lazy (`cons (a, (`asterisk as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_pointer as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let pointer, xs = parse_pointer error lang typedefs xs in
 			begin match xs with

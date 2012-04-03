@@ -149,6 +149,7 @@ module Semantics (Literals: LiteralsType) = struct
 	type attributes = {
 		at_aligned: alignment;
 		at_alloc_size: int list;
+		at_blocks: [`none | `byref];
 		at_const: bool;
 		at_conventions: calling_convention;
 		at_deprecated: bool;
@@ -161,6 +162,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_nonnull: int list;
 		at_noreturn: bool;
 		at_nothrow: bool;
+		at_objc_gc: [`none | `weak];
 		at_optimize: string option;
 		at_pure: bool;
 		at_returns_twice: bool;
@@ -174,6 +176,7 @@ module Semantics (Literals: LiteralsType) = struct
 	let no_attributes = {
 		at_aligned = `default;
 		at_alloc_size = [];
+		at_blocks = `none;
 		at_const = false;
 		at_conventions = `cdecl;
 		at_deprecated = false;
@@ -186,6 +189,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_nonnull = [];
 		at_noreturn = false;
 		at_nothrow = false;
+		at_objc_gc = `none;
 		at_optimize = None;
 		at_pure = false;
 		at_returns_twice = false;
@@ -232,7 +236,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `generic_type]
 	and prototype = calling_convention * variable list * varargs_opt * all_type
 	and function_type = [`function_type of prototype]
-	and not_qualified_type = [ (* predefined_type | anonymous_type | named_type | `pointer | `array | `restrict *)
+	and not_qualified_type = [ (* predefined_type | anonymous_type | named_type | `pointer | `block_pointer | `array | `restrict *)
 		| `void
 		| `bool
 		| int_prec
@@ -243,6 +247,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `wchar (* only C++ or Objective-C++ *)
 		| `__builtin_va_list
 		| `pointer of all_type
+		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
 		| `restrict of pointer_type
 		| `anonymous of ranged_position * anonymous_type_var
@@ -259,6 +264,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `wchar (* only C++ or Objective-C++ *)
 		| `__builtin_va_list
 		| `pointer of all_type
+		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
 		| `restrict of pointer_type
 		| `volatile of not_qualified_type (* added to not_qualified_type *)
@@ -276,6 +282,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `wchar (* only C++ or Objective-C++ *)
 		| `__builtin_va_list
 		| `pointer of all_type
+		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
 		| `restrict of pointer_type
 		| `volatile of not_qualified_type
@@ -405,6 +412,7 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	type derived_type = [
 		| `pointer of all_type
+		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
 		| `restrict of pointer_type
 		| `volatile of not_qualified_type
@@ -482,10 +490,18 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	(* typedef *)
 	
-	let rec resolve_typedef (t: all_type): all_type = (
+	let rec resolve_typedef
+		?(stop_on_language_typedef: bool = false)
+		(t: all_type)
+		: all_type =
+	(
 		begin match t with
-		| `named (_, _, `typedef t, _) ->
-			resolve_typedef t
+		| `named (ps, _, `typedef t, _)
+			when (
+				not stop_on_language_typedef
+				|| let (filename, _, _, _), _ = ps in filename.[0] <> '<')
+		->
+			resolve_typedef ~stop_on_language_typedef t
 		| _ ->
 			t
 		end
@@ -547,6 +563,31 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	(* derived types *)
 	
+	type derived_types = derived_type list;;
+	
+	let rec is_derived_type (f: all_type -> bool) (d: derived_type): bool = (
+		let rec handle (f: all_type -> bool) (x: all_type): bool = (
+			if f x then true else
+			begin match x with
+			| #derived_type as x -> is_derived_type f x
+			| `named (_, _, `typedef x, _) -> handle f x
+			| _ -> false
+			end
+		) in
+		begin match d with
+		| `pointer x
+		| `restrict (`pointer x) ->
+			handle f x
+		| `block_pointer x ->
+			f (x :> all_type)
+		| `array (_, x)
+		| `volatile x ->
+			handle f (x :> all_type)
+		| `const x ->
+			handle f (x :> all_type)
+		end
+	);;
+	
 	let rec is_pointer (t: all_type): bool = (
 		begin match resolve_typedef t with
 		| `pointer _
@@ -561,28 +602,22 @@ module Semantics (Literals: LiteralsType) = struct
 		end
 	);;
 	
-	let rec is_derived_type (d: derived_type) (t: all_type): bool = (
-		begin match d with
-		| `pointer x
-		| `restrict (`pointer x) ->
-			if x == t then true else
-			begin match x with
-			| #derived_type as x -> is_derived_type x t
-			| _ -> false
-			end
-		| `array (_, x)
-		| `volatile x ->
-			if (x :> all_type) == t then true else
-			begin match (x :> all_type) with
-			| #derived_type as x -> is_derived_type x t
-			| _ -> false
-			end
-		| `const x ->
-			if (x :> all_type) == t then true else
-			begin match (x :> all_type) with
-			| #derived_type as x -> is_derived_type x t
-			| _ -> false
-			end
+	let rec dereference (t: all_type): all_type option = (
+		begin match resolve_typedef t with
+		| `pointer t ->
+			Some t
+		| `block_pointer t ->
+			Some (t :> all_type)
+		| `restrict (`pointer t) ->
+			Some t
+		| `volatile t ->
+			dereference (t :> all_type)
+		| `const t ->
+			dereference (t :> all_type)
+		| `named (_, _, `generic_type, _) ->
+			Some t
+		| _ ->
+			None
 		end
 	);;
 	
@@ -590,13 +625,15 @@ module Semantics (Literals: LiteralsType) = struct
 		(f: 'a -> derived_type -> 'a)
 		(a: 'a)
 		(base_type: all_type)
-		(derived_types: derived_type list)
+		(derived_types: derived_types)
 		: 'a =
 	(
 		List.fold_left (fun a dt ->
 			begin match dt with
 			| `pointer t ->
 				if t == base_type then f a dt else a
+			| `block_pointer t ->
+				if (t :> all_type) == base_type then f a dt else a
 			| `array (_, t) ->
 				if (t :> all_type) == base_type then f a dt else a
 			| `restrict t ->
@@ -721,6 +758,18 @@ module Semantics (Literals: LiteralsType) = struct
 		end
 	);;
 	
+	(* namespace *)
+	
+	type namespace = {
+		ns_namespace: named_item StringMap.t;
+		ns_enum_of_element: full_enum_type StringMap.t;
+		ns_opaque_enum: opaque_enum_type StringMap.t;
+		ns_enum: named_enum_type StringMap.t;
+		ns_opaque_struct: opaque_struct_type StringMap.t;
+		ns_struct: named_struct_type StringMap.t;
+		ns_opaque_union: opaque_union_type StringMap.t;
+		ns_union: named_union_type StringMap.t};;
+	
 	(* expression / statement *)
 	
 	let rec is_static_expression (expr: expression): bool = (
@@ -771,7 +820,7 @@ module Semantics (Literals: LiteralsType) = struct
 		end
 	);;
 	
-	let integer_of_expression (x: expression): (int_prec * Integer.t) option = (
+	let rec integer_of_expression (x: expression): (int_prec * Integer.t) option = (
 		begin match fst x with
 		| `int_literal pn ->
 			Some pn
@@ -779,6 +828,18 @@ module Semantics (Literals: LiteralsType) = struct
 			Some (`signed_int, Integer.of_int (int_of_char c))
 		| `enumerator (`named (_, _, `enum_element n, _)) ->
 			Some (`signed_int, n)
+		| `implicit_conv expr ->
+			begin match resolve_typedef (snd expr) with
+			| #int_prec as t ->
+				begin match integer_of_expression expr with
+				| Some (_, value) ->
+					Some (t, value)
+				| None ->
+					None
+				end
+			| _ ->
+				None
+			end
 		| _ ->
 			None
 		end

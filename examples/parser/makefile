@@ -23,6 +23,7 @@ TEST=test_parser
 
 GCC=gcc
 H=../c-lib.h
+HFLAGS=
 
 .PHONY: $(TEST)$(EXEEXT) test interactive clean
 
@@ -36,7 +37,7 @@ else
 endif
 
 test: $(TEST)$(EXEEXT)
-	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(H)
+	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 interactive:
 ifneq ($(OCAMLMAKE),)

@@ -216,9 +216,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		!long_double_mantissa
 	in
 	let builtin = [
-		"__builtin_alloca", [`unsigned_int], `pointer `char;
-		"__builtin_bzero", [`pointer `char; `unsigned_int], `void;
-		"__builtin_expect", [`bool; `bool], `bool;
+		"__builtin_alloca", [`unsigned_long], `pointer `char;
+		"__builtin_bzero", [`pointer `char; `unsigned_long], `void;
 		"__builtin_fabsf", [`float], `float;
 		"__builtin_fabs", [`double], `double;
 		"__builtin_fabsl", [`long_double], `long_double;
@@ -229,10 +228,18 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_inff", [], `float;
 		"__builtin_inf", [], `double;
 		"__builtin_infl", [], `long_double;
+		"__builtin___memcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
+		"__builtin___memmove_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
+		"__builtin___memset_chk", [`pointer `char; `signed_int; `unsigned_long; `unsigned_long], `pointer `char;
 		"__builtin_nanf", [`pointer (`const `char)], `float;
 		"__builtin_nan", [`pointer (`const `char)], `double;
 		"__builtin_nanl", [`pointer (`const `char)], `long_double;
-		"__builtin_return_address", [`unsigned_int], `pointer `char]
+		"__builtin_return_address", [`unsigned_int], `pointer `char;
+		"__builtin___stpcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long], `pointer `char;
+		"__builtin___strcat_chk", [`pointer `char; `pointer (`const `char); `unsigned_long], `pointer `char;
+		"__builtin___strcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long], `pointer `char;
+		"__builtin___strncat_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
+		"__builtin___strncpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char];
 	in
 	let result = {
 		en_sizeof = sizeof;

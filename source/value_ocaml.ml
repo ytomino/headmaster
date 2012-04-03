@@ -10,8 +10,6 @@ let rev_string s = (
 	r
 );;
 
-let hex = "0123456789ABCDEF";;
-
 module Integer = struct
 	type t = int;;
 	let zero = 0;;
@@ -22,7 +20,7 @@ module Integer = struct
 			if i >= String.length s then (
 				r
 			) else (
-				let n = String.index hex s.[i] in
+				let n = String.index Hexadecimal.uppercase s.[i] in
 				loop base s (succ i) (r * base + n)
 			)
 		) in
@@ -32,7 +30,7 @@ module Integer = struct
 		let rec loop base buf x = (
 			let d = x mod base in
 			let u = x / base in
-			Buffer.add_char buf hex.[abs d];
+			Buffer.add_char buf Hexadecimal.uppercase.[abs d];
 			if u = 0 then (
 				if d < 0 then Buffer.add_char buf '-';
 				rev_string (Buffer.contents buf)
@@ -66,7 +64,7 @@ module Integer64 = struct
 			if i >= String.length s then (
 				r
 			) else (
-				let n = String.index hex s.[i] in
+				let n = String.index Hexadecimal.uppercase s.[i] in
 				loop base s (Pervasives.succ i) (Int64.add (Int64.mul r base) (Int64.of_int n))
 			)
 		) in
@@ -76,7 +74,7 @@ module Integer64 = struct
 		let rec loop base buf x = (
 			let d = Int64.to_int (Int64.rem x base) in
 			let u = Int64.div x base in
-			Buffer.add_char buf hex.[Pervasives.abs d];
+			Buffer.add_char buf Hexadecimal.uppercase.[Pervasives.abs d];
 			if u = 0L then (
 				if d < 0 then Buffer.add_char buf '-';
 				rev_string (Buffer.contents buf)

@@ -13,35 +13,13 @@ let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
 	end
 );;
 
-type sizeof =
-	[`sizeof_bool of int] *
-	[`sizeof_short of int] *
-	[`sizeof_int of int] *
-	[`sizeof_long of int] *
-	[`sizeof_long_long of int] *
-	[`sizeof_float of int] *
-	[`sizeof_double of int] *
-	[`sizeof_long_double of int] *
-	[`sizeof_intptr of int];;
-
-type language_typedef =
-	[`typedef_ptrdiff_t of signed_int_prec] *
-	[`typedef_size_t of unsigned_int_prec] *
-	[`typedef_wchar_t of int_prec];;
-
-let builtin_name = "<builtin>";;
-
-let builtin_position: ranged_position =
-	let p = builtin_name, 0, 0, 0 in
-	p, p;;
-
 module Analyzer
 	(Literals: LiteralsType)
 	(Syntax: SyntaxType (Literals).S)
 	(Semantics: SemanticsType (Literals).S) =
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
-	module Machine = Machine (Literals) (Semantics);;
+	module Typing = Typing (Literals) (Semantics);;
 	open Literals;;
 	open Semantics;;
 	
@@ -70,126 +48,7 @@ struct
 		{no_attributes with at_aligned = alignment}
 	);;
 	
-	(* type compatibility *)
-	
-	type compatibility = [`just | `compatible | `error];;
-	
-	let min_compatibility (x: compatibility) (y: compatibility): compatibility = (
-		begin match x, y with
-		| `error, _ | _, `error -> `error
-		| `compatible, _ | _, `compatible -> `compatible
-		| `just, `just -> `just
-		end
-	);;
-	
-	let rec type_ABI_compatibility ~(dest: all_type) ~(source: all_type): compatibility = (
-		if dest == source then `just else
-		begin match dest, source with
-		| _, `void ->
-			`compatible
-		| (`char | `signed_char | `unsigned_char), (`char | `signed_char | `unsigned_char) ->
-			`compatible
-		| `pointer dest, `pointer source ->
-			type_ABI_compatibility ~dest ~source
-		| `const dest, `const source ->
-			type_ABI_compatibility ~dest:(dest :> all_type) ~source:(source :> all_type)
-		| `const dest, _ ->
-			let r2 = type_ABI_compatibility ~dest:(dest :> all_type) ~source in
-			min_compatibility `compatible r2
-		| `named (_, _, `typedef dest, _), _ ->
-			type_ABI_compatibility ~dest ~source
-		| _, `named (_, _, `typedef source, _) ->
-			type_ABI_compatibility ~dest ~source
-		| _ ->
-			`error
-		end
-	) and prototype_ABI_compatibility ~(dest: prototype) ~(source: prototype): compatibility = (
-		let d_conv, d_args, d_varargs, d_result = dest in
-		let s_conv, s_args, s_varargs, s_result = source in
-		(* calling convention *)
-		if d_conv <> s_conv then `error else
-		(* arguments *)
-		let result =
-			let rec loop (ds: variable list) (ss: variable list) result = (
-				begin match ds, ss with
-				| d :: dr, s :: sr ->
-					let `named (_, _, `variable (d_t, _), _) = d in
-					let `named (_, _, `variable (s_t, _), _) = s in
-					let r2 = type_ABI_compatibility ~dest:d_t ~source:s_t in
-					if r2 = `error then `error else
-					loop dr sr (min_compatibility r2 result)
-				| [], [] ->
-					result
-				| _ :: _, [] ->
-					if s_varargs = `varargs then `compatible else `error
-				| [], _ :: _ ->
-					`error
-				end
-			) in
-			loop d_args s_args `just
-		in
-		if result = `error then `error else
-		(* varargs *)
-		let result =
-			if d_varargs = s_varargs then result else
-			if d_varargs = `none && s_varargs = `varargs then `compatible else
-			`error
-		in
-		if result = `error then `error else
-		(* result *)
-		let r2 = type_ABI_compatibility ~dest:d_result ~source:s_result in
-		if r2 = `error then (
-			begin match d_result with
-			| `void -> `compatible
-			| _ -> `error
-			end
-		) else (
-			min_compatibility r2 result
-		)
-	);;
-	
-	let prototype_eq (left: prototype) (right: prototype): bool = (
-		let d_conv, d_args, d_varargs, d_result = left in
-		let s_conv, s_args, s_varargs, s_result = right in
-		(* calling convention *)
-		if d_conv <> s_conv then false else
-		(* arguments *)
-		let result =
-			let rec loop (ds: variable list) (ss: variable list): bool = (
-				begin match ds, ss with
-				| d :: dr, s :: sr ->
-					let `named (_, d_n, `variable (d_t, _), d_attr) = d in
-					let `named (_, s_n, `variable (s_t, _), s_attr) = s in
-					if d_n <> "" || s_n <> "" then false else (* named parameter is not eq, always *)
-					if d_t != s_t then false else
-					if d_attr <> s_attr then false else
-					loop dr sr
-				| [], [] ->
-					true
-				| _ :: _, [] | [], _ :: _ ->
-					false
-				end
-			) in
-			loop d_args s_args
-		in
-		if not result then false else
-		(* varargs *)
-		if d_varargs <> s_varargs then false else
-		(* result *)
-		d_result == s_result
-	);;
-	
 	(* namespace *)
-	
-	type namespace = {
-		ns_namespace: named_item StringMap.t;
-		ns_enum_of_element: full_enum_type StringMap.t;
-		ns_opaque_enum: opaque_enum_type StringMap.t;
-		ns_enum: named_enum_type StringMap.t;
-		ns_opaque_struct: opaque_struct_type StringMap.t;
-		ns_struct: named_struct_type StringMap.t;
-		ns_opaque_union: opaque_union_type StringMap.t;
-		ns_union: named_union_type StringMap.t};;
 	
 	let empty_namespace = {
 		ns_namespace = StringMap.empty;
@@ -237,447 +96,11 @@ struct
 		end
 	);;
 	
-	(* predefined types *)
-	
-	type predefined_types = Semantics.predefined_types;;
-	
-	let ready_predefined_types (lang: language) (sizeof: sizeof) (typedef: language_typedef): predefined_types = (
-		let `sizeof_bool sizeof_bool,
-			`sizeof_short sizeof_short,
-			`sizeof_int sizeof_int,
-			`sizeof_long sizeof_long,
-			`sizeof_long_long sizeof_long_long,
-			`sizeof_float sizeof_float,
-			`sizeof_double sizeof_double,
-			`sizeof_long_double sizeof_long_double,
-			`sizeof_intptr sizeof_intptr = sizeof
-		in
-		let `typedef_ptrdiff_t typedef_ptrdiff_t,
-			`typedef_size_t typedef_size_t,
-			`typedef_wchar_t typedef_wchar_t = typedef
-		in
-		let predefined_types: (predefined_type * int) list =
-			(`void, 0) ::
-			(`bool, sizeof_bool) ::
-			(`signed_char, 1) ::
-			(`unsigned_char, 1) ::
-			(`signed_short, sizeof_short) ::
-			(`unsigned_short, sizeof_short) ::
-			(`signed_int, sizeof_int) ::
-			(`unsigned_int, sizeof_int) ::
-			(`signed_long, sizeof_long) ::
-			(`unsigned_long, sizeof_long) ::
-			(`signed_long_long, sizeof_long_long) ::
-			(`unsigned_long_long, sizeof_long_long) ::
-			(`float, sizeof_float) ::
-			(`double, sizeof_double) ::
-			(`long_double, sizeof_long_double) ::
-			(`decimal32, 4) ::
-			(`decimal64, 8) ::
-			(`decimal128, 16) ::
-			((`imaginary `float), sizeof_float) ::
-			((`imaginary `double), sizeof_double) ::
-			((`imaginary `long_double), sizeof_long_double) ::
-			((`complex `float), sizeof_float * 2) ::
-			((`complex `double), sizeof_double * 2) ::
-			((`complex `long_double), sizeof_long_double * 2) ::
-			(`char, 1) ::
-			(`__builtin_va_list, sizeof_intptr) :: (
-				begin match lang with
-				| `c | `objc ->
-					[]
-				| `cxx | `objcxx ->
-					let sizeof_wchar =
-						begin match typedef_wchar_t with
-						| `signed_char | `unsigned_char -> 1
-						| `signed_short | `unsigned_short -> sizeof_short
-						| `signed_int | `unsigned_int -> sizeof_int
-						| `signed_long | `unsigned_long -> sizeof_long
-						| `signed_long_long | `unsigned_long_long -> sizeof_long_long
-						end
-					in
-					(`wchar, sizeof_wchar) :: []
-				end
-			)
-		in
-		let language_typedefs: typedef_type list =
-			let find_f t (x, _) = x = (t :> predefined_type) in
-			let find t = (fst (List.find (find_f t) predefined_types) :> all_type) in
-			(`named (builtin_position, "ptrdiff_t", `typedef (find typedef_ptrdiff_t), no_attributes)) ::
-			(`named (builtin_position, "size_t", `typedef (find typedef_size_t), no_attributes)) :: (
-				begin match lang with
-				| `c | `objc ->
-					(`named (builtin_position, "wchar_t", `typedef (find typedef_wchar_t), no_attributes)) :: []
-				| `cxx | `objcxx ->
-					[]
-				end
-			)
-		in
-		predefined_types, language_typedefs
-	);;
-	
-	(* derived types *)
-	
-	type derived_types = derived_type list;;
-	
-	let find_const_type (t: all_type) (xs: derived_types): [> const_type] * derived_types = (
-		begin match t with
-		| `const _ as t ->
-			t, xs
-		| #not_const_type as t ->
-			begin try
-				let rec loop xs = (
-					begin match xs with
-					| [] ->
-						raise Not_found
-					| x :: xr ->
-						begin match x with
-						| `const (u: not_const_type) as x when u == t ->
-							(x :> [> const_type])
-						| _ ->
-							loop xr
-						end
-					end
-				) in
-				loop xs, xs
-			with Not_found ->
-				let new_item: [> const_type] = `const t in
-				new_item, ((new_item :> derived_type) :: xs)
-			end
-		end
-	);;
-	
-	let find_volatile_type (t: all_type) (xs: derived_types)
-		: [> volatile_type | `const of [> volatile_type]] * derived_types =
-	(
-		(* order of qualifier: const of volatile of t *)
-		let make_volatile (t: not_qualified_type) (xs: derived_types)
-			: [> volatile_type] * derived_types =
-		(
-			begin try
-				let rec loop xs = (
-					begin match xs with
-					| [] ->
-						raise Not_found
-					| x :: xr ->
-						begin match x with
-						| `volatile (u: not_qualified_type) as x when u == t ->
-							(x :> [> volatile_type])
-						| _ ->
-							loop xr
-						end
-					end
-				) in
-				loop xs, xs
-			with Not_found ->
-				let new_item: [> volatile_type] = `volatile t in
-				new_item, ((new_item :> derived_type) :: xs)
-			end
-		) in
-		begin match t with
-		| `volatile _ | `const (`volatile _) as t ->
-			t, xs
-		| `const (#not_qualified_type as t) ->
-			let t, xs = make_volatile t xs in
-			begin match find_const_type (t :> all_type) xs with
-			| (`const (`volatile _)), _ as result ->
-				result
-			| _ ->
-				assert false (* does not come here *)
-			end
-		| #not_qualified_type as t ->
-			make_volatile t xs
-		end
-	);;
-	
-	let find_pointer_type (t: all_type) (xs: derived_types)
-		: [> pointer_type] * derived_types =
-	(
-		begin try
-			let rec loop xs = (
-				begin match xs with
-				| [] ->
-					raise Not_found
-				| x :: xr ->
-					begin match x with
-					| `pointer u as x when u == t ->
-						(x :> [> pointer_type])
-					| `pointer (`named (_, tag, `opaque_enum, _)) as x
-						when (match t with `named (_, o_tag, `enum _, _) -> tag = o_tag | _ -> false)
-					->
-						(x :> [> pointer_type])
-					| `pointer (`named (_, tag, `opaque_struct, _)) as x
-						when (match t with `named (_, o_tag, `struct_type _, _) -> tag = o_tag | _ -> false)
-					->
-						(x :> [> pointer_type])
-					| `pointer (`named (_, tag, `opaque_union, _)) as x
-						when (match t with `named (_, o_tag, `union _, _) -> tag = o_tag | _ -> false)
-					->
-						(x :> [> pointer_type])
-					| _ ->
-						loop xr
-					end
-				end
-			) in
-			loop xs, xs
-		with Not_found ->
-			let new_item: [> pointer_type] = `pointer t in
-			new_item, ((new_item :> derived_type) :: xs)
-		end
-	);;
-	
-	let find_array_type (n: Integer.t option) (t: all_type) (xs: derived_types)
-		: [> array_type | `volatile of [> array_type]
-			| `const of [> array_type | `volatile of [> array_type]]] * derived_types =
-	(
-		let make_array (n: Integer.t option) (t: not_qualified_type) (xs: derived_types)
-			: [> array_type] * derived_types =
-		(
-			let make_n_array (n: Integer.t option) (t: not_qualified_type) (xs: derived_types)
-				: [> array_type] * derived_types =
-			(
-				begin try
-					let rec loop xs = (
-						begin match xs with
-						| [] ->
-							raise Not_found
-						| x :: xr ->
-							begin match x with
-							| `array (m, u) as x when n = m && u == t ->
-								(x :> [> array_type])
-							| _ ->
-								loop xr
-							end
-						end
-					) in
-					loop xs, xs
-				with Not_found ->
-					let new_item: [> array_type] = `array (n, t) in
-					new_item, ((new_item :> derived_type) :: xs)
-				end
-			) in
-			begin match n with
-			| Some _ ->
-				let _, xs = make_n_array None t xs in
-				make_n_array n t xs
-			| None ->
-				make_n_array n t xs
-			end
-		) in
-		begin match t with
-		| #not_qualified_type as t ->
-			make_array n t xs
-		| `volatile (#not_qualified_type as t) ->
-			let t, xs = make_array n t xs in
-			begin match find_volatile_type (t :> all_type) xs with
-			| (`volatile (#array_type)), _ as result ->
-				result
-			| _ ->
-				assert false (* does not come here *)
-			end
-		| `const (`volatile (#not_qualified_type as t)) ->
-			let t, xs = make_array n t xs in
-			let t, xs = find_volatile_type t xs in
-			begin match find_const_type t xs with
-			| (`const (`volatile (#array_type))), _ as result ->
-				result
-			| _ ->
-				assert false (* does not come here *)
-			end
-		| `const (#not_qualified_type as t) ->
-			let t, xs = make_array n t xs in
-			begin match find_const_type t xs with
-			| (`const (#array_type)), _ as result ->
-				result
-			| _ ->
-				assert false (* does not come here *)
-			end
-		end
-	);;
-	
-	let find_restrict_type (t: pointer_type) (xs: derived_types): [> restrict_type] * derived_types = (
-		begin try
-			let rec loop xs = (
-				begin match xs with
-				| [] ->
-					raise Not_found
-				| x :: xr ->
-					begin match x with
-					| `restrict u as x when u == t ->
-						(x :> [> restrict_type])
-					| _ ->
-						loop xr
-					end
-				end
-			) in
-			loop xs, xs
-		with Not_found ->
-			let new_item: [> restrict_type] = `restrict t in
-			new_item, ((new_item :> derived_type) :: xs)
-		end
-	);;
-	
-	let find_function_type (prototype: prototype) (source: source_item list)
-		: function_type * source_item list =
-	(
-		let rec loop xs = (
-			begin match xs with
-			| x :: xr ->
-				begin match x with
-				| `function_type u as x when prototype_eq u prototype ->
-					x, source
-				| _ ->
-					loop xr
-				end
-			| [] ->
-				let func_type: function_type = `function_type prototype in
-				let source = (func_type :> source_item) :: source in
-				func_type, source
-			end
-		) in
-		loop source
-	);;
-	
-	(* named types *)
-	
-	let find_enum
-		(id: Syntax.identifier p)
-		(namespace: namespace)
-		(source: source_item list)
-		: [> [> opaquable_enum_var] with_name] * namespace * source_item list =
-	(
-		let id_p, `ident id_e = id in
-		try
-			begin match StringMap.find id_e namespace.ns_enum with
-			| `named (_, _, `enum _, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-		try
-			begin match StringMap.find id_e namespace.ns_opaque_enum with
-			| `named (_, _, `opaque_enum, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-			let item: [> [> `opaque_enum] with_name] =
-				`named (id_p, id_e, `opaque_enum, no_attributes)
-			in
-			let namespace = {namespace with ns_opaque_enum = StringMap.add id_e (item :> opaque_enum_type) namespace.ns_opaque_enum} in
-			let source = (item :> source_item) :: source in
-			item, namespace, source
-	);;
-	
-	let find_struct
-		(id: Syntax.identifier p)
-		(namespace: namespace)
-		(source: source_item list)
-		: [> [> opaquable_struct_var] with_name] * namespace * source_item list =
-	(
-		let id_p, `ident id_e = id in
-		try
-			begin match StringMap.find id_e namespace.ns_struct with
-			| `named (_, _, `struct_type _, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-		try
-			begin match StringMap.find id_e namespace.ns_opaque_struct with
-			| `named (_, _, `opaque_struct, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-			let item: [> [> `opaque_struct] with_name] =
-				`named (id_p, id_e, `opaque_struct, no_attributes)
-			in
-			let namespace = {namespace with ns_opaque_struct = StringMap.add id_e (item :> opaque_struct_type) namespace.ns_opaque_struct} in
-			let source = (item :> source_item) :: source in
-			item, namespace, source
-	);;
-	
-	let find_union
-		(id: Syntax.identifier p)
-		(namespace: namespace)
-		(source: source_item list)
-		: [> [> opaquable_union_var] with_name] * namespace * source_item list =
-	(
-		let id_p, `ident id_e = id in
-		try
-			begin match StringMap.find id_e namespace.ns_union with
-			| `named (_, _, `union _, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-		try
-			begin match StringMap.find id_e namespace.ns_opaque_union with
-			| `named (_, _, `opaque_union, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-			let item: [> [> `opaque_union] with_name] =
-				`named (id_p, id_e, `opaque_union, no_attributes)
-			in
-			let namespace = {namespace with ns_opaque_union = StringMap.add id_e (item :> opaque_union_type) namespace.ns_opaque_union} in
-			let source = (item :> source_item) :: source in
-			item, namespace, source
-	);;
-	
-	(* implicit conversion *)
-	
-	let conv_expr (t: all_type) (expr: expression): expression = (
-		begin match resolve_typedef t with
-		| #predefined_numeric_type as t1 ->
-			begin match resolve_typedef (snd expr) with
-			| #predefined_numeric_type as t2 when t1 != t2 ->
-				`implicit_conv expr, t
-			| _ ->
-				expr
-			end
-		| `pointer (`const `char) ->
-			begin match expr with
-			| `chars_literal _, `array (_, `char) ->
-				`implicit_conv expr, t (* char array literal -> char *)
-			| _ ->
-				expr
-			end
-		| `pointer x when x != `void ->
-			begin match expr with
-			| `cast (`int_literal (_, n), _ as z), t2
-			| `explicit_conv (`int_literal (_, n), _ as z), t2
-			| `implicit_conv (`int_literal (_, n), _ as z), t2
-				when (match resolve_typedef t2 with `pointer `void -> true | _ -> false)
-					&& Integer.compare n Integer.zero = 0
-			->
-				`implicit_conv z, t (* NULL... is it removing the cast "(void * )"0, ok? *)
-			| _ ->
-				expr
-			end
-		| _ ->
-			expr
-		end
-	);;
-	
-	(* zero value *)
-	
-	let zero_expression
-		(error: ranged_position -> string -> unit)
-		(ps: ranged_position)
-		(t: not_qualified_type)
-		: expression =
-	(
-		begin match t with
-		| `char ->
-			`char_literal '\x00', (t :> all_type)
-		| _ ->
-			error ps "unimplemented!";
-			assert false
-		end
-	);;
-	
-	(* analyzing *)
+	(* detect type from specifiers *)
 	
 	let get_bit_width_int error predefined_types ps size t1 t2 = (
-		if Machine.sizeof_predefined_type t1 predefined_types = size then t1 else
-		if Machine.sizeof_predefined_type t2 predefined_types = size then t2 else (
+		if Typing.sizeof_predefined_type t1 predefined_types = size then t1 else
+		if Typing.sizeof_predefined_type t2 predefined_types = size then t2 else (
 			error ps ("this environment does not have " ^ string_of_int (size * 8) ^ " bit-integer.");
 			t2
 		)
@@ -904,7 +327,7 @@ struct
 	(
 		let t, derived_types =
 			if qualifiers.tq_const then (
-				find_const_type t derived_types
+				Typing.find_const_type t derived_types
 			) else (
 				t, derived_types
 			)
@@ -913,7 +336,7 @@ struct
 			if qualifiers.tq_restrict then (
 				begin match t with
 				| `pointer _ as t ->
-					find_restrict_type t derived_types
+					Typing.find_restrict_type t derived_types
 				| _ ->
 					error ps "\"restrict\" could not be applied to not pointer type!";
 					t, derived_types
@@ -924,7 +347,7 @@ struct
 		in
 		let t, derived_types =
 			if qualifiers.tq_volatile then (
-				find_volatile_type t derived_types
+				Typing.find_volatile_type t derived_types
 			) else (
 				t, derived_types
 			)
@@ -932,12 +355,76 @@ struct
 		derived_types, t
 	);;
 	
+	(* expression *)
+	
+	(* implicit conversion *)
+	let conv_expr (t: all_type) (expr: expression): expression = (
+		begin match resolve_typedef ~stop_on_language_typedef:true t with
+		| #predefined_numeric_type as t1 ->
+			begin match resolve_typedef ~stop_on_language_typedef:true (snd expr) with
+			| #predefined_numeric_type as t2 when t1 != t2 ->
+				`implicit_conv expr, t
+			| `named (_, _, `typedef _, _) ->
+				`implicit_conv expr, t  (* language typedef -> predefined type *)
+			| _ ->
+				expr
+			end
+		| `named (_, _, `typedef _, _) as t1 ->
+			if resolve_typedef ~stop_on_language_typedef:true (snd expr) != t1 then (
+				`implicit_conv expr, t (* predefined type -> language typedef *)
+			) else (
+				expr
+			)
+		| `pointer `void | `pointer (`const `void) ->
+			begin match expr with
+			| _, `pointer t2 when t2 != t ->
+				`implicit_conv expr, t (*  any type * -> void * *)
+			| _ ->
+				expr
+			end
+		| `pointer x ->
+			begin match expr with
+			| `chars_literal _, `array (_, `char) when (match x with `const `char -> true | _ -> false) ->
+				`implicit_conv expr, t (* char array literal -> char const * *)
+			| `cast (`int_literal (_, n), _ as z), t2
+			| `explicit_conv (`int_literal (_, n), _ as z), t2
+			| `implicit_conv (`int_literal (_, n), _ as z), t2
+				when (match resolve_typedef t2 with `pointer `void -> true | _ -> false)
+					&& Integer.compare n Integer.zero = 0
+			->
+				`implicit_conv z, t (* (void * )NULL -> (any type * )NULL *)
+			| _, `pointer `void
+			| _, `pointer (`const `void) ->
+				`implicit_conv expr, t (* void * -> any type * *)
+			| _ ->
+				expr
+			end
+		| _ ->
+			expr
+		end
+	);;
+	
+	let zero_expression
+		(error: ranged_position -> string -> unit)
+		(ps: ranged_position)
+		(t: not_qualified_type)
+		: expression =
+	(
+		begin match t with
+		| `char ->
+			`char_literal '\x00', (t :> all_type)
+		| _ ->
+			error ps "unimplemented!";
+			assert false
+		end
+	);;
+	
 	let integer_cast
 		(predefined_types: predefined_types)
 		(t: int_prec)
 		(x: Integer.t): expression =
 	(
-		let bit_size = Machine.sizeof_predefined_type t predefined_types * 8in
+		let bit_size = Typing.sizeof_predefined_type t predefined_types * 8 in
 		let bits = Integer.sub (Integer.shift_left Integer.one bit_size) Integer.one in
 		let x2 = Integer.logand x bits in
 		begin match t with
@@ -1019,10 +506,10 @@ struct
 		| #int_prec, (`restrict (`pointer _) as ptr_t) when op = `add ->
 			Some ptr_t, derived_types
 		| `array (_, elm_t), #int_prec when op = `add || op = `sub ->
-			let ptr_t, derived_types = find_pointer_type (elm_t :> all_type) derived_types in
+			let ptr_t, derived_types = Typing.find_pointer_type (elm_t :> all_type) derived_types in
 			Some ptr_t, derived_types
 		| #int_prec, `array (_, elm_t) when op = `add ->
-			let ptr_t, derived_types = find_pointer_type (elm_t :> all_type) derived_types in
+			let ptr_t, derived_types = Typing.find_pointer_type (elm_t :> all_type) derived_types in
 			Some ptr_t, derived_types
 		| `pointer _, `pointer _ when op = `sub ->
 			Some (find_ptrdiff_t predefined_types), derived_types
@@ -1062,22 +549,7 @@ struct
 		end
 	);;
 	
-	let rec dereference (t: all_type): all_type option = (
-		begin match resolve_typedef t with
-		| `pointer t ->
-			Some t
-		| `restrict (`pointer t) ->
-			Some t
-		| `volatile t ->
-			dereference (t :> all_type)
-		| `const t ->
-			dereference (t :> all_type)
-		| `named (_, _, `generic_type, _) ->
-			Some t
-		| _ ->
-			None
-		end
-	);;
+	(* for macro *)
 	
 	let find_enum_by_element
 		(element: enum_item)
@@ -1143,6 +615,8 @@ struct
 		source_loop source
 	);;
 	
+	(* analyzing *)
+	
 	let rec handle_pragma
 		(error: ranged_position -> string -> unit)
 		(predefined_types: predefined_types)
@@ -1202,7 +676,7 @@ struct
 									List.exists (fun i ->
 										begin match t, i with
 										| `function_type p1, `function_type p2 ->
-											prototype_ABI_compatibility ~dest:p1 ~source:p2 = `just (* same prototype *)
+											Typing.prototype_ABI_compatibility ~dest:p1 ~source:p2 = `just (* same prototype *)
 										| _ ->
 											error (fst directive) "this type could not be overloaded.";
 											true
@@ -1306,7 +780,7 @@ struct
 										| `named (_, _, `function_forward (_, original_t), _)
 										| `named (_, _, `function_definition (_, original_t, _), _) as func ->
 											let `function_type original_prototype = original_t in
-											begin match prototype_ABI_compatibility ~dest:prototype ~source:original_prototype with
+											begin match Typing.prototype_ABI_compatibility ~dest:prototype ~source:original_prototype with
 											| `compatible ->
 												let mapping_options = {mapping_options with mo_language_mappings =
 													StringMap.modify (fun x ->
@@ -1387,42 +861,71 @@ struct
 		(x: Syntax.attribute_item p)
 		: attributes =
 	(
+		let int_of_expr (expr: Syntax.assignment_expression p) = (
+			begin match snd expr with
+			| `int_literal (_, value) ->
+				Some (Integer.to_int value)
+			| _ ->
+				error (fst expr) "complex expression in __attributes__(...) is not supported.";
+				None
+			end
+		) in
+		let rec int_list_of_expr_list (list: Syntax.argument_expression_list p) rs = (
+			begin match snd list with
+			| `nil n ->
+				begin match int_of_expr (fst list, n) with
+				| Some n ->
+					n :: rs
+				| None ->
+					rs
+				end
+			| `cons (list, _, n) ->
+				int_list_of_expr_list list (
+					begin match n with
+					| `some n ->
+						begin match int_of_expr n with
+						| Some n -> n :: rs
+						| None -> rs
+						end
+					| `error ->
+						rs
+					end)
+			end
+		) in
 		begin match snd x with
 		| `aligned (_, param) ->
 			begin match param with
+			| `some (_, (_, n, _)) ->
+				begin match n with
+				| `some n ->
+					begin match int_of_expr n with
+					| Some n ->
+						{attributes with at_aligned = `aligned n}
+					| None ->
+						attributes
+					end
+				| `error ->
+					attributes
+				end
 			| `none ->
 				{attributes with at_aligned = `explicit_aligned}
-			| `some (_, (_, (_, n), _)) ->
-				{attributes with at_aligned = `aligned (Integer.to_int n)}
 			end
 		| `alloc_size (_, _, list, _) ->
 			begin match list with
 			| `some list ->
-				let rec loop (list: Syntax.argument_expression_list p) rs = (
-					let int_of_expr ps (expr: Syntax.assignment_expression) rs = (
-						begin match expr with
-						| `int_literal (_, value) ->
-							Integer.to_int value :: rs
-						| _ ->
-							error ps "complex expression in __attributes__((alloc_size(...))) is not supported.";
-							rs
-						end
-					) in
-					begin match snd list with
-					| `nil expr ->
-						{attributes with at_alloc_size = int_of_expr (fst list) expr rs}
-					| `cons (list, _, expr) ->
-						loop list (match expr with
-							| `some expr -> int_of_expr (fst expr) (snd expr) rs
-							| `error -> rs)
-					end
-				) in
-				loop list []
+				{attributes with at_alloc_size = int_list_of_expr_list list []}
 			| `error ->
 				attributes
 			end
 		| `always_inline _ ->
 			{attributes with at_inline = `always_inline}
+		| `blocks (_, _, arg, _) ->
+			begin match arg with
+			| `some (_, `BYREF) ->
+				{attributes with at_blocks = `byref}
+			| `error ->
+				attributes
+			end
 		| `cdecl _ ->
 			{attributes with at_conventions = `cdecl}
 		| `const _ ->
@@ -1435,42 +938,48 @@ struct
 			{attributes with at_dllexport = true}
 		| `fastcall ->
 			{attributes with at_conventions = `fastcall}
-		| `format (_, _, (_, `ident id), _, (_, m), _, (_, n), _) ->
-			{attributes with at_format = `like (id, Integer.to_int m, Integer.to_int n)}
-		| `format_arg (_, _, (_, n), _) ->
-			{attributes with at_format = `arg (Integer.to_int n)}
+		| `format (_, _, f, _, m, _, n, _) ->
+			begin match f, m, n with
+			| `some (_, `ident funcname), `some m, `some n ->
+				begin match int_of_expr m, int_of_expr n with
+				| Some m, Some n ->
+					{attributes with at_format = `like (funcname, m, n)}
+				| _ ->
+					attributes
+				end
+			| _ ->
+				attributes
+			end
+		| `format_arg (_, _, n, _) ->
+			begin match n with
+			| `some n ->
+				begin match int_of_expr n with
+				| Some n ->
+					{attributes with at_format = `arg n}
+				| None ->
+					attributes
+				end
+			| `error ->
+				attributes
+			end
 		| `inline _ ->
 			if attributes.at_inline = `always_inline then attributes else
 			{attributes with at_inline = `inline}
 		| `malloc ->
 			{attributes with at_malloc = true}
-		| `mode (_, _, (_, m), _) ->
-			{attributes with at_mode = Some m}
+		| `mode (_, _, mode, _) ->
+			begin match mode with
+			| `some mode ->
+				{attributes with at_mode = Some (snd mode)}
+			| `error ->
+				attributes
+			end
 		| `noinline _ ->
 			{attributes with at_inline = `noinline}
 		| `nonnull (_, _, list, _) ->
 			begin match list with
 			| `some list ->
-				let rec loop (list: Syntax.argument_expression_list p) rs = (
-					let int_of_expr ps (expr: Syntax.assignment_expression) rs = (
-						begin match expr with
-						| `int_literal (_, value) ->
-							Integer.to_int value :: rs
-						| _ ->
-							error ps "complex expression in __attributes__((nonnull(...))) is not supported.";
-							rs
-						end
-					) in
-					begin match snd list with
-					| `nil expr ->
-						{attributes with at_nonnull = int_of_expr (fst list) expr rs}
-					| `cons (list, _, expr) ->
-						loop list (match expr with
-							| `some expr -> int_of_expr (fst expr) (snd expr) rs
-							| `error -> rs)
-					end
-				) in
-				loop list []
+				{attributes with at_nonnull = int_list_of_expr_list list []}
 			| `error ->
 				attributes
 			end
@@ -1478,6 +987,13 @@ struct
 			{attributes with at_noreturn = true}
 		| `nothrow ->
 			{attributes with at_nothrow = true}
+		| `objc_gc (_, _, arg, _) ->
+			begin match arg with
+			| `some (_, `WEAK) ->
+				{attributes with at_objc_gc = `weak}
+			| `error ->
+				attributes
+			end
 		| `optimize (_, _, arg, _) ->
 			begin match arg with
 			| `some (_, `chars_literal arg) ->
@@ -1505,6 +1021,8 @@ struct
 			{attributes with at_used = `unused}
 		| `used ->
 			{attributes with at_used = `used}
+		| `visibility _ ->
+			attributes (* ignore __attribute__((visibility(...))) *)
 		| `warn_unused_result ->
 			{attributes with at_warn_unused_result = true}
 		| `weak_import ->
@@ -1583,7 +1101,7 @@ struct
 			| `named (_, formal_type, `generic_type, _) ->
 				derived_types, source, Some (`sizeof_formal_type formal_type, size_t)
 			| _ ->
-				begin match Machine.sizeof t predefined_types with
+				begin match Typing.sizeof t predefined_types with
 				| Some sizeof_value ->
 					derived_types, source, Some (`int_literal (`unsigned_int, Integer.of_int sizeof_value), size_t)
 				| None ->
@@ -1720,14 +1238,14 @@ struct
 		| `chars_literal s as v ->
 			let base_type = find_predefined_type `char predefined_types in
 			let length = Some (Integer.of_int (String.length s + 1)) in
-			let t, derived_types = find_array_type length base_type derived_types in
+			let t, derived_types = Typing.find_array_type length base_type derived_types in
 			derived_types, source, Some (v, t)
 		| `wchar_literal _ as v ->
 			derived_types, source, Some (v, find_wchar_t predefined_types)
 		| `wchars_literal s as v ->
 			let base_type = find_wchar_t predefined_types in
 			let length = Some (Integer.of_int (WideString.length s + 1)) in
-			let t, derived_types = find_array_type length base_type derived_types in
+			let t, derived_types = Typing.find_array_type length base_type derived_types in
 			derived_types, source, Some (v, t)
 		| `objc_string_literal _ ->
 			error (fst x) "unimplemented!";
@@ -1760,7 +1278,7 @@ struct
 			with Not_found ->
 				if name = "__func__" then (
 					let base_type = find_predefined_type `char predefined_types in
-					let t, derived_types = find_array_type None base_type derived_types in
+					let t, derived_types = Typing.find_array_type None base_type derived_types in
 					derived_types, source, Some (`__func__, t)
 				) else (
 					error (fst x) (name ^ " was undefined.");
@@ -1769,7 +1287,7 @@ struct
 			end
 		| `__FILE__ _ ->
 			let base_type = find_predefined_type `char predefined_types in
-			let t, derived_types = find_array_type None base_type derived_types in
+			let t, derived_types = Typing.find_array_type None base_type derived_types in
 			derived_types, source, Some (`__FILE__, t)
 		| `__LINE__ _ ->
 			derived_types, source, Some (`__LINE__, find_predefined_type `signed_int predefined_types)
@@ -1881,8 +1399,37 @@ struct
 				derived_types, source, None
 			end
 		| `__builtin_constant_p _ ->
-			(* currently, always false...todo *)
-			derived_types, source, Some (`int_literal (`unsigned_char, Integer.zero), find_predefined_type `bool predefined_types)
+			(* currently, always false *)
+			let value = Some (
+				`int_literal (`unsigned_char, Integer.zero),
+				find_predefined_type `bool predefined_types)
+			in
+			derived_types, source, value
+		| `__builtin_expect (_, _, expr, _, _, _) ->
+			(* __builtin_expect(expr, c) -> expr *)
+			begin match expr with
+			| `some expr ->
+				handle_expression error predefined_types derived_types namespace source request expr
+			| `error ->
+				derived_types, source, None
+			end
+		| `__builtin_object_size _ ->
+			(* currently, always max value of size_t *)
+			let size_t = find_size_t predefined_types in
+			let sizeof_size_t = Typing.sizeof size_t predefined_types in
+			begin match sizeof_size_t with
+			| Some sizeof_size_t ->
+				let max_sizeof = Integer.sub (Integer.shift_left Integer.one (sizeof_size_t * 8)) Integer.one in
+				begin match resolve_typedef size_t with
+				| #int_prec as t ->
+					let value = Some (`int_literal (t, max_sizeof), size_t) in
+					derived_types, source, value
+				| _ ->
+					assert false (* does not come here *)
+				end
+			| None ->
+				assert false (* does not come here *)
+			end
 		| `__builtin_va_arg (_, _, expr, _, typename, _) ->
 			begin match expr, typename with
 			| `some expr, `some typename ->
@@ -1953,7 +1500,7 @@ struct
 			) `lvalue right
 		| `unary ((_, `ampersand), right) ->
 			handle_unary (fun derived_types right ->
-				let t, derived_types = find_pointer_type (snd right) derived_types in
+				let t, derived_types = Typing.find_pointer_type (snd right) derived_types in
 				derived_types, Some (`address right, t)
 			) `lvalue right
 		| `unary ((_, `asterisk), right) ->
@@ -2042,16 +1589,61 @@ struct
 				begin match expr with
 				| Some expr ->
 					let resolved_t = resolve_typedef t in
-					begin match resolved_t, integer_of_expression expr with
-					| (#int_prec as t), Some (_, expr) ->
-						derived_types, source, Some (integer_cast predefined_types t expr)
-					| _ ->
-						begin match resolved_t, resolve_typedef (snd expr) with
-						| #predefined_numeric_type, #predefined_numeric_type ->
+					begin match resolved_t with
+					| #int_prec as int_t ->
+						begin match expr with
+						| `cast (`cast (_, orig_t as expr), _), _
+						| `cast (`explicit_conv (_, orig_t as expr), _), _
+						| `cast (`implicit_conv (_, orig_t as expr), _), _
+						| `cast ((`int_literal _), orig_t as expr), _ when resolve_typedef orig_t == int_t ->
+							(* folding (int)(T)(int)expr to (int)expr *)
+							begin match integer_of_expression expr with
+							| Some (_, expr) ->
+								derived_types, source, Some (integer_cast predefined_types int_t expr)
+							| _ ->
+								derived_types, source, Some (`explicit_conv expr, t)
+							end
+						| _ ->
+							begin match integer_of_expression expr with
+							| Some (_, expr) ->
+								derived_types, source, Some (integer_cast predefined_types int_t expr)
+							| _ ->
+								derived_types, source, Some (`cast expr, t)
+							end
+						end
+					| #predefined_numeric_type ->
+						begin match resolve_typedef (snd expr) with
+						| #predefined_numeric_type ->
 							derived_types, source, Some (`explicit_conv expr, t)
 						| _ ->
 							derived_types, source, Some (`cast expr, t)
 						end
+					| `pointer _ ->
+						let resolved_expr_t = resolve_typedef (snd expr) in
+						begin match resolved_expr_t with
+						| #signed_int_prec ->
+							let sizeof_expr_t = Typing.sizeof resolved_expr_t predefined_types in
+							let ptrdiff_t = find_ptrdiff_t predefined_types in
+							let sizeof_ptrdiff_t = Typing.sizeof ptrdiff_t predefined_types in
+							if sizeof_expr_t <> sizeof_ptrdiff_t then (
+								derived_types, source, Some (`cast (`implicit_conv expr, resolve_typedef ptrdiff_t), t)
+							) else (
+								derived_types, source, Some (`cast expr, t)
+							)
+						| #unsigned_int_prec ->
+							let sizeof_expr_t = Typing.sizeof resolved_expr_t predefined_types in
+							let size_t = find_size_t predefined_types in
+							let sizeof_size_t = Typing.sizeof size_t predefined_types in
+							if sizeof_expr_t <> sizeof_size_t then (
+								derived_types, source, Some (`cast (`implicit_conv expr, resolve_typedef size_t), t)
+							) else (
+								derived_types, source, Some (`cast expr, t)
+							)
+						| _ ->
+							derived_types, source, Some (`cast expr, t)
+						end
+					| _ ->
+						derived_types, source, Some (`cast expr, t)
 					end
 				| None ->
 					derived_types, source, None
@@ -2264,7 +1856,7 @@ struct
 			let derived_types, t =
 				begin match t, init with
 				| `array (None, element_t1), Some (_, `array ((Some _ as length), element_t2)) when element_t1 == element_t2 ->
-					let array_type, derived_types = find_array_type length `char derived_types in
+					let array_type, derived_types = Typing.find_array_type length `char derived_types in
 					derived_types, array_type
 				| _ ->
 					derived_types, t
@@ -2276,6 +1868,36 @@ struct
 				if init <> None then (
 					error ps "initializer was found with typedef."
 				);
+				let t = (* typedef of language_typedef *)
+					begin match id with
+					| "ptrdiff_t" ->
+						let ptrdiff_t = find_ptrdiff_t predefined_types in
+						let `named (_, _, `typedef orig_t, _) = ptrdiff_t in
+						if orig_t != resolve_typedef t then (
+							error ps "bad difinition of ptrdiff_t."
+						);
+						ptrdiff_t
+					| "size_t" ->
+						let size_t = find_size_t predefined_types in
+						let `named (_, _, `typedef orig_t, _) = size_t in
+						if orig_t != resolve_typedef t then (
+							error ps "bad difinition of size_t."
+						);
+						size_t
+					| "wchar_t" ->
+						let wchar_t = find_wchar_t predefined_types in
+						begin match wchar_t with
+						| `named (_, _, `typedef orig_t, _)
+						| (#predefined_type as orig_t) ->
+							if orig_t != resolve_typedef t then (
+								error ps "bad difinition of wchar_t."
+							)
+						end;
+						wchar_t
+					| _ ->
+						t
+					end
+				in
 				let result = `named (ps, id, `typedef t, attr) in
 				let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
 				let source = (result :> source_item) :: source in
@@ -2329,7 +1951,7 @@ struct
 							| `named (_, _, `extern ((`function_type previous_prototype), _), _)
 							| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) ->
 								(* no error when two external declaration has same prototype *)
-								if prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype <> `just then (
+								if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype <> `just then (
 									error ps ("\"" ^ id ^ "\" was conflicted.");
 								);
 								true
@@ -2482,10 +2104,10 @@ struct
 					| `some id ->
 						begin match snd sou with
 						| `STRUCT ->
-							let _, namespace, source = find_struct id namespace source in
+							let _, namespace, source = Typing.find_struct id namespace source in
 							namespace, source
 						| `UNION ->
-							let _, namespace, source = find_union id namespace source in
+							let _, namespace, source = Typing.find_union id namespace source in
 							namespace, source
 						end
 					| `none ->
@@ -2509,7 +2131,7 @@ struct
 				let derived_types, items =
 					begin match items with
 					| (m_name, `array (None, m_element_t), m_bw, m_attr) :: items_r ->
-						let sized_array, derived_types = find_array_type (Some Integer.zero) (m_element_t :> all_type) derived_types in
+						let sized_array, derived_types = Typing.find_array_type (Some Integer.zero) (m_element_t :> all_type) derived_types in
 						derived_types, ((m_name, sized_array, m_bw, m_attr) :: items_r)
 					| _ ->
 						derived_types, items
@@ -2519,9 +2141,9 @@ struct
 				let items = List.rev items in
 				(* check bit-field or not *)
 				let items =
-					begin match Machine.is_bitfield items with
+					begin match Typing.is_bitfield items with
 					| `is_bitfield | `mixed ->
-						Machine.fill_bitfield error predefined_types (fst decls) items (* normal members and bit-fields are mixed *)
+						Typing.fill_bitfield error predefined_types (fst decls) items (* normal members and bit-fields are mixed *)
 					| `is_not_bitfield | `empty ->
 						items
 					end
@@ -2530,7 +2152,7 @@ struct
 				let alignment =
 					begin match alignment with
 					| `aligned n ->
-						begin match Machine.alignof_struct items predefined_types with
+						begin match Typing.alignof_struct items predefined_types with
 						| Some good_n ->
 							if good_n > n then `aligned good_n else alignment
 						| None ->
@@ -2581,9 +2203,9 @@ struct
 				let item, namespace, source =
 					begin match snd sou with
 					| `STRUCT ->
-						find_struct id namespace source
+						Typing.find_struct id namespace source
 					| `UNION ->
-						find_union id namespace source
+						Typing.find_union id namespace source
 					end
 				in
 				derived_types, namespace, source, Some item
@@ -2741,7 +2363,7 @@ struct
 			let namespace, source =
 				begin match id with
 				| `some id ->
-					let _, namespace, source = find_enum id namespace source in
+					let _, namespace, source = Typing.find_enum id namespace source in
 					namespace, source
 				| `none ->
 					namespace, source
@@ -2786,7 +2408,7 @@ struct
 		| `no_body (_, id) ->
 			begin match id with
 			| `some id ->
-				let item, namespace, source = find_enum id namespace source in
+				let item, namespace, source = Typing.find_enum id namespace source in
 				derived_types, namespace, source, Some item
 			| `error ->
 				derived_types, namespace, source, None
@@ -2938,7 +2560,7 @@ struct
 						derived_types, source, None
 					end
 				in
-				let array_type, derived_types = find_array_type n base_type derived_types in
+				let array_type, derived_types = Typing.find_array_type n base_type derived_types in
 				derived_types, source, array_type
 			in
 			handle_direct_declarator error predefined_types derived_types namespace source array_type attributes dd
@@ -2957,7 +2579,7 @@ struct
 				handle_parameter_type_list error predefined_types derived_types namespace source attributes.at_aligned ptl
 			in
 			let prototype: prototype = conventions, params, varargs, base_type in
-			let func_type, source = find_function_type prototype source in
+			let func_type, source = Typing.find_function_type prototype source in
 			handle_direct_declarator error predefined_types derived_types namespace source (func_type :> all_type) attributes dd
 		| `old_function_type (dd, _, idl, _) ->
 			begin match idl with
@@ -2967,7 +2589,7 @@ struct
 			| `none ->
 				let conventions = attributes.at_conventions in
 				let prototype: prototype = conventions, [], `varargs, base_type in
-				let func_type, source = find_function_type prototype source in
+				let func_type, source = Typing.find_function_type prototype source in
 				handle_direct_declarator error predefined_types derived_types namespace source (func_type :> all_type) attributes dd
 			end
 		end
@@ -2979,14 +2601,29 @@ struct
 		(x: Syntax.pointer p)
 		: derived_types * (all_type * attributes) =
 	(
-		let t, derived_types = find_pointer_type t derived_types in
+		let apply_pointer pk t derived_types = (
+			begin match pk with
+			| `asterisk ->
+				Typing.find_pointer_type t derived_types
+			| `caret ->
+				begin match t with
+				| `function_type _ as t ->
+					Typing.find_block_pointer_type t derived_types
+				| _ ->
+					error (fst x) "block pointer could not be applied to not function type.";
+					t, derived_types
+				end
+			end
+		) in
 		begin match snd x with
-		| `nil (_, qs, attrs) ->
+		| `nil ((_, pk), qs, attrs) ->
+			let t, derived_types = apply_pointer pk t derived_types in
 			let qualifiers = Traversing.opt Traversing.fold_tql (handle_type_qualifier error) no_type_qualifier_set qs in
 			let derived_types, t = get_type_by_qualifier_set error derived_types (fst x) t qualifiers in
 			let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs in
 			derived_types, (t, attributes)
-		| `cons (_, qs, next) ->
+		| `cons ((_, pk), qs, next) ->
+			let t, derived_types = apply_pointer pk t derived_types in
 			let qualifiers = Traversing.opt Traversing.fold_tql (handle_type_qualifier error) no_type_qualifier_set qs in
 			let derived_types, t = get_type_by_qualifier_set error derived_types (fst x) t qualifiers in
 			handle_pointer error derived_types t attributes next
@@ -3025,11 +2662,11 @@ struct
 					let `named (ps, name, `variable (the_type, init), attrs) = param in
 					begin match resolve_typedef (remove_type_qualifiers the_type :> all_type) with
 					| `array (_, base_type) ->
-						let t, derived_types = find_pointer_type (base_type :> all_type) derived_types in
+						let t, derived_types = Typing.find_pointer_type (base_type :> all_type) derived_types in
 						let new_param = `named (ps, name, `variable (t, init), attrs) in
 						derived_types, new_param :: params
 					| `function_type _ as ft -> (* illegal, but some headers have this form *)
-						let t, derived_types = find_pointer_type (ft :> all_type) derived_types in
+						let t, derived_types = Typing.find_pointer_type (ft :> all_type) derived_types in
 						let new_param = `named (ps, name, `variable (t, init), attrs) in
 						derived_types, new_param :: params
 					| _ ->
@@ -3179,7 +2816,7 @@ struct
 						derived_types, source, None
 					end
 				in
-				let array_type, derived_types = find_array_type n base_type derived_types in
+				let array_type, derived_types = Typing.find_array_type n base_type derived_types in
 				derived_types, source, array_type
 			in
 			begin match dd with
@@ -3208,7 +2845,7 @@ struct
 				end
 			in
 			let prototype: prototype = conventions, params, varargs, base_type in
-			let func_type, source = find_function_type prototype source in
+			let func_type, source = Typing.find_function_type prototype source in
 			begin match dd with
 			| `some dd ->
 				handle_direct_abstract_declarator error predefined_types derived_types namespace source (func_type :> all_type) attributes dd
@@ -4073,18 +3710,18 @@ struct
 		(defines: (define p) StringMap.t)
 		: predefined_types * derived_types * namespace * (source_item list * extra_info) StringMap.t * mapping_options =
 	(
-		let predefined_types = ready_predefined_types lang sizeof typedef in
+		let predefined_types = Typing.ready_predefined_types lang sizeof typedef in
 		let derived_types, namespace, builtin_source =
 			List.fold_left (fun (derived_types, namespace, source) (name, args, ret) ->
 				let type_map t predefined_types derived_types: all_type * derived_types = (
 					begin match t with
 					| `pointer (#predefined_type as target_t) ->
 						let target_t = find_predefined_type target_t predefined_types in
-						find_pointer_type target_t derived_types
+						Typing.find_pointer_type target_t derived_types
 					| `pointer (`const (#predefined_type as target_t)) ->
 						let target_t = find_predefined_type target_t predefined_types in
-						let const_type, derived_types = find_const_type target_t derived_types in
-						find_pointer_type const_type derived_types
+						let const_type, derived_types = Typing.find_const_type target_t derived_types in
+						Typing.find_pointer_type const_type derived_types
 					| #predefined_type as t ->
 						find_predefined_type t predefined_types, derived_types
 					end

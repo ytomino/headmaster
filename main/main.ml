@@ -145,8 +145,8 @@ let error (ps: ranged_position) (m: string): unit = (
 
 let env: environment = gcc_env options.gcc_command options.lang;;
 let env = {env with
-	en_include = List.rev_append options.include_dirs env.en_include;
-	en_sys_include = List.rev_append options.sys_include_dirs env.en_sys_include};;
+	en_sys_include = List.rev_append options.include_dirs (
+		List.rev_append options.sys_include_dirs env.en_sys_include)};;
 
 module Literals = struct
 	let float_prec, double_prec, long_double_prec = env.en_precision;;
@@ -218,9 +218,9 @@ let (tu: AST.translation_unit),
 
 let defines: DP.define AST.p StringMap.t = DP.map error `c typedefs defined_tokens;;
 
-let (predefined_types: A.predefined_types),
-	(derived_types: A.derived_types),
-	(namespace: A.namespace),
+let (predefined_types: SEM.predefined_types),
+	(derived_types: SEM.derived_types),
+	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
 	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
@@ -232,7 +232,7 @@ if options.create_dest_dir && not (Sys.file_exists options.dest_dir) then (
 
 begin match options.to_lang with
 | `ada ->
-	let module T = Translate (Literals) (SEM) in
+	let module T = AdaTranslator (Literals) (SEM) in
 	let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options in
 	let filename_mapping = T.filename_mapping (remove_include_dir env) ada_mapping sources in
 	let dirs = T.dir_packages filename_mapping in
@@ -274,7 +274,7 @@ begin match options.to_lang with
 				~language_mapping:ada_mapping
 				~predefined_types
 				~derived_types
-				~enum_of_element:namespace.A.ns_enum_of_element
+				~enum_of_element:namespace.SEM.ns_enum_of_element
 				~opaque_mapping
 				~name_mapping
 				~name:package

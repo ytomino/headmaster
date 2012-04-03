@@ -23,9 +23,9 @@ let rec parse_args i = (
 		| "--gcc" ->
 			gcc_command := Sys.argv.(i + 1);
 			parse_args (i + 2)
-		| "--isystem" ->
-			sys_include_dirs := Sys.argv.(i + 1) :: !sys_include_dirs;
-			parse_args (i + 2)
+		| arg when String.length arg > 2 && arg.[0] = '-' && arg.[1] = 'I' ->
+			sys_include_dirs := (String.sub arg 2 (String.length arg - 2)) :: !sys_include_dirs;
+			parse_args (i + 1)
 		| arg ->
 			source_filename := arg;
 			parse_args (i + 1)
@@ -65,7 +65,7 @@ module PP = Preprocessor (Literals) (LE);;
 module DP = DefineParser (Literals) (LE) (PP) (AST);;
 module P = DP.Parser;;
 module A = Analyzer (Literals) (AST) (SEM);;
-module T = Translate (Literals) (SEM);;
+module T = AdaTranslator (Literals) (SEM);;
 
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let h = open_in name in
@@ -98,9 +98,9 @@ let (tu, typedefs, lazy (`nil (_, defined_tokens)): AST.translation_unit * P.typ
 
 let defines: DP.define AST.p StringMap.t = DP.map error `c typedefs defined_tokens;;
 
-let (predefined_types: A.predefined_types),
-	(derived_types: A.derived_types),
-	(namespace: A.namespace),
+let (predefined_types: SEM.predefined_types),
+	(derived_types: SEM.derived_types),
+	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
 	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
@@ -164,7 +164,7 @@ StringMap.iter (fun package items ->
 			~predefined_types
 			~derived_types
 			~opaque_mapping
-			~enum_of_element:namespace.A.ns_enum_of_element
+			~enum_of_element:namespace.SEM.ns_enum_of_element
 			~name:package
 			items;
 		Format.pp_print_flush ff ();

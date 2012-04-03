@@ -74,6 +74,8 @@ struct
 		(* derived types *)
 		| `pointer t ->
 			of_item (t :> all_item)
+		| `block_pointer t ->
+			of_item (t :> all_item)
 		| `array (_, t) ->
 			of_item (t :> all_item)
 		| `restrict t ->

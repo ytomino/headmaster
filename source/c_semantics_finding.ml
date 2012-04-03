@@ -52,6 +52,7 @@ struct
 		) in
 		begin match t with
 		| `pointer t -> process rs (t :> all_type)
+		| `block_pointer t -> process rs (t :> all_type)
 		| `array (_, t) -> process rs (t :> all_type)
 		| `restrict t -> process rs (t :> all_type)
 		| `volatile t -> process rs (t :> all_type)
@@ -202,6 +203,8 @@ struct
 				begin match x with
 				| `pointer t ->
 					process t
+				| `block_pointer t ->
+					process (t :> all_type)
 				| `array (_, t) ->
 					process (t :> all_type)
 				| `restrict t ->
@@ -298,7 +301,9 @@ struct
 		let stmt_f rs _ = rs in
 		let expr_f rs (e: expression) = (
 			begin match e with
-			| `cast ((_, t1) as expr), t2 ->
+			| `cast ((_, t1) as expr), t2
+			| `explicit_conv ((_, t1) as expr), t2
+			| `implicit_conv ((_, t1) as expr), t2 ->
 				let t1 = resolve_typedef t1 in
 				let t2 = resolve_typedef t2 in
 				begin match t1, t2 with

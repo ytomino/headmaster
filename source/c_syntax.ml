@@ -26,7 +26,7 @@ type real_prec = [
 	| `decimal64 (* gcc's _Decimal64 *)
 	| `decimal128];; (* gcc's _Decimal128 *)
 
-(* operators in iso646.h *)
+(* operators in iso646.h for define parser *)
 
 type operator = [
 	| `ampersand
@@ -51,6 +51,8 @@ type bit_width_mode = [
 	| `__pointer__
 	| `__unwind_word__ (* pointer size ? *)
 	| `__word__];;
+
+(* builtin functions *)
 
 type builtin_comparator = [
 	| `__builtin_isgreater
@@ -104,24 +106,26 @@ module Syntax (Literals: LiteralsType) = struct
 		| `nil of attribute_item
 		| `cons of attribute_item_list p * [`comma] p * attribute_item pe]
 	and attribute_item = [
-		| `aligned of string p * ([`l_paren] p * Integer.t p * [`r_paren] p) opt
+		| `aligned of string p * ([`l_paren] p * assignment_expression pe * [`r_paren] pe) opt
 		| `alloc_size of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
 		| `always_inline of string
+		| `blocks of string p * [`l_paren] pe * [`BYREF] pe * [`r_paren] pe
 		| `cdecl of string
 		| `const of string
 		| `deprecated of string
 		| `dllimport of string
 		| `dllexport of string
 		| `fastcall
-		| `format of string p * [`l_paren] p * identifier p * [`comma] p * Integer.t p * [`comma] p * Integer.t p * [`r_paren] p
-		| `format_arg of string p * [`l_paren] p * Integer.t p * [`r_paren] p
+		| `format of string p * [`l_paren] pe * identifier pe * [`comma] pe * assignment_expression pe * [`comma] pe * assignment_expression pe * [`r_paren] pe
+		| `format_arg of string p * [`l_paren] pe * assignment_expression pe * [`r_paren] pe
 		| `inline of string
 		| `malloc
-		| `mode of string p * [`l_paren] p * bit_width_mode p * [`r_paren] p
+		| `mode of string p * [`l_paren] pe * bit_width_mode pe * [`r_paren] pe
 		| `noinline of string
 		| `nonnull of string p * [`l_paren] pe * argument_expression_list pe * [`r_paren] pe
 		| `noreturn of string
 		| `nothrow
+		| `objc_gc of string p * [`l_paren] pe * [`WEAK] pe * [`r_paren] pe
 		| `optimize of string p * [`l_paren] pe * [`chars_literal of string] pe * [`r_paren] pe
 		| `packed of string
 		| `pure
@@ -133,6 +137,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `unavailable
 		| `unused of string
 		| `used
+		| `visibility of string p * [`l_paren] pe * [`chars_literal of string] pe * [`r_paren] pe
 		| `warn_unused_result
 		| `weak_import]
 	(* inline assembler *)
@@ -167,6 +172,8 @@ module Syntax (Literals: LiteralsType) = struct
 		| `array_access of expression p * [`l_bracket] p * expression pe * [`r_bracket] pe
 		| `function_call of expression p * [`l_paren] p * argument_expression_list opt * [`r_paren] pe
 		| `__builtin_constant_p of [`__builtin_constant_p] p * [`l_paren] pe * expression pe * [`r_paren] pe (* extended *)
+		| `__builtin_expect of [`__builtin_expect] p * [`l_paren] pe * expression pe * [`comma] pe * expression pe * [`r_paren] pe (* extended *)
+		| `__builtin_object_size of [`__builtin_object_size] p * [`l_paren] pe * expression pe * [`comma] pe * expression pe * [`r_paren] pe (* extended *)
 		| `__builtin_va_arg of [`__builtin_va_arg] p * [`l_paren] pe * expression pe * [`comma] pe * type_name pe * [`r_paren] pe (* extended *)
 		| `__builtin_compare of builtin_comparator p * [`l_paren] pe * expression pe * [`comma] pe * expression pe * [`r_paren] pe (* extended *)
 		| `element_access of expression p * [`period] p * identifier pe
@@ -298,7 +305,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `__builtin_va_list] (* extended *)
 	and struct_or_union_specifier = [
 		(* (6.7.2.1) struct-or-union-specifier *)
-		| `with_body of struct_or_union p * attribute_list opt * identifier opt * [`l_curly] p * struct_declaration_list pe * [`r_curly] pe * attribute_list opt (* extended *)
+		| `with_body of struct_or_union p * attribute_list opt * identifier opt * [`l_curly] p * struct_declaration_list pe * [`r_curly] pe * attribute_list opt
 		| `no_body of struct_or_union p * identifier pe]
 	and struct_or_union = [
 		(* (6.7.2.1) struct-or-union *)
@@ -311,7 +318,7 @@ module Syntax (Literals: LiteralsType) = struct
 	and struct_declaration = [
 		(* (6.7.2.1) struct-declaration *)
 		| `named of [`__extension__] opt * specifier_qualifier_list pe * struct_declarator_list pe * [`semicolon] pe
-		| `anonymous_struct_or_union of [`__extension__] p * struct_or_union_specifier p * [`semicolon] pe] (* extended *)
+		| `anonymous_struct_or_union of [`__extension__] opt * struct_or_union_specifier p * [`semicolon] pe]
 	and specifier_qualifier_list = [
 		(* (6.7.2.1) specifier-qualifier-list *)
 		| `type_specifier of type_specifier p * specifier_qualifier_list opt
@@ -349,11 +356,11 @@ module Syntax (Literals: LiteralsType) = struct
 		| `__inline__] (* extended *)
 	and declarator =
 		(* (6.7.5) declarator *)
-		pointer opt * direct_declarator pe * attribute_list opt (* extended *)
+		pointer opt * direct_declarator pe * attribute_list opt
 	and direct_declarator = [
 		(* (6.7.5) direct-declarator *)
 		| `ident of string
-		| `paren of [`l_paren] p * attribute_list opt * declarator pe * [`r_paren] pe (* extended *)
+		| `paren of [`l_paren] p * attribute_list opt * declarator pe * [`r_paren] pe
 		| `array of direct_declarator p * [`l_bracket] p * type_qualifier_list opt * assignment_expression opt * [`r_bracket] pe
 		| `static_array1 of direct_declarator p * [`l_bracket] p * [`STATIC] p * type_qualifier_list opt * assignment_expression p * [`r_bracket] pe
 		| `static_array2 of direct_declarator p * [`l_bracket] p * type_qualifier_list p * [`STATIC] p * assignment_expression p * [`r_bracket] pe
@@ -361,9 +368,9 @@ module Syntax (Literals: LiteralsType) = struct
 		| `function_type of direct_declarator p * [`l_paren] p * parameter_type_list p * [`r_paren] pe
 		| `old_function_type of direct_declarator p * [`l_paren] p * identifier_list opt * [`r_paren] pe]
 	and pointer = [
-		(* (6.7.5) pointer *)
-		| `nil of [`asterisk] p * type_qualifier_list opt * attribute_list opt (* extended *)
-		| `cons of [`asterisk] p * type_qualifier_list opt * pointer p]
+		(* (6.7.5) pointer (caret pointer is extended) *)
+		| `nil of [`asterisk | `caret] p * type_qualifier_list opt * attribute_list opt
+		| `cons of [`asterisk | `caret] p * type_qualifier_list opt * pointer p]
 	and type_qualifier_list = [
 		(* (6.7.5) type-qualifier-list *)
 		| `nil of type_qualifier

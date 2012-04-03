@@ -1,17 +1,6 @@
 open C_lexical;;
 open Value;;
 
-let hex = "0123456789ABCDEF";;
-
-let hex4 (x: Int32.t): string = (
-	let s = String.make 4 '_' in
-	s.[0] <- hex.[Int32.to_int (Int32.shift_right x 24) land 15];
-	s.[1] <- hex.[Int32.to_int (Int32.shift_right x 16) land 15];
-	s.[2] <- hex.[Int32.to_int (Int32.shift_right x  8) land 15];
-	s.[3] <- hex.[Int32.to_int x land 15];
-	s
-);;
-
 module Output
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType (Literals).S) =
@@ -79,14 +68,14 @@ struct
 			| `chars_literal s ->
 				"\"" ^ String.escaped s ^ "\""
 			| `wchar_literal s ->
-				"L\'\\x" ^ hex4 s ^ "\'"
+				"L\'\\x" ^ Hexadecimal.x4u s ^ "\'"
 			| `wchars_literal s ->
 				let length = WideString.length s in
 				let buf = Buffer.create (length * 6 + 3) in
 				Buffer.add_string buf "L\"";
 				for i = 0 to length do
 					Buffer.add_string buf "\\x";
-					Buffer.add_string buf (hex4 (WideString.get s i))
+					Buffer.add_string buf (Hexadecimal.x4u (WideString.get s i))
 				done;
 				Buffer.add_char buf '\"';
 				Buffer.contents buf

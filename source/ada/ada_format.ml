@@ -308,8 +308,8 @@ let pp_array_definition
 	(ff: formatter)
 	(pp_index: formatter -> unit -> unit)
 	(aliased: [`aliased | `none])
-	(pp_element_type_name: formatter -> 'a -> unit)
-	(element_type_name: 'a)
+	(pp_component_type_name: formatter -> 'a -> unit)
+	(component_type_name: 'a)
 	: unit =
 (
 	pp_print_string ff "array (";
@@ -320,7 +320,7 @@ let pp_array_definition
 	| `aliased -> pp_print_string ff "aliased "
 	| `none -> ()
 	end;
-	pp_element_type_name ff element_type_name;
+	pp_component_type_name ff component_type_name;
 	pp_print_char ff ';';
 	pp_close_box ff ();
 	pp_close_box ff ()
@@ -328,17 +328,17 @@ let pp_array_definition
 
 let pp_record_definition
 	(ff: formatter)
-	(pp_elements: (formatter -> unit -> unit) list)
+	(pp_components: (formatter -> unit -> unit) list)
 	: unit =
 (
-	if pp_elements = [] then (
+	if pp_components = [] then (
 		pp_print_string ff "null record;";
 		pp_close_box ff ();
 		pp_close_box ff ()
 	) else (
 		pp_print_string ff "record";
 		pp_close_box ff ();
-		List.iter (fun pp_e -> pp_e ff ()) pp_elements;
+		List.iter (fun pp_e -> pp_e ff ()) pp_components;
 		pp_close_box ff ();
 		pp_print_space ff ();
 		pp_print_string ff "end record;"
@@ -713,7 +713,7 @@ let pp_string_literal
 
 let pp_array_literal
 	(ff: formatter)
-	(pp_element: formatter -> 'e -> unit)
+	(pp_component: formatter -> 'e -> unit)
 	(first: int)
 	(length: 'a -> int)
 	(get: 'a -> int -> 'e)
@@ -731,7 +731,7 @@ let pp_array_literal
 		pp_print_char ff '(';
 		pp_print_int ff first;
 		pp_print_string ff " => ";
-		pp_element ff (get item 0);
+		pp_component ff (get item 0);
 		pp_print_char ff ')'
 	) else (
 		pp_print_char ff '(';
@@ -741,7 +741,7 @@ let pp_array_literal
 				pp_print_char ff ',';
 				pp_print_space ff ()
 			);
-			pp_element ff (get item i);
+			pp_component ff (get item i);
 		done;
 		pp_print_char ff ')'
 	)

@@ -26,6 +26,7 @@ EXENAME=hmcpp$(EXEEXT)
 
 GCC=gcc
 H=../c-lib.h
+HFLAGS=
 
 .PHONY: $(EXENAME) test clean
 
@@ -39,7 +40,7 @@ else
 endif
 
 test: $(EXENAME)
-	./$(EXENAME) --gcc "$(GCC)" $(H)
+	./$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 $(BUILDDIR)/gmp.cmxa:
 	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR))

@@ -948,10 +948,20 @@ struct
 							preprocess error lang read in_macro_expr predefined macro_arguments xs))
 					)
 				end
-			| `ident name when StringMap.mem name predefined ->
-				process_replace ps token name xs
+			| `ident name as it1 when StringMap.mem name predefined ->
+				begin match xs with
+				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+					process_d_sharp ps it1 ds_p xs
+				| _ ->
+					process_replace ps token name xs
+				end
 			| #extended_word as ew when StringMap.mem (string_of_ew ew) predefined ->
-				process_replace ps token (string_of_ew ew) xs
+				begin match xs with
+				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+					process_d_sharp ps (`ident (string_of_ew ew)) ds_p xs
+				| _ ->
+					process_replace ps token (string_of_ew ew) xs
+				end
 			| `ident _ | `numeric_literal _ as it1 -> (* ##-able *)
 				begin match xs with
 				| lazy (`cons (ds_p, `d_sharp, xs)) ->

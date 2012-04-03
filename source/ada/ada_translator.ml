@@ -1,15 +1,11 @@
 open Ada_format;;
+open Ada_naming;;
 open C_semantics;;
 open C_semantics_dependency;;
 open C_semantics_finding;;
 open C_semantics_naming;;
 open Position;;
 open Value;;
-
-let set_of_fst (xs: (string * 'a) list): StringSet.t = (
-	List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase x) r)
-		StringSet.empty xs
-);;
 
 let string_of_pp (pp: Format.formatter -> 'a -> unit) (v: 'a): string = (
 	let b = Buffer.create 256 in
@@ -24,302 +20,7 @@ let omit_long_word max_length s = (
 	String.sub s 0 (max_length - 3) ^ "..."
 );;
 
-let ada_reserved_words =
-	let list = [
-		"abort";
-		"abs";
-		"accept";
-		"access";
-		"aliased";
-		"all";
-		"and";
-		"array";
-		"at";
-		"begin";
-		"body";
-		(* "case"; *)
-		"constant";
-		"declare";
-		"delay";
-		"delta";
-		"digits";
-		(* "do"; *)
-		(* "else"; *)
-		"elsif";
-		"end";
-		"entry";
-		"exception";
-		"exit";
-		(* "for"; *)
-		"function";
-		"generic";
-		(* "goto"; *)
-		(* "if"; *)
-		"in";
-		"interface";
-		"is";
-		"limited";
-		"loop";
-		"mod";
-		"new";
-		"not";
-		"null";
-		"of";
-		"or";
-		"others";
-		"out";
-		"overriding";
-		"package";
-		"pragma";
-		"private";
-		"procedure";
-		"protected";
-		"raise";
-		"range";
-		"record";
-		"rem";
-		"renames";
-		"requeue";
-		"return";
-		"reverse";
-		"select";
-		"separate";
-		"some";
-		"subtype";
-		"synchronized";
-		"tagged";
-		"task";
-		"terminate";
-		"then";
-		"type";
-		"until";
-		"use";
-		"when";
-		(* "while"; *)
-		"with";
-		"xor"]
-	in List.fold_right StringSet.add list StringSet.empty;;
-
-let ada_name_of_int_prec (p: int_prec): string = (
-	begin match p with
-	| `signed_char -> "signed_char"
-	| `unsigned_char -> "unsigned_char"
-	| `signed_short -> "signed_short"
-	| `unsigned_short -> "unsigned_short"
-	| `signed_int -> "signed_int"
-	| `unsigned_int -> "unsigned_int"
-	| `signed_long -> "signed_long"
-	| `unsigned_long -> "unsigned_long"
-	| `signed_long_long -> "signed_long_long"
-	| `unsigned_long_long -> "unsigned_long_long"
-	end
-);;
-
-let ada_name_of_float_prec (p: float_prec): string = (
-	begin match p with
-	| `float -> "float"
-	| `double -> "double"
-	| `long_double -> "long_double"
-	end
-);;
-
-let ada_name_by_short (s: string): string = (
-	let s_length = String.length s in
-	let b = Buffer.create s_length in
-	let rec loop s s_length i b state = (
-		if i >= s_length then (
-			Buffer.contents b
-		) else (
-			begin match s.[i] with
-			| '_' ->
-				begin match state with
-				| `first ->
-					loop s s_length (i + 1) b `first
-				| `normal | `underline ->
-					loop s s_length (i + 1) b `underline
-				end
-			| c ->
-				if state = `underline then Buffer.add_char b '_';
-				Buffer.add_char b c;
-				loop s s_length (i + 1) b `normal
-			end
-		)
-	) in
-	loop s s_length 0 b `first
-);;
-
-let ada_name_by_substitute (s: string): string = (
-	let substitute = 'q' in
-	let s_length = String.length s in
-	let b = Buffer.create s_length in
-	let rec loop s s_length i b state = (
-		if i >= s_length then (
-			if state = `underline then Buffer.add_char b substitute;
-			Buffer.contents b
-		) else (
-			begin match s.[i] with
-			| '_' ->
-				begin match state with
-				| `substitute ->
-					Buffer.add_char b substitute;
-					loop s s_length (i + 1) b `substitute
-				| `normal ->
-					loop s s_length (i + 1) b `underline
-				| `underline ->
-					Buffer.add_char b substitute;
-					Buffer.add_char b substitute;
-					loop s s_length (i + 1) b `substitute
-				end
-			| '.' ->
-				if state = `underline then Buffer.add_char b substitute;
-				Buffer.add_char b '.';
-				loop s s_length (i + 1) b `substitute
-			| c ->
-				if state = `underline then Buffer.add_char b '_';
-				Buffer.add_char b c;
-				loop s s_length (i + 1) b `normal
-			end
-		)
-	) in
-	loop s s_length 0 b `substitute
-);;
-
-let ada_name_of_anonymous_argument (i: int): string = (
-	"a" ^ string_of_int i
-);;
-
-let ada_name_of_anonymous_element (i: int): string = (
-	"anonymous_" ^ string_of_int i
-);;
-
-let escape_ada_reserved_word ~(prefix: string) ~(postfix: string) (s: string): string = (
-	if StringSet.mem (String.lowercase s) ada_reserved_words then (
-		prefix ^ s ^ postfix
-	) else (
-		s
-	)
-);;
-
-(* header filename (removed dir) -> package name *)
-let special_package_name_mapping =
-	let list = [] in (* currently, nothing *)
-	List.fold_right (fun (k, v) r -> StringMap.add k v r) list StringMap.empty;;
-
-let take_package_name = Triming.take_word (fun c -> c = '.');;
-
-let strip_package_name (name: string): string = (
-	begin try
-		let p = String.rindex name '.' + 1 in
-		String.sub name p (String.length name - p)
-	with Not_found ->
-		name
-	end
-)
-
-let ada_package_name (remove_include_dir: string -> string) (s: string): string = (
-	if s.[0] = '<' then "" else
-	let h = remove_include_dir s in
-	begin try
-		StringMap.find h special_package_name_mapping
-	with Not_found ->
-		let p = String.copy (Filename.chop_suffix h ".h") in
-		for i = 0 to String.length p - 1 do
-			if p.[i] = '/' then p.[i] <- '.' else
-			if p.[i] = '-' then p.[i] <- '_'
-		done;
-		let p = ada_name_by_substitute p in
-		(* resolving for confliction with reserved word *)
-		let rec nested_package_loop p s = (
-			let s, sr = take_package_name s in
-			let s = escape_ada_reserved_word
-				~prefix:""
-				~postfix:(if sr = "" then "_h" else "_dir")
-				s
-			in
-			if sr = "" then p ^ s else
-			nested_package_loop (p ^ s ^ ".") sr
-		) in
-		nested_package_loop "" p
-	end
-);;
-
-let make_mapmap (list: (string * (string * string) list) list): string StringMap.t StringMap.t = (
-	List.fold_left (fun map (filename, xs) ->
-		let set = List.fold_left (fun rs (k, v)-> StringMap.add k v rs) StringMap.empty xs in
-		StringMap.add filename set map
-	) StringMap.empty list
-);;
-
-(* package name -> C identifier -> Ada Identifier *)
-let special_name_mapping = make_mapmap [
-	"cairo.cairo", [
-		"cairo_version", "get_cairo_version"; (* cairo / conflicated with CAIRO_VERSION *)
-		"cairo_version_string", "get_cairo_version_string"]; (* cairo / conflicated with CAIRO_VERSION_STRING *)
-	"iconv", [
-		"_LIBICONV_VERSION", "LIBICONV_VERSION"]; (* iconv / conflicted with extern const *)
-	"inttypes", [
-		"PRIX16", "PRIX16_uppercase"; (* darwin9 / conflicted with PRIx16 *)
-		"PRIX32", "PRIX32_uppercase"; (* darwin9 / conflicted with PRIx32 *)
-		"PRIX64", "PRIX64_uppercase"; (* darwin9 / conflicted with PRIx64 *)
-		"PRIX8", "PRIX8_uppercase"; (* darwin9 / conflicted with PRIx8 *)
-		"PRIXFAST16", "PRIXFAST16_uppercase"; (* darwin9 / conflicted with PRIxFAST16 *)
-		"PRIXFAST32", "PRIXFAST32_uppercase"; (* darwin9 / conflicted with PRIxFAST32 *)
-		"PRIXFAST64", "PRIXFAST64_uppercase"; (* darwin9 / conflicted with PRIxFAST64 *)
-		"PRIXFAST8", "PRIXFAST8_uppercase"; (* darwin9 / conflicted with PRIxFAST8 *)
-		"PRIXLEAST16", "PRIXLEAST16_uppercase"; (* darwin9 / conflicted with PRIxLEAST16 *)
-		"PRIXLEAST32", "PRIXLEAST32_uppercase"; (* darwin9 / conflicted with PRIxLEAST32 *)
-		"PRIXLEAST64", "PRIXLEAST64_uppercase"; (* darwin9 / conflicted with PRIxLEAST64 *)
-		"PRIXLEAST8", "PRIXLEAST8_uppercase"; (* darwin9 / conflicted with PRIxLEAST8 *)
-		"PRIXMAX", "PRIXMAX_uppercase"; (* darwin9 / conflicted with PRIxMAX *)
-		"PRIXPTR", "PRIXPTR_uppercase"]; (* darwin9 / conflicted with PRIxPTR *)
-	"libxml.tree", [
-		"xmlBufferWriteCHAR", "xmlBufferWriteCHAR_uppercase"]; (* libxml2 / conflicted with xmlBufferWriteChar *)
-	"mach.i386.thread_status", [
-		"I386_EXCEPTION_STATE_COUNT", "I386_EXCEPTION_STATE_COUNT_uppercase"; (* darwin9 / conflicated with i386_EXCEPTION_STATE_COUNT *)
-		"X86_DEBUG_STATE32_COUNT", "X86_DEBUG_STATE32_COUNT_uppercase"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
-		"X86_DEBUG_STATE64_COUNT", "X86_DEBUG_STATE64_COUNT_uppercase"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
-		"X86_EXCEPTION_STATE64_COUNT", "X86_EXCEPTION_STATE64_COUNT_uppercase"]; (* darwin9 / conflicted with x86_EXCEPTION_STATE64_COUNT *)
-	"mach.message", [
-		"MACH_MSG_OVERWRITE", "MACH_MSG_OVERWRITE_option"]; (* darwin9 / confilicted with mach_msg_overwrite *)
-	"mpfr", [
-		"mpfr_version", "get_mpfr_version"]; (* mpfr / conflicted with MPFR_VERSION *)
-	"png", [
-		"png_libpng_ver", "get_png_libpng_ver"; (* libpng / conflicted with PNG_LIBPNG_VER *)
-		"png_unknown_chunk_ptr", "png_unknown_chunk_funcptr"]; (* libpng / conflicted with pointer of png_unknown_chunk *)
-	"qctype", [
-		"___runetype", "qqqrunetype"]; (* freebsd7 / hiding C.runetype (shold use Standard prefix...) *)
-	"readline.keymaps", [
-		"KEYMAP_ENTRY_ARRAY", "Fixed_KEYMAP_ENTRY_ARRAY"]; (* readline / conflicted with unconstrained array of KEYMAP_ENTRY *)
-	"readline.readline", [
-		"KEYMAP_ENTRY_ARRAY", "Fixed_KEYMAP_ENTRY_ARRAY"; (* libedit / conflicted with unconstrained array of KEYMAP_ENTRY *)
-		"FUNMAP", "FUNMAP_t"; (* readline / conflicted with funmap variable *)
-		"rl_readline_version", "get_rl_readline_version"; (* libedit / conflicted with RL_READLINE_VERSION *)
-		"rl_vi_bWord", "rl_vi_bWord_uppercase"; (* readline / conflicted with rl_vi_bword *)
-		"rl_vi_eWord", "rl_vi_eWord_uppercase"; (* readline / conflicted with rl_vi_eword *)
-		"rl_vi_fWord", "rl_vi_fWord_uppercase"]; (* readline / conflicted with rl_vi_fword *)
-	"sys.signal", [
-		"sv_onstack", "sigvec_sv_onstack"]; (* darwin9 / conflicted with SV_ONSTACK *)
-	"stdlib", [
-		"system", "C_system"]; (* darwin9 / hiding System package (should use Standard prefix...) *)
-	"unistd", [
-		"_exit", "C_exit"; (* darwin9 / conflicted with _Exit *)
-		"_Exit", "C_Exit2"; (* darwin9 / conflicted with _exit *)
-		"execvP", "execvP2"]; (* darwin9 / conflicted with execvp *)
-	"windef", [
-		"FLOAT", "C_FLOAT"]; (* mingw-w64 / conflicted with float *)
-	"winnt", [
-		"CHAR", "C_CHAR"; (* mingw-w64 / conflicted with char *)
-		"LUID_AND_ATTRIBUTES_ARRAY", "Fixed_LUID_AND_ATTRIBUTES_ARRAY"; (* mingw-w64 conflicted with unconstrained array of LUID_AND_ATTRIBUTES *)
-		"SID_AND_ATTRIBUTES_ARRAY", "Fixed_SID_AND_ATTRIBUTES_ARRAY"]; (* mingw-w64 conflicted with unconstrained array of SID_AND_ATTRIBUTES *)
-	"zlib", [
-		"zlib_version", "get_zlib_version"]; (* zlib / conflicted with ZLIB_VERSION *)
-	"", [ (* predefined *)
-		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
-		"__MACH__", "defined_MACH"; (* darwin9 / conflicted with include dir <mach/...> *)
-		"__PIC__", "PIC"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
-		"WINNT", "defined_WINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
-
-module Translate
+module AdaTranslator
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType (Literals).S) =
 struct
@@ -379,20 +80,20 @@ struct
 	type name_mapping = Naming.name_mapping;;
 	
 	let name_mapping = Naming.name_mapping
-		~long_f:(fun s -> escape_ada_reserved_word ~prefix:"C_" ~postfix:"" (ada_name_by_substitute s))
-		~short_f:(fun s -> escape_ada_reserved_word ~prefix:"C_" ~postfix:"" (ada_name_by_short s))
+		~long_f:(ada_name_by_substitute ~prefix:"C_" ~postfix:"")
+		~short_f:(ada_name_by_short ~prefix:"C_" ~postfix:"")
 		~foldcase:String.uppercase
 		special_name_mapping;;
 	
 	let add_name_mapping_for_arguments = Naming.add_name_mapping_for_arguments
-		~long_f:(fun s -> escape_ada_reserved_word ~prefix:"A_" ~postfix:"" (ada_name_by_substitute s))
-		~short_f:(fun s -> escape_ada_reserved_word ~prefix:"A_" ~postfix:"" (ada_name_by_short s))
+		~long_f:(ada_name_by_substitute ~prefix:"A_" ~postfix:"")
+		~short_f:(ada_name_by_short ~prefix:"A_" ~postfix:"")
 		~anonymous_f:ada_name_of_anonymous_argument;;
 	
 	let name_mapping_for_struct_items = Naming.name_mapping_for_struct_items
-		~long_f:(fun s -> escape_ada_reserved_word ~prefix:"F_" ~postfix:"" (ada_name_by_substitute s))
-		~short_f:(fun s -> escape_ada_reserved_word ~prefix:"F_" ~postfix:"" (ada_name_by_short s))
-		~anonymous_f:ada_name_of_anonymous_element;;
+		~long_f:(ada_name_by_substitute ~prefix:"F_" ~postfix:"")
+		~short_f:(ada_name_by_short ~prefix:"F_" ~postfix:"")
+		~anonymous_f:ada_name_of_anonymous_component;;
 	
 	let ada_simple_name_of
 		(ps: ranged_position)
@@ -407,7 +108,7 @@ struct
 	);;
 	
 	let add_package_name
-		(refering_package: string)
+		(current: string)
 		?(hiding: StringSet.t = StringSet.empty)
 		(package_name: string)
 		(name: string)
@@ -422,11 +123,11 @@ struct
 			if s = sub then level else
 			-1
 		) in
-		if (refering_package = package_name && not (StringSet.mem (String.uppercase name) hiding))
+		if (current = package_name && not (StringSet.mem (String.uppercase name) hiding))
 			|| package_name = "" then name else
 		let p, pr = take_package_name package_name in
 		if pr <> "" && (
-			let c = contained p refering_package 0 in
+			let c = contained p current 0 in
 			c > 0 || (c = 0 && fst (take_package_name pr) = p))
 		then (
 			"Standard.C." ^ package_name ^ "." ^ name
@@ -436,7 +137,7 @@ struct
 	);;
 	
 	let ada_name_of
-		(refering_package: string)
+		(current: string)
 		?(hiding: StringSet.t = StringSet.empty)
 		(ps: ranged_position)
 		(name: string)
@@ -448,23 +149,10 @@ struct
 		begin try
 			let package_name, nspp = StringMap.find filename name_mapping in
 			let item_name = Naming.find kind name nspp in
-			add_package_name refering_package ~hiding package_name item_name
+			add_package_name current ~hiding package_name item_name
 		with Not_found ->
 			failwith ("ada_name_of \"" ^ name ^ "\" in \"" ^ filename ^ "\"")
 		end
-	);;
-	
-	let hash_name (type t) (a: t): string = (
-		let rec hash_loop (s: string) (i: int) (r: int32): int32 = (
-			if i >= String.length s then r else
-			let rotate_bits = 5 in
-			let r = Int32.add (Int32.shift_left r rotate_bits) (Int32.shift_right r (32 - rotate_bits)) in
-			let r = Int32.add r (Int32.of_int (int_of_char s.[i])) in
-			hash_loop s (i + 1) r
-		) in
-		let image = Marshal.to_string a [] in (* is it unique really ??? *)
-		let v = hash_loop image 0 0l in
-		Format.sprintf "%.8lx" v
 	);;
 	
 	(* types *)
@@ -516,7 +204,13 @@ struct
 	
 	let using_anonymous_access_for_pointed_type (pointed_t: Semantics.all_type): Semantics.all_type option = (
 		begin match Semantics.resolve_typedef pointed_t with
-		| `void | `const `void | `function_type _ ->
+		| `void | `function_type _ ->
+			None
+		| `const pointed_t when (
+			match Semantics.resolve_typedef (pointed_t :> Semantics.all_type) with
+			| `void -> true
+			| _ -> false)
+		->
 			None
 		| _ ->
 			Some pointed_t
@@ -527,6 +221,8 @@ struct
 		begin match t with
 		| `pointer t ->
 			using_anonymous_access_for_pointed_type t
+		| `block_pointer _ ->
+			None (* block pointer is mapped to System.Address *)
 		| `array (_, t) ->
 			using_anonymous_access_for_pointed_type (t :> Semantics.all_type)
 		| `restrict (`pointer t) ->
@@ -824,6 +520,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hiding: StringSet.t = StringSet.empty)
 		~(where: where)
 		(item: Semantics.derived_type)
 		: unit =
@@ -838,10 +535,10 @@ struct
 					assert false (* does not come here *)
 				| `const t ->
 					fprintf ff "access constant ";
-					pp_type_name ff ~mappings ~current ~where:`subtype (t :> Semantics.all_type)
+					pp_type_name ff ~mappings ~current ~hiding ~where:`subtype (t :> Semantics.all_type)
 				| _ ->
 					fprintf ff "access ";
-					pp_type_name ff ~mappings ~current ~where:`subtype t
+					pp_type_name ff ~mappings ~current ~hiding ~where:`subtype t
 				end
 			) else (
 				let postfix = if restrict then "_restrict_ptr" else "_ptr" in
@@ -865,6 +562,8 @@ struct
 		begin match item with
 		| `pointer t ->
 			pp_pointer_type_name ff ~mappings ~where ~restrict:false t
+		| `block_pointer _ ->
+			fprintf ff "System.Address"
 		| `array (n, t) ->
 			begin match where with
 			| `argument ->
@@ -955,7 +654,7 @@ struct
 		| #Semantics.derived_type as item
 			when where = `argument && using_anonymous_access item <> None
 		->
-			pp_derived_type_name ff ~mappings ~current ~where item
+			pp_derived_type_name ff ~mappings ~current ~hiding ~where item
 		| `named (_, _, #Semantics.opaque_type_var, _) as opaque
 			when where <> `name && separated_forward_opaque_to_full opaque opaque_mapping <> None
 		->
@@ -986,6 +685,7 @@ struct
 			| `named (ps, ("ptrdiff_t" | "size_t" | "wchar_t" as name), _, _)
 				when (let (filename, _, _, _), _ = ps in filename.[0] = '<')
 			->
+				if StringSet.mem name hiding then pp_print_string ff "Standard.C.";
 				pp_print_string ff name
 			| `named (ps, name, _, _) ->
 				let name = ada_name_of current ~hiding ps name `namespace name_mapping in
@@ -1185,7 +885,7 @@ struct
 			let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			pp_subtype ff (string_of_pp (fun ff -> pp_derived_type_name ff ~mappings ~current ~where:`name) item)
+			pp_subtype ff (string_of_pp (fun ff -> pp_derived_type_name ff ~mappings ~current ?hiding:None ~where:`name) item)
 				pp_print_string alias
 		with Not_found ->
 			let pp_pointer_type ff ~mappings name ~restrict t = (
@@ -1220,7 +920,7 @@ struct
 				pp_subtype ff name
 					begin fun ff () ->
 						fprintf ff "%a (0 .. %d)"
-							(pp_derived_type_name ~mappings ~current ~where:`name) (`array (None, base_type))
+							(pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) (`array (None, base_type))
 							(n - 1)
 					end ()
 			) in
@@ -1230,12 +930,14 @@ struct
 				| `pointer t ->
 					let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-					let name = string_of_pp (pp_derived_type_name ~mappings ~current ~where:`name) item in
+					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) item in
 					pp_pointer_type ff ~mappings name ~restrict:false t
+				| `block_pointer _ ->
+					() (* block pointer is mapped to System.Address *)
 				| `array (n, base_type) ->
 					let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-					let name = string_of_pp (pp_derived_type_name ~mappings ~current ~where:`name) item in
+					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) item in
 					begin match n with
 					| None ->
 						begin try
@@ -1255,12 +957,12 @@ struct
 				| `restrict (`pointer t) ->
 					let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-					let name = string_of_pp (pp_derived_type_name ~mappings ~current ~where:`name) item in
+					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) item in
 					pp_pointer_type ff ~mappings name ~restrict:true t
 				| `volatile base_type ->
 					let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-					let name = string_of_pp (pp_derived_type_name ~mappings ~current ~where:`name) item in
+					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) item in
 					begin try
 						let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
 						pp_subtype ff name pp_print_string alias
@@ -1283,18 +985,34 @@ struct
 			| Some typedef ->
 				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				let name = string_of_pp (pp_derived_type_name ~mappings ~current ~where:`name) item in
+				let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) item in
 				begin match item with
 				| `array (Some n, t) ->
 					pp_sized_array ff ~mappings name n t
 				| `const _ ->
 					() (* only "access constant" form *)
 				| _ ->
-					pp_subtype ff name
-						(pp_derived_type_name ~mappings ~current ~where:`name)
-						(match Finding.expand_typedef typedef (item :> Semantics.all_type) with
-							| #Semantics.derived_type as t -> t
-							| _ -> assert false) (* does not come here *)
+					let is_language_typedef =
+						(* ptrdiff_t, size_t, wchar_t in typedef.h *)
+						let is_typedef_of_language_typedef t = (
+							begin match t with
+							| `named (_, ("ptrdiff_t" | "size_t" | "wchar_t" as n1), `typedef (`named (_, n2, _, _)), _) when n1 = n2 ->
+								true
+							| _ ->
+								false
+							end
+						) in
+						Semantics.is_derived_type is_typedef_of_language_typedef item
+					in
+					if is_language_typedef then (
+						pp_subtype ff name (fun ff name -> fprintf ff "Standard.C.%s" name) name;
+					) else (
+						pp_subtype ff name
+							(pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name)
+							(match Finding.expand_typedef typedef (item :> Semantics.all_type) with
+								| #Semantics.derived_type as t -> t
+								| _ -> assert false) (* does not come here *)
+					)
 				end
 			end
 		end
@@ -1669,11 +1387,11 @@ struct
 					(string_of_pp (pp_type_name ~mappings ~current ?hiding:None ~where:`subtype) t)
 			in
 			fprintf ff "@ --  subtype %s is %s;" name target_type_name
+		| `void ->
+			fprintf ff "@ --  subtype %s is void (%s)" name
+				(match where with `typedef -> "typedef" | `macro -> "macro")
 		| _ ->
 			begin match t with
-			| `void ->
-				fprintf ff "@ --  subtype %s is void (%s)" name
-					(match where with `typedef -> "typedef" | `macro -> "macro")
 			| `function_type _ ->
 				fprintf ff "@ --  subtype %s is ... (function type)" name
 			| _ ->
@@ -2313,8 +2031,20 @@ struct
 				let hash = hash_name expr in
 				fprintf ff "const_%s (0)'Access" hash
 			| _, _, `pointer _ | _, `pointer _, _ ->
-				fprintf ff "Cast (%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+				let opaque_mapping, name_mapping = mappings in
+				let mappings_for_typename = opaque_mapping, name_mapping, [] in
+				pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t2;
+				pp_print_string ff "'(Cast (";
+				begin match expr with
+				| `int_literal _, _ ->
+					pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t1;
+					pp_print_string ff "'(";
+					pp_expression ff ~mappings ~current ~outside:`lowest expr;
+					pp_print_char ff ')';
+				| _ ->
+					pp_expression ff ~mappings ~current ~outside:`lowest expr
+				end;
+				pp_print_string ff "))";
 			| _ ->
 				fprintf ff "@ **** unimplemented. ****\n";
 				assert false
@@ -2819,7 +2549,7 @@ struct
 						let name_mapping =
 							try
 								(* should make mapping function in c_semantics_naming.ml... *)
-								let ada_name = ada_name_by_substitute name in
+								let ada_name = ada_name_by_substitute ~prefix:"L_" ~postfix:"" name in
 								let (filename, _, _, _), _ = ps in
 								let package_name, map = StringMap.find filename name_mapping in
 								let map = Naming.add `namespace name ada_name map in
@@ -3576,7 +3306,7 @@ struct
 								begin match item with
 								| #Semantics.anonymous_type
 								| `named (_, _, #Semantics.named_type_var, _) as item ->
-									Semantics.is_derived_type t item
+									Semantics.is_derived_type (fun x -> x == item) t
 								| _ ->
 									false
 								end

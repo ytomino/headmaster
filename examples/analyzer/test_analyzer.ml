@@ -23,9 +23,9 @@ if Filename.basename Sys.argv.(0) <> "ocaml" then (
 			| "--gcc" ->
 				gcc_command := Sys.argv.(i + 1);
 				parse_args (i + 2)
-			| "--isystem" ->
-				sys_include_dirs := Sys.argv.(i + 1) :: !sys_include_dirs;
-				parse_args (i + 2)
+			| arg when String.length arg > 2 && arg.[0] = '-' && arg.[1] = 'I' ->
+				sys_include_dirs := (String.sub arg 2 (String.length arg - 2)) :: !sys_include_dirs;
+				parse_args (i + 1)
 			| arg ->
 				source_filename := arg;
 				parse_args (i + 1)
@@ -97,8 +97,8 @@ let (tu: AST.translation_unit),
 
 let defines: DP.define AST.p StringMap.t = DP.map error `c typedefs defined_tokens;;
 
-let (predefined_types: A.predefined_types),
-	(derived_types: A.derived_types),
-	(namespace: A.namespace),
+let (predefined_types: SEM.predefined_types),
+	(derived_types: SEM.derived_types),
+	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
 	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;

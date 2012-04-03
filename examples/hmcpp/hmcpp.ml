@@ -102,8 +102,8 @@ let error (ps: ranged_position) (m: string): unit = (
 
 let env: environment = gcc_env options.gcc_command options.lang;;
 let env = {env with
-	en_include = List.rev_append options.include_dirs env.en_include;
-	en_sys_include = List.rev_append options.sys_include_dirs env.en_sys_include};;
+	en_sys_include = List.rev_append options.include_dirs (
+		List.rev_append options.sys_include_dirs env.en_sys_include)};;
 
 module Literals = struct
 	let float_prec, double_prec, long_double_prec = env.en_precision;;

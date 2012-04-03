@@ -12,6 +12,8 @@ let known_undefined_macros = make_setmap [
 	"ioctl.h", [
 		"COMPAT_43"; (* darwin9 *)
 		"COMPAT_43_TTY"]; (* darwin9 *)
+	"kmod.h",
+		["PRAGMA_MARK"]; (* darwin10 *)
 	"_mingw.h",
 		["__GNUC_STDC_INLINE__"]; (* mingw32 *)
 	"sdkddkver.h",
@@ -30,6 +32,8 @@ let known_undefined_macros = make_setmap [
 		["_FORTIFY_SOURCE"]; (* darwin9 *)
 	"types.h",
 		["__LP64__"]; (* darwin9 *)
+	"vm_region.h",
+		["VM32_SUPPORT"]; (* darwin10 *)
 	"winbase.h", [
 		"__USE_NTOSKRNL__"; (* mingw32 *)
 		"_WIN32_WINDOWS"]; (* mingw32 *)
@@ -46,6 +50,8 @@ let known_undefined_macros = make_setmap [
 let is_known_undefined_macros = setmap_mem ~set:known_undefined_macros;;
 
 let known_defined_push_macros = make_setmap [
+	"unknwn.h",
+		["interface"]; (* mingw-w64 *)
 	"winbase.h",
 		["GetEnvironmentStrings"]];; (* mingw-w64 *)
 

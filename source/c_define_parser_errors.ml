@@ -67,6 +67,7 @@ let known_define_parser_errors = make_setmap [
 		"cairo_set_pattern";
 		"cairo_set_rgb_color";
 		"cairo_set_target_drawable";
+		"cairo_set_target_glitz";
 		"cairo_set_target_image";
 		"cairo_set_target_pdf";
 		"cairo_set_target_png";
@@ -93,6 +94,7 @@ let known_define_parser_errors = make_setmap [
 		"cairo_xlib_surface_create_for_window_with_visual"]; (* cairo / undefined *)
 	"cdefs.h", [
 		"__aligned"; (* freebsd7 / parameterized attribute *)
+		"__CAST_AWAY_QUALIFIER"; (* darwin10 / parameterized type qualifier *)
 		"__CONCAT"; (* freebsd7 / ## *)
 		"__COPYRIGHT"; (* darwin9 / generic declaration *)
 		"__DARWIN_NO_LONG_LONG"; (* darwin9 / "defined" used out of preprocessor *)
@@ -152,6 +154,8 @@ let known_define_parser_errors = make_setmap [
 	"gc.h", [
 		"GC_EXTRAS"; (* Boehm-GC / parameter list *)
 		"GC_EXTRA_PARAMS"]; (* Boehm-GC / formal parameter list *)
+	"gc_config_macros.h", [
+		"GC_ATTR_ALLOC_SIZE"]; (* Boehm-GC / parameterized attribute *)
 	"gc_typed.h", [
 		"GC_WORD_OFFSET"]; (* Boehm-GC / parameterized field *)
 	"gmp.h", [
@@ -196,16 +200,26 @@ let known_define_parser_errors = make_setmap [
 		"DEFINE_GUID"; (* mingw-w64 / parameterized declaration *)
 		"DEFINE_OLEGUID"]; (* mingw-w64 / parameterized declaration *)
 	"host_special_ports.h", [
+		"host_get_amfid_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_audit_control_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_automountd_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_chud_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_dynamic_pager_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_host_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_host_priv_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_io_master_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_kextd_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_lockd_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_get_unfreed_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_get_user_notification_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_amfid_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_audit_control_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_automountd_port";  (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_chud_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_dynamic_pager_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_kextd_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_lockd_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+		"host_set_unfreed_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"host_set_user_notification_port"]; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 	"_ip_types.h", [
 		"h_addr"]; (* mingw-w64 / alias of element and dereferencing *)
@@ -225,6 +239,14 @@ let known_define_parser_errors = make_setmap [
 		"__restrict_arr"; (* mingw32 / reserved word *)
 		"__UNUSED_PARAM"; (* mingw32 / parameterized attribute *)
 		"__USE_MINGW_ANSI_STDIO"]; (* mingw32 / __MINGW_FEATURES__ was undefined *)
+	"_mingw_mac.h", [
+		"__CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_0_2_"; (* mingw-w64 / parameterized declaration *)
+		"__CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_MEMORY_0_3_"; (* mingw-w64 / parameterized declaration *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_0_2_"; (* mingw-w64 / parameterized declaration *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT_0_3_"; (* mingw-w64 / parameterized declaration *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT_1_4_"; (* mingw-w64 / parameterized declaration *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_MEMORY_0_3_"; (* mingw-w64 / parameterized declaration *)
+		"__MINGW_CRT_NAME_CONCAT1"]; (* mingw-w64 / ??? *)
 	"_mingw_unicode.h", [
 		"__MINGW_TYPEDEF_AW"; (* mingw-w64 / parameterized declaration *)
 		"__MINGW_TYPEDEF_UAW"]; (* mingw-w64 / parameterized declaration *)
@@ -262,11 +284,22 @@ let known_define_parser_errors = make_setmap [
 		"NPDEPG"; (* freebsd7 / pd_entry_t was undefined, #include <machine/pmap.h> *)
 		"NPDEPTD"; (* freebsd7 / pd_entry_t was undefined, #include <machine/pmap.h> *)
 		"NPTEPG"]; (* freebsd7 / pd_entry_t was undefined, #include <machine/pmap.h> *)
+	"png.h", [
+		"PNG_GAMMA_THRESHOLD"; (* libpng / PNG_GAMMA_THRESHOLD_FIXED is undefined *)
+		"PNG_READ_16_TO_8"]; (* libpng / SUPPORTED is undefined *)
 	"pngconf.h", [
-		"PNG_ABORT"; (* libpng / abort was undefined, #include <stdlib.h> *)
 		"png_benign_error"; (* libpng / circular dependency *)
+		"PNG_CALLBACK"; (* libpng / parameterized declaration *)
 		"png_chunk_benign_error"; (* libpng / circular dependency *)
-		"PNG_EXPORT"]; (* libpng / parameterized declaration *)
+		"PNG_EXPORT"; (* libpng / parameterized declaration *)
+		"PNG_EXPORTA"; (* libpng / parameterized declaration *)
+		"PNG_FIXED_EXPORT"; (* libpng / parameterized declaration *)
+		"PNG_FP_EXPORT"; (* libpng / parameterized declaration *)
+		"PNG_FUNCTION"; (* libpng / parameterized declaration *)
+		"png_sprintf"; (* libpng / sprintf is undefined, #include <stdio.h> *)
+		"png_snprintf"; (* libpng / snprintf is undefined, #include <stdio.h> *)
+		"png_snprintf2"; (* libpng / snprintf is undefined, #include <stdio.h> *)
+		"png_snprintf6"]; (* libpng / snprintf is undefined, #include <stdio.h> *)
 	"propidl.h", [
 		"REFPROPVARIANT"];  (* mingw-w64 / declaration specifier and pointer *)
 	"prsht.h", [
@@ -316,6 +349,9 @@ let known_define_parser_errors = make_setmap [
 	"stdint.h", [
 		"INTMAX_C"; (* mingw32 / ## *)
 		"UINTMAX_C"]; (* mingw32 / ## *)
+	"_stdio.h", [
+		"snprintf"; (* darwin10 / varargs macro *)
+		"sprintf"]; (* darwin10 / varargs macro *)
 	"stralign.h", [
 		"__UA_STACKCOPY"]; (* mingw-w64 / _alloca is undefined *)
 	"_structs.h", [
@@ -423,6 +459,9 @@ let known_define_parser_errors = make_setmap [
 	"types.h", [
 		"FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
 		"__offsetof"]; (* darwin9 / parameterized field *)
+	"_types.h", [
+		"__strfmonlike"; (* darwin10 / parameterized attribute *)
+		"__strftimelike"]; (* darwin10 / parameterized attribute *)
 	"urlmon.h", [
 		"LPOINETPROTOCOLSINKSTACKABLE"]; (* mingw-w64 / bug? misspell of LPIINTERNETPROTOCOLSINKStackable *)
 	"vm_param.h", [
@@ -503,6 +542,8 @@ let known_define_parser_errors = make_setmap [
 	"xmlversion.h", [
 		"ATTRIBUTE_ALLOC_SIZE"; (* libxml2 / parameterized attribute *)
 		"ATTRIBUTE_PRINTF"; (* libxml2 / parameterized attribute *)
+		"LIBXML_ATTR_ALLOC_SIZE"; (* libxml2 / parameterized attribute *)
+		"LIBXML_ATTR_FORMAT"; (* libxml2 / parameterized attribute *)
 		"LIBXML_TEST_VERSION"]; (* libxml2 / extra semicolon *)
 	predefined_name, [
 		"__declspec"; (* mingw32 / parameterized attribute *)

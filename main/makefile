@@ -19,7 +19,7 @@ DESTDIR=.
 endif
 BINDIR=$(DESTDIR)/bin
 
-export CAML_LD_LIBRARY_PATH=build/stublibs
+export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
 
 EXENAME=headmaster$(EXEEXT)

@@ -1,4 +1,6 @@
-#if defined(__FreeBSD__)
+#if defined(__APPLE__)
+#include <sys/types.h> /* avoiding circular dependency */
+#elif defined(__FreeBSD__)
 #include <sys/_types.h> /* __time_t for sys/timespec.h */
 #include <sys/timespec.h> /* avoiding circular dependency */
 #elif defined (__MINGW32__)

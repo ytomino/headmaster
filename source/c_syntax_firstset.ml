@@ -35,15 +35,18 @@ struct
 	type firstset_of_direct_declarator = [
 		| identifier
 		| `l_paren];;
+	type firstset_of_pointer = [
+		| `asterisk
+		| `caret];;
 	type firstset_of_declarator = [
 		| firstset_of_direct_declarator
-		| `asterisk];;
+		| firstset_of_pointer];;
 	type firstset_of_direct_abstract_declarator = [
 		| `l_paren
 		| `l_bracket];;
 	type firstset_of_abstract_declarator = [
 		| firstset_of_direct_abstract_declarator
-		| `asterisk];;
+		| firstset_of_pointer];;
 	type firstset_of_struct_declaration = [
 		| firstset_of_type_specifier
 		| type_qualifier
@@ -74,7 +77,6 @@ struct
 		| `l_paren];;
 	type firstset_of_postfix_expression = [
 		| firstset_of_primary_expression
-		| `__builtin_constant_p
 		| `__builtin_va_arg];;
 	type firstset_of_unary_op_expression = [
 		| firstset_of_postfix_expression

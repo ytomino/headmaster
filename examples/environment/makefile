@@ -16,6 +16,7 @@ OCAMLMAKE=
 
 SOURCEDIR=../../source
 
+# export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
 
 TEST=test_environment
