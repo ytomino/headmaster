@@ -1,6 +1,6 @@
 open C_analyzer_errors;;
 open C_semantics;;
-open C_semantics_machine;;
+open C_semantics_typing;;
 open C_syntax;;
 open C_syntax_traversing;;
 open Position;;
