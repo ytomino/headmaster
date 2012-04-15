@@ -223,8 +223,15 @@ let known_define_parser_errors = make_setmap [
 		"host_set_user_notification_port"]; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 	"_ip_types.h", [
 		"h_addr"]; (* mingw-w64 / alias of element and dereferencing *)
+	"in.h", [
+		"CTL_IPPROTO_NAMES"; (* freebsd7 / partial initializer *)
+		"IPCTL_NAMES"]; (* freebsd7 / partial initializer *)
 	"in6.h", [
-		"IN6_ARE_ADDR_EQUAL"]; (* darwin9 / memcmp is undefined, #include <string.h> *)
+		"IN6_ARE_ADDR_EQUAL"; (* darwin9 / memcmp is undefined, #include <string.h> *)
+		"M_AUTHIPDGM"; (* freebsd7 / M_PROTO5 was undefined *)
+		"M_AUTHIPHDR"; (* freebsd7 / M_PROTO2 was undefined *)
+		"M_DECRYPTED"; (* freebsd7 / M_PROTO3 was undefined *)
+		"M_LOOP"]; (* freebsd7 / M_PROTO4 was undefined *)
 	"malloc.h", [
 		"_STATIC_ASSERT"]; (* mingw-w64 / parameterized declaration *)
 	"memory_object_types.h", [
