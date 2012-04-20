@@ -16,6 +16,14 @@ MPFR
 Objective Caml
  http://caml.inria.fr/
 
+Download
+--------
+
+Please clone from github with ``--recursive`` option
+because some submodules exists in this repository.
+
+``git clone --recursive git://github.com/ytomino/headmaster.git``
+
 Install
 -------
 
