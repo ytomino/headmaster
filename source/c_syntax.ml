@@ -346,8 +346,10 @@ module Syntax (Literals: LiteralsType) = struct
 	and type_qualifier = [
 		(* (6.7.3) type-qualifier *)
 		| `CONST
+		| `__const (* extended *)
 		| `RESTRICT
 		| `VOLATILE
+		| `__restrict (* extended *)
 		| `__restrict__] (* extended *)
 	and function_specifier = [
 		(* (6.7.4) function-specifier *)
@@ -485,7 +487,7 @@ module Syntax (Literals: LiteralsType) = struct
 		declaration_specifiers p * declarator pe * declaration_list opt * compound_statement pe
 	and aliased_declaration =
 		(* extended *)
-		declaration_specifiers p * declarator pe * [`__asm] p * [`l_paren] pe * [`chars_literal of string] pe * [`r_paren] pe * attribute_list opt * [`semicolon] pe
+		declaration_specifiers p * declarator pe * [`__asm | `__asm__] p * [`l_paren] pe * [`chars_literal of string] pe * [`r_paren] pe * attribute_list opt * [`semicolon] pe
 	and declaration_list = [
 		(* (6.9.1) declaration-list *)
 		| `nil of declaration

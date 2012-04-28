@@ -344,12 +344,14 @@ type extended_word = [
 	| `__builtin_va_end
 	| `__builtin_va_list
 	| `__builtin_va_start
+	| `__const
 	| `__extension__
 	| `__imag__
 	| `__inline
 	| `__inline__
 	| `__int64
 	| `__real__
+	| `__restrict
 	| `__restrict__
 	| `__typeof__
 	| `__volatile__];;
@@ -363,12 +365,14 @@ let extended_word_table = [
 	"__builtin_va_copy", `__builtin_va_copy;
 	"__builtin_va_end", `__builtin_va_end;
 	"__builtin_va_start", `__builtin_va_start;
+	"__const", `__const;
 	"__extension__", `__extension__;
 	"__imag__", `__imag__;
 	"__inline", `__inline;
 	"__inline__", `__inline__;
 	"__int64", `__int64;
 	"__real__", `__real__;
+	"__restrict", `__restrict;
 	"__restrict__", `__restrict__;
 	"__typeof__", `__typeof__;
 	"__volatile__", `__volatile__];;

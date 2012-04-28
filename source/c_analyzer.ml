@@ -2459,9 +2459,9 @@ struct
 		: type_qualifier_set =
 	(
 		begin match snd x with
-		| `CONST ->
+		| `CONST | `__const ->
 			{set with tq_const = true}
-		| `RESTRICT | `__restrict__ ->
+		| `RESTRICT | `__restrict | `__restrict__ ->
 			{set with tq_restrict = true}
 		| `VOLATILE ->
 			{set with tq_volatile = true}

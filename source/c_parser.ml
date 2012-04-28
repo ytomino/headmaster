@@ -3422,7 +3422,7 @@ struct
 			| lazy (`cons (_, `l_curly, _))
 			| lazy (`cons (_, #FirstSet.firstset_of_type_specifier, _))
 			| lazy (`cons (_, `ident _, _))
-			| lazy (`cons (_, `__asm, _)) ->
+			| lazy (`cons (_, (`__asm | `__asm__), _)) ->
 				let declarator =
 					begin match declarators with
 					| `some (decl_p, `nil (`no_init declarator)) ->
@@ -3433,7 +3433,7 @@ struct
 					end
 				in
 				begin match xs with
-				| lazy (`cons (asm_p, (`__asm as asm_e), xs)) ->
+				| lazy (`cons (asm_p, ((`__asm | `__asm__) as asm_e), xs)) ->
 					let asm = asm_p, asm_e in
 					let l_paren, xs = parse_l_paren_or_error error xs in
 					let alias_name, xs = parse_chars_literal_or_error error lang typedefs xs in
