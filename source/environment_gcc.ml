@@ -113,6 +113,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 							typedef_wchar_t := Some `signed_int
 						| "unsigned int" ->
 							typedef_wchar_t := Some `unsigned_int
+						| "long int" ->
+							typedef_wchar_t := Some `signed_long
 						| _ ->
 							assert false
 						end

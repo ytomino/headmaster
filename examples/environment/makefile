@@ -21,6 +21,8 @@ export OCAMLRUNPARAM=b
 
 TEST=test_environment
 
+GCC=gcc
+
 .PHONY: $(TEST)$(EXEEXT) test interactive clean
 
 $(TEST)$(EXEEXT): $(TEST).ml
@@ -33,7 +35,7 @@ else
 endif
 
 test: $(TEST)$(EXEEXT)
-	./$(TEST)$(EXEEXT)
+	./$(TEST)$(EXEEXT) --gcc "$(GCC)"
 
 interactive:
 ifneq ($(OCAMLMAKE),)
