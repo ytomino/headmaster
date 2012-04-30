@@ -49,6 +49,15 @@ let known_undefined_macros = make_setmap [
 
 let is_known_undefined_macros = setmap_mem ~set:known_undefined_macros;;
 
+let known_redefine_compiler_macros = make_setmap [
+	"features.h", [
+		"__STDC_ISO_10646__"]; (* linux *)
+	"predefs.h", [
+		"__STDC_IEC_559__"; (* linux *)
+		"__STDC_IEC_559_COMPLEX__"]];; (* linux *)
+
+let is_known_redefine_compiler_macros = setmap_mem ~set:known_redefine_compiler_macros;;
+
 let known_defined_push_macros = make_setmap [
 	"unknwn.h",
 		["interface"]; (* mingw-w64 *)

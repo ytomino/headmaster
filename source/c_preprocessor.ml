@@ -659,10 +659,11 @@ struct
 					end;
 					let _, xs = take_line xs in
 					preprocess error lang read false predefined StringMap.empty xs
-				| lazy (`cons (name_ps, #compiler_macro, xs)) ->
+				| lazy (`cons (name_ps, (#compiler_macro as be_defined), xs)) ->
 					let filename, _, _, _ = fst name_ps in
-					if filename <> predefined_name then (
-						error name_ps "compiler macro be re-defined."
+					let name = string_of_rw be_defined in
+					if filename <> predefined_name && not (is_known_redefine_compiler_macros name_ps name) then (
+						error name_ps ("compiler macro " ^ name ^ " be re-defined.")
 					);
 					let _, xs = take_line xs in
 					preprocess error lang read false predefined StringMap.empty xs
@@ -854,6 +855,11 @@ struct
 					begin match arg with
 					| Some (ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* # use unexpanded token *)
 						let chars_token = `chars_literal name2 in
+						let merged_ps = merge_positions ps ps2 in
+						`cons (merged_ps, chars_token, lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
+					| None, lazy (`nil (ps2, _)) -> (* #define S(X) #X and used without argument as S() *)
+						let chars_token = `chars_literal "" in
 						let merged_ps = merge_positions ps ps2 in
 						`cons (merged_ps, chars_token, lazy (
 							preprocess error lang read in_macro_expr predefined macro_arguments xs))
