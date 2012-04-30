@@ -466,12 +466,9 @@ struct
 	(* pretty printer *)
 	
 	let pp_notification (ff: formatter) (version: string): unit = (
-		fprintf ff "--  This file was translated by \"headmaster\" %s.@." version;
+		fprintf ff "--  This file is translated by \"headmaster\" %s.@." version;
 		fprintf ff "--  The original C header\'s license should be applied to this file.@.";
-		fprintf ff "--  \"headmaster\" is only just editor tool. The accuracy of the translation is@.";
-		fprintf ff "--    not guaranteed. The person that assume the responsibility of damage is@.";
-		fprintf ff "--    you(author of an application), is not me(author of the tool = yt)@.";
-		fprintf ff "--  All conditional-directives were expanded for the exclusive use of your@.";
+		fprintf ff "--  All conditional-directives are expanded for the exclusive use of your@.";
 		fprintf ff "--    environment, it is not recommended to commit this file to any repository.@.";
 		fprintf ff "-------------------------------------------------------------------------------@."
 	);;
