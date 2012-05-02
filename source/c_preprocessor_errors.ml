@@ -58,6 +58,15 @@ let known_redefine_compiler_macros = make_setmap [
 
 let is_known_redefine_compiler_macros = setmap_mem ~set:known_redefine_compiler_macros;;
 
+let known_redefine_extended_words = make_setmap [
+	"cdefs.h", [
+		"__const"; (* darwin10 *)
+		"__restrict"]; (* darwin10 *)
+	"_mingw.h", [
+		"__int64"]];; (* mingw-w64 *)
+
+let is_known_redefine_extended_words = setmap_mem ~set:known_redefine_extended_words;;
+
 let known_defined_push_macros = make_setmap [
 	"unknwn.h",
 		["interface"]; (* mingw-w64 *)

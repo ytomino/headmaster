@@ -651,12 +651,11 @@ struct
 						preprocess error lang read false predefined StringMap.empty xs
 					end
 				| lazy (`cons (name_ps, (#extended_word as ew), xs)) ->
-					begin match ew with
-					| `__int64 ->
-						()
-					| _ ->
-						error name_ps "extended keyword be re-defined.";
-					end;
+					let filename, _, _, _ = fst name_ps in
+					let name = string_of_ew ew in
+					if filename <> predefined_name && not (is_known_redefine_extended_words name_ps name) then (
+						error name_ps ("extended keyword " ^ name ^ " be re-defined.");
+					);
 					let _, xs = take_line xs in
 					preprocess error lang read false predefined StringMap.empty xs
 				| lazy (`cons (name_ps, (#compiler_macro as be_defined), xs)) ->
