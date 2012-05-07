@@ -660,7 +660,7 @@ struct
 		begin match xs with
 		| lazy (`cons (p4, `ident attr_keyword, xs)) ->
 			begin match attr_keyword with
-			| "__aligned__" ->
+			| "aligned" | "__aligned__" ->
 				let n = p4, attr_keyword in
 				begin match xs with
 				| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->

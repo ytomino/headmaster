@@ -274,6 +274,8 @@ let known_define_parser_errors = make_setmap [
 	"_mingw_unicode.h", [
 		"__MINGW_TYPEDEF_AW"; (* mingw-w64 / parameterized declaration *)
 		"__MINGW_TYPEDEF_UAW"]; (* mingw-w64 / parameterized declaration *)
+	"mount.h", [
+		"__DARWIN_STRUCT_STATFS64"]; (* darwin10 / partial declaration *)
 	"mpc.h", [
 		"mpfr_exp_t"; (* MPC / conflicted with typedef *)
 		"__MPC_PROTO"]; (* MPC / parameter list *)
@@ -336,6 +338,84 @@ let known_define_parser_errors = make_setmap [
 	"pthread.h", [
 		"pthread_cleanup_pop"; (* darwin9 / partial statement *)
 		"pthread_cleanup_push"]; (* darwin9 / partial statement *)
+	"queue.h", [
+		"CIRCLEQ_EMPTY"; (* darwin10 / many bad macros... *)
+		"CIRCLEQ_ENTRY";
+		"CIRCLEQ_FIRST";
+		"CIRCLEQ_FOREACH";
+		"CIRCLEQ_HEAD";
+		"CIRCLEQ_INIT";
+		"CIRCLEQ_INSERT_AFTER";
+		"CIRCLEQ_INSERT_BEFORE";
+		"CIRCLEQ_INSERT_HEAD";
+		"CIRCLEQ_INSERT_TAIL";
+		"CIRCLEQ_LAST";
+		"CIRCLEQ_NEXT";
+		"CIRCLEQ_PREV";
+		"CIRCLEQ_REMOVE";
+		"LIST_EMPTY";
+		"LIST_ENTRY";
+		"LIST_FIRST";
+		"LIST_FOREACH";
+		"LIST_FOREACH_SAFE";
+		"LIST_HEAD";
+		"LIST_HEAD_INITIALIZER";
+		"LIST_INIT";
+		"LIST_INSERT_AFTER";
+		"LIST_INSERT_BEFORE";
+		"LIST_INSERT_HEAD";
+		"LIST_NEXT";
+		"LIST_REMOVE";
+		"SLIST_EMPTY";
+		"SLIST_ENTRY";
+		"SLIST_FIRST";
+		"SLIST_FOREACH";
+		"SLIST_FOREACH_PREVPTR";
+		"SLIST_FOREACH_SAFE";
+		"SLIST_HEAD";
+		"SLIST_HEAD_INITIALIZER";
+		"SLIST_INIT";
+		"SLIST_INSERT_AFTER";
+		"SLIST_INSERT_HEAD";
+		"SLIST_NEXT";
+		"SLIST_REMOVE";
+		"SLIST_REMOVE_HEAD";
+		"STAILQ_CONCAT";
+		"STAILQ_EMPTY";
+		"STAILQ_ENTRY";
+		"STAILQ_FIRST";
+		"STAILQ_FOREACH";
+		"STAILQ_FOREACH_SAFE";
+		"STAILQ_HEAD";
+		"STAILQ_HEAD_INITIALIZER";
+		"STAILQ_INIT";
+		"STAILQ_INSERT_AFTER";
+		"STAILQ_INSERT_HEAD";
+		"STAILQ_INSERT_TAIL";
+		"STAILQ_LAST";
+		"STAILQ_NEXT";
+		"STAILQ_REMOVE";
+		"STAILQ_REMOVE_HEAD";
+		"STAILQ_REMOVE_HEAD_UNTIL";
+		"TAILQ_CONCAT";
+		"TAILQ_EMPTY";
+		"TAILQ_ENTRY";
+		"TAILQ_FIRST";
+		"TAILQ_FOREACH";
+		"TAILQ_FOREACH_REVERSE";
+		"TAILQ_FOREACH_REVERSE_SAFE";
+		"TAILQ_FOREACH_SAFE";
+		"TAILQ_HEAD";
+		"TAILQ_HEAD_INITIALIZER";
+		"TAILQ_INIT";
+		"TAILQ_INSERT_AFTER";
+		"TAILQ_INSERT_BEFORE";
+		"TAILQ_INSERT_HEAD";
+		"TAILQ_INSERT_TAIL";
+		"TAILQ_LAST";
+		"TAILQ_NEXT";
+		"TAILQ_PREV";
+		"TAILQ_REMOVE"];
 	"rpc.h", [
 		"interface"; (* mingw-w64 / reserved word *)
 		"RpcEndFinally"; (* mingw-w64 / partial statement *)
@@ -486,6 +566,8 @@ let known_define_parser_errors = make_setmap [
 	"_types.h", [
 		"__strfmonlike"; (* darwin10 / parameterized attribute *)
 		"__strftimelike"]; (* darwin10 / parameterized attribute *)
+	"ucred.h", [
+		"cr_gid"]; (* darwin10 / alias of element and dereferencing *)
 	"urlmon.h", [
 		"LPOINETPROTOCOLSINKSTACKABLE"]; (* mingw-w64 / bug? misspell of LPIINTERNETPROTOCOLSINKStackable *)
 	"vm_param.h", [
