@@ -54,7 +54,7 @@ struct
 				begin match expr with
 				| `enumerator item, _ ->
 					(item :> named_item) :: rs
-				| `ref_function item, _ ->
+				| `ref_function (item: function_item), _ ->
 					(item :> named_item) :: rs
 				| _ ->
 					rs

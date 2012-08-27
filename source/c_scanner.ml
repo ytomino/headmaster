@@ -1,6 +1,6 @@
 open C_lexical;;
 open C_lexical_scanner;;
-open C_scanner_errors;;
+(* open C_scanner_errors;; *)
 open Input;;
 open Position;;
 open Value;;

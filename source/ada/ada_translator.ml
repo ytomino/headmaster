@@ -870,7 +870,7 @@ struct
 		end
 	);;
 	
-	let rec pp_derived_type
+	let pp_derived_type
 		(ff: formatter)
 		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
@@ -1032,7 +1032,7 @@ struct
 		pp_close_box ff ()
 	);;
 	
-	let rec pp_derived_types_for_the_type
+	let pp_derived_types_for_the_type
 		(ff: formatter)
 		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(casts: (Semantics.all_type * Semantics.all_type) list)
@@ -2174,7 +2174,7 @@ struct
 		end
 	);;
 	
-	let rec pp_assignment_expression
+	let pp_assignment_expression
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping)
 		~(current: string)
@@ -2968,7 +2968,7 @@ struct
 			let name = ada_name_of current ps name `namespace name_mapping in
 			if Semantics.is_static_expression expr then (
 				begin match expr with
-				| `ref_function func, _ ->
+				| `ref_function (func: Semantics.function_item), _ ->
 					pp_alias ff ~mappings ~enum_of_element ~current name (func :> Semantics.named_item)
 				| `int_literal _, _ | `float_literal _, _ ->
 					let mappings = opaque_mapping, name_mapping in

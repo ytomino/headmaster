@@ -6,7 +6,7 @@ open C_syntax;;
 open Position;;
 open Value;;
 
-let rec list_combination
+let list_combination
 	(f: ('b -> 'b) -> ('a * bool) list -> 'b -> 'b)
 	(xs: 'a list)
 	(last: 'b -> 'b)

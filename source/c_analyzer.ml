@@ -83,7 +83,7 @@ struct
 		to_opaque_mapping namespace.ns_opaque_union namespace.ns_union
 	);;
 	
-	let rec resolve_opaque (namespace: namespace) (t: all_type): all_type = (
+	let resolve_opaque (namespace: namespace) (t: all_type): all_type = (
 		begin match t with
 		| `named (_, name, `opaque_enum, _) ->
 			(try (StringMap.find name namespace.ns_enum :> all_type) with Not_found -> t)

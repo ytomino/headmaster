@@ -2,7 +2,6 @@ open Ada_translator;;
 open C_analyzer;;
 open C_define_parser;;
 open C_lexical;;
-open C_parser;;
 open C_preprocessor;;
 open C_scanner;;
 open C_semantics;;

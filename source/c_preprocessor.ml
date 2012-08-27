@@ -147,7 +147,7 @@ struct
 		end
 	);;
 	
-	let rec calc_expr
+	let calc_expr
 		(error: ranged_position -> string -> unit)
 		(xs: out_t)
 		: Integer.t =

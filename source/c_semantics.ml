@@ -621,7 +621,7 @@ module Semantics (Literals: LiteralsType) = struct
 		end
 	);;
 	
-	let rec fold_derived_types
+	let fold_derived_types
 		(f: 'a -> derived_type -> 'a)
 		(a: 'a)
 		(base_type: all_type)

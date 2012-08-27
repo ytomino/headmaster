@@ -1,5 +1,5 @@
 open C_lexical;;
-open C_parser_errors;;
+(* open C_parser_errors;; *)
 open C_syntax;;
 open C_syntax_firstset;;
 open Position;;
@@ -342,7 +342,7 @@ struct
 		end
 	);;
 	
-	let rec parse_wchars_literal
+	let parse_wchars_literal
 		(_: ranged_position -> string -> unit)
 		(_: language)
 		(_: typedef_set)
