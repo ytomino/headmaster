@@ -1,7 +1,6 @@
 open C_lexical;;
 open C_lexical_scanner;;
 (* open C_scanner_errors;; *)
-open Input;;
 open Position;;
 open Value;;
 
@@ -19,13 +18,12 @@ struct
 	
 	let scan
 		(error: ranged_position -> string -> unit)
-		(lang: language)
-		(filename: string)
-		(tab_width: int)
 		(finalize: unit -> unit)
-		(input: string -> int -> int -> int)
+		(lang: language)
+		(source: TextFile.t)
 		(next: ranged_position -> prim): prim =
 	(
+		(* errors *)
 		let unexpected_error (ps: ranged_position) (c: char): unit = (
 			error ps ("\'" ^ Char.escaped c ^ "\' is bad character.")
 		) in
@@ -34,6 +32,9 @@ struct
 		) in
 		let unclosed_string_error (ps: ranged_position) (s: string): unit = (
 			error ps ("\"" ^ String.escaped s ^ "\" is not closed string.")
+		) in
+		let unclosed_comment_error (ps: ranged_position) (): unit = (
+			error ps ("unclosed comment.")
 		) in
 		let include_error (ps: ranged_position) (): unit = (
 			error ps "include form should be \"...\" or <...>."
@@ -44,548 +45,613 @@ struct
 		let unknown_ppdirective_error (ps: ranged_position) (d: string): unit = (
 			error ps ("#" ^ d ^ " is unknown preprocessor directive.")
 		) in
-		let stream = TextStream.create filename tab_width input in
-		let tokens_in_line = ref 0 in
-		let need_eol = ref false in
-		let read_string (p1: position) ~(quote: char): string = (
-			assert (TextStream.hd stream = quote);
-			TextStream.junk stream;
-			let rec loop b = (
-				begin match TextStream.hd stream with
+		(* reading functions *)
+		let read_string (p1: position) ~(quote: char) (index: int): string * int = (
+			assert (TextFile.get source index = quote);
+			let index = TextFile.succ source index in
+			let b = Buffer.create 256 in
+			let rec loop (index: int): string * int = (
+				begin match TextFile.get source index with
 				| '\\' ->
-					TextStream.junk stream;
-					begin match TextStream.hd stream with
-					| 'a' ->
-						Buffer.add_char b '\x07';
-						TextStream.junk stream
-					| 'b' ->
-						Buffer.add_char b '\x08';
-						TextStream.junk stream
-					| 'f' ->
-						Buffer.add_char b '\x0c';
-						TextStream.junk stream
-					| 'n' ->
-						Buffer.add_char b '\n';
-						TextStream.junk stream
-					| 'r' ->
-						Buffer.add_char b '\r';
-						TextStream.junk stream
-					| 't' ->
-						Buffer.add_char b '\t';
-						TextStream.junk stream
-					| 'v' ->
-						Buffer.add_char b '\x0b';
-						TextStream.junk stream
-					| 'x' ->
-						TextStream.junk stream;
-						let r = ref 0 in
-						while
-							begin match TextStream.hd stream with
-							| '0'..'9' as h -> r := !r * 16 + (Char.code h - Char.code '0'); true
-							| 'A'..'F' as h -> r := !r * 16 + (Char.code h - (Char.code 'A' - 10)); true
-							| 'a'..'f' as h -> r := !r * 16 + (Char.code h - (Char.code 'a' - 10)); true
-							| _ -> false
-							end
-						do TextStream.junk stream done;
-						Buffer.add_char b (Char.chr !r)
-					| '0'..'7' ->
-						let r = ref 0 in
-						while
-							begin match TextStream.hd stream with
-							| '0'..'7' as h -> r := !r * 8 + (Char.code h - Char.code '0'); true
-							| _ -> false
-							end
-						do TextStream.junk stream done;
-						Buffer.add_char b (Char.chr !r)
-					| _ as h ->
-						Buffer.add_char b h;
-						TextStream.junk stream
-					end;
-					loop b
+					let index = TextFile.succ source index in
+					let index =
+						begin match TextFile.get source index with
+						| 'a' ->
+							Buffer.add_char b '\x07';
+							TextFile.succ source index
+						| 'b' ->
+							Buffer.add_char b '\x08';
+							TextFile.succ source index
+						| 'f' ->
+							Buffer.add_char b '\x0c';
+							TextFile.succ source index
+						| 'n' ->
+							Buffer.add_char b '\n';
+							TextFile.succ source index
+						| 'r' ->
+							Buffer.add_char b '\r';
+							TextFile.succ source index
+						| 't' ->
+							Buffer.add_char b '\t';
+							TextFile.succ source index
+						| 'v' ->
+							Buffer.add_char b '\x0b';
+							TextFile.succ source index
+						| 'x' ->
+							let index = TextFile.succ source index in
+							let rec loop_x (code: int) (index: int): int = (
+								begin match TextFile.get source index with
+								| '0'..'9' as h ->
+									let code = code * 16 + (Char.code h - Char.code '0') in
+									let index = TextFile.succ source index in
+									loop_x code index
+								| 'A'..'F' as h ->
+									let code = code * 16 + (Char.code h - (Char.code 'A' - 10)) in
+									let index = TextFile.succ source index in
+									loop_x code index
+								| 'a'..'f' as h ->
+									let code = code * 16 + (Char.code h - (Char.code 'a' - 10)) in
+									let index = TextFile.succ source index in
+									loop_x code index
+								| _ ->
+									Buffer.add_char b (Char.chr code);
+									index
+								end
+							) in
+							loop_x 0 index
+						| '0'..'7' ->
+							let rec loop_o (code: int) (index: int): int = (
+								begin match TextFile.get source index with
+								| '0'..'7' as h ->
+									let code = code * 8 + (Char.code h - Char.code '0') in
+									let index = TextFile.succ source index in
+									loop_o code index
+								| _ ->
+									Buffer.add_char b (Char.chr code);
+									index
+								end
+							) in
+							loop_o 0 index
+						| _ as h ->
+							Buffer.add_char b h;
+							TextFile.succ source index
+						end
+					in
+					loop index
 				| '\n' | '\r' | '\x0c' | '\x1a' ->
-					let p2 = TextStream.position stream in
+					let p2 = TextFile.position source index in
 					let result = Buffer.contents b in
 					unclosed_string_error (p1, p2) result;
-					result
+					result, index
 				| h when h = quote ->
-					TextStream.junk stream;
-					Buffer.contents b
+					let index = TextFile.succ source index in
+					let result = Buffer.contents b in
+					result, index
 				| _ as h ->
 					Buffer.add_char b h;
-					TextStream.junk stream;
-					loop b
+					let index = TextFile.succ source index in
+					loop index
 				end
 			) in
-			loop (Buffer.create 256)
+			loop index
 		) in
-		let read_word (): string = (
+		let read_word (index: int): string * int = (
 			let b = Buffer.create 256 in
-			while
-				begin match TextStream.hd stream with
+			let rec loop (index: int): string * int = (
+				begin match TextFile.get source index with
 				| ('A'..'Z' | 'a'..'z' | '_' | '0'..'9') as c ->
 					Buffer.add_char b c;
-					TextStream.junk stream;
-					true
+					let index = TextFile.succ source index in
+					loop index
 				| _ ->
-					false
+					let result = Buffer.contents b in
+					result, index
 				end
-			do () done;
-			Buffer.contents b
+			) in
+			loop index
 		) in
-		let read_line (): string = (
+		let read_line (index: int): string * int = (
 			let b = Buffer.create 256 in
-			while
-				begin match TextStream.hd stream with
+			let rec loop (index: int): string * int = (
+				begin match TextFile.get source index with
 				| '\n' | '\r' | '\x0c' | '\x1a' ->
-					false
+					let result = Buffer.contents b in
+					result, index
 				| '\\' ->
-					TextStream.junk stream;
-					begin match TextStream.hd stream with
+					let index = TextFile.succ source index in
+					begin match TextFile.get source index with
 					| '\n' | '\r' | '\x0c' ->
-						TextStream.junk stream;
-						true
+						let index = TextFile.succ_line source index in
+						loop index
 					| _ ->
 						Buffer.add_char b '\\';
-						true
+						loop index
 					end
 				| _ as c ->
-					TextStream.junk stream;
 					Buffer.add_char b c;
-					true
+					let index = TextFile.succ source index in
+					loop index
 				end
-			do () done;
-			Buffer.contents b
+			) in
+			loop index
 		) in
-		let read_header (): string = (
+		let read_header (index: int): string * int = (
 			let b = Buffer.create 256 in
-			let p1 = TextStream.position stream in
-			let k = TextStream.hd stream in
+			let p1 = TextFile.position source index in
+			let k = TextFile.get source index in
+			assert (k = '<' || k = '\"');
 			let pair = (if k = '<' then '>' else '\"') in
-			TextStream.junk stream;
+			let index = TextFile.succ source index in
 			Buffer.add_char b k;
-			while
-				begin match TextStream.hd stream with
+			let rec loop (index: int): string * int = (
+				begin match TextFile.get source index with
 				| '\n' | '\r' | '\x0c' | '\x1a' ->
-					let p2 = TextStream.prev_position stream in
+					let p2 = TextFile.prev_position source index in
 					include_error (p1, p2) ();
 					Buffer.add_char b pair;
-					false
+					let result = Buffer.contents b in
+					result, index
 				| _ as c ->
-					TextStream.junk stream;
 					Buffer.add_char b c;
-					c <> pair
+					let index = TextFile.succ source index in
+					if c <> pair then loop index else
+					let result = Buffer.contents b in
+					result, index
 				end
-			do () done;
-			Buffer.contents b
+			) in
+			loop index
 		) in
-		let rec process (): prim = (
-			begin match TextStream.hd stream with
+		let rec junk_spaces (index: int): int = (
+			begin match TextFile.get source index with
+			| ' ' | '\t' ->
+				let index = TextFile.succ source index in
+				junk_spaces index
+			| _ ->
+				index
+			end
+		) in
+		(* main *)
+		let rec process (state: [`first | `pp | `normal]) (index: int): prim = (
+			(* nested functions *)
+			let nx (state: [`first | `pp | `normal]): [`first | `pp | `normal] = (
+				if state = `first then `normal else state
+			) in
+			let do_single_char_token token = (
+				let state = nx state in
+				let p = TextFile.position source index in
+				let index = TextFile.succ source index in
+				`cons ((p, p), token, lazy (process state index))
+			) in
+			(* body *)
+			begin match TextFile.get source index with
 			| ' ' | '\t' | '\b' ->
-				TextStream.junk stream;
-				process ()
+				let index = TextFile.succ source index in
+				process state index
 			| '\n' | '\r' | '\x0c' ->
-				let making_token = !need_eol in
-				need_eol := false;
-				tokens_in_line := 0;
+				let making_token = state = `pp in
 				if making_token then (
-					let ps = TextStream.junk_newline_with_ranged_position stream in
-					`cons (ps, `end_of_line, lazy (process ()))
+					let p1 = TextFile.position source index in
+					let index = TextFile.succ_line source index in
+					let p2 = TextFile.prev_position source index in
+					`cons ((p1, p2), `end_of_line, lazy (process `first index))
 				) else (
-					TextStream.junk_newline stream;
-					process ()
+					let index = TextFile.succ_line source index in
+					process `first index
 				)
 			| '\\' ->
-				if !need_eol then (
+				let index = TextFile.succ source index in
+				if state = `pp then (
 					(* macro-line continuation *)
-					TextStream.junk stream;
-					begin match TextStream.hd stream with
-					| '\n' | '\r' | '\x0c' ->
-						TextStream.junk stream
-					| _ ->
-						let p = TextStream.prev_position stream in
-						unexpected_error (p, p) '\\'
-					end;
-					process ()
+					let index =
+						begin match TextFile.get source index with
+						| '\n' | '\r' | '\x0c' ->
+							TextFile.succ_line source index
+						| _ ->
+							let p = TextFile.prev_position source index in
+							unexpected_error (p, p) '\\';
+							index
+						end
+					in
+					process state index
 				) else (
-					TextStream.junk stream;
-					begin match TextStream.hd stream with
+					begin match TextFile.get source index with
 					| '\n' | '\r' | '\x0c' ->
 						() (* '\' and line feed be skipped *)
 					| _ ->
-						let p = TextStream.prev_position stream in
+						let p = TextFile.prev_position source index in
 						unexpected_error (p, p) '\\'
 					end;
-					process ()
+					process state index
 				)
 			| '(' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `l_paren, lazy (process ()))
+				do_single_char_token `l_paren
 			| ')' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `r_paren, lazy (process ()))
+				do_single_char_token `r_paren
 			| '[' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `l_bracket, lazy (process ()))
+				do_single_char_token `l_bracket
 			| ']' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `r_bracket, lazy (process ()))
+				do_single_char_token `r_bracket
 			| '{' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `l_curly, lazy (process ()))
+				do_single_char_token `l_curly
 			| '}' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `r_curly, lazy (process ()))
+				do_single_char_token `r_curly
 			| '~' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `tilde, lazy (process ()))
+				do_single_char_token `tilde
 			| '?' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `question, lazy (process ()))
+				do_single_char_token `question
 			| ',' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `comma, lazy (process ()))
+				do_single_char_token `comma
 			| ';' ->
-				incr tokens_in_line;
-				let p = TextStream.junk_with_position stream in
-				`cons ((p, p), `semicolon, lazy (process ()))
+				do_single_char_token `semicolon
 			| '.' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '.' ->
-					let p2 = TextStream.junk_with_position stream in
-					begin match TextStream.hd stream with
+					let index = TextFile.succ source index in
+					begin match TextFile.get source index with
 					| '.' ->
-						let p3 = TextStream.junk_with_position stream in
-						`cons ((p1, p3), `varargs, lazy (process ()))
+						let p3 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						`cons ((p1, p3), `varargs, lazy (process state index))
 					| _ ->
-						incr tokens_in_line;
+						let p2 = TextFile.prev_position source index in
 						`cons ((p1, p1), `period, lazy (
-							`cons ((p2, p2), `period, lazy (process ()))))
+							`cons ((p2, p2), `period, lazy (process state index))))
 					end
 				| '*' when cxx lang ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `period_ref, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `period_ref, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `period, lazy (process ()))
+					`cons ((p1, p1), `period, lazy (process state index))
 				end
 			| ':' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '>' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `r_bracket, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `r_bracket, lazy (process state index))
 				| ':' when cxx lang ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `d_colon, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `d_colon, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `colon, lazy (process ()))
+					`cons ((p1, p1), `colon, lazy (process state index))
 				end
 			| '<' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| ':' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `l_bracket, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `l_bracket, lazy (process state index))
 				| '%' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `l_curly, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `l_curly, lazy (process state index))
 				| '<' ->
-					let p2 = TextStream.junk_with_position stream in
-					begin match TextStream.hd stream with
+					let index = TextFile.succ source index in
+					begin match TextFile.get source index with
 					| '=' ->
-						let p3 = TextStream.junk_with_position stream in
-						`cons ((p1, p3), `l_shift_assign, lazy (process ()))
+						let p3 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						`cons ((p1, p3), `l_shift_assign, lazy (process state index))
 					| _ ->
-						`cons ((p1, p2), `l_shift, lazy (process ()))
+						let p2 = TextFile.prev_position source index in
+						`cons ((p1, p2), `l_shift, lazy (process state index))
 					end
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `le, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `le, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `lt, lazy (process ()))
+					`cons ((p1, p1), `lt, lazy (process state index))
 				end
 			| '>' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '>' ->
-					let p2 = TextStream.junk_with_position stream in
-					begin match TextStream.hd stream with
+					let index = TextFile.succ source index in
+					begin match TextFile.get source index with
 					| '=' ->
-						let p3 = TextStream.junk_with_position stream in
-						`cons ((p1, p3), `r_shift_assign, lazy (process ()))
+						let p3 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						`cons ((p1, p3), `r_shift_assign, lazy (process state index))
 					| _ ->
-						`cons ((p1, p2), `r_shift, lazy (process ()))
+						let p2 = TextFile.prev_position source index in
+						`cons ((p1, p2), `r_shift, lazy (process state index))
 					end
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `ge, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `ge, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `gt, lazy (process ()))
+					`cons ((p1, p1), `gt, lazy (process state index))
 				end
 			| '-' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '>' ->
-					let p2 = TextStream.junk_with_position stream in
-					begin match TextStream.hd stream with
+					let index = TextFile.succ source index in
+					begin match TextFile.get source index with
 					| '*' when cxx lang ->
-						let p3 = TextStream.junk_with_position stream in
-						`cons ((p1, p3), `arrow_ref, lazy (process ()))
+						let p3 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						`cons ((p1, p3), `arrow_ref, lazy (process state index))
 					| _ ->
-						`cons ((p1, p2), `arrow, lazy (process ()))
+						let p2 = TextFile.prev_position source index in
+						`cons ((p1, p2), `arrow, lazy (process state index))
 					end
 				| '-' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `decrement, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `decrement, lazy (process state index))
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `sub_assign, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `sub_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `minus, lazy (process ()))
+					`cons ((p1, p1), `minus, lazy (process state index))
 				end
 			| '+' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '+' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `increment, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `increment, lazy (process state index))
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `add_assign, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `add_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `plus, lazy (process ()))
+					`cons ((p1, p1), `plus, lazy (process state index))
 				end
 			| '*' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `mul_assign, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `mul_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `asterisk, lazy (process ()))
+					`cons ((p1, p1), `asterisk, lazy (process state index))
 				end
 			| '/' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '/' ->
-					TextStream.junk stream;
-					let (_: string) = read_line () in
-					process ()
-				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `div_assign, lazy (process ()))
+					let index = TextFile.succ source index in
+					let (_: string), index = read_line index in
+					process state index
 				| '*' ->
-					TextStream.junk stream;
-					while
-						begin match TextStream.hd stream with
-						| '\x1a' -> false
+					let index = TextFile.succ source index in
+					let rec loop_comment (index: int): int = (
+						begin match TextFile.get source index with
+						| '\x1a' ->
+							let p2 = TextFile.prev_position source index in
+							unclosed_comment_error (p1, p2) ();
+							index
 						| '*' ->
-							TextStream.junk stream;
-							begin match TextStream.hd stream with
+							let index = TextFile.succ source index in
+							begin match TextFile.get source index with
 							| '/' ->
-								TextStream.junk stream;
-								false;
+								let index = TextFile.succ source index in
+								index
 							| _ ->
-								true
+								loop_comment index
 							end
 						| _ ->
-							TextStream.junk stream;
-							true
+							let index = TextFile.succ source index in
+							loop_comment index
 						end
-					do () done;
-					process ()
+					) in
+					let index = loop_comment index in
+					process state index
+				| '=' ->
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `div_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `slash, lazy (process ()))
+					`cons ((p1, p1), `slash, lazy (process state index))
 				end
 			| '%' ->
-				let rec scan_after_percent (p1: position): prim = (
-					begin match TextStream.hd stream with
-					| ':' ->
-						let p2 = TextStream.junk_with_position stream in
-						begin match TextStream.hd stream with
+				let state = nx state in
+				let rec scan_after_percent (p1: position) (index: int): prim = (
+					begin match TextFile.get source index with
+					| ':' -> (* replace %: to #, mixing and starting macro with %: are not supported *)
+						let p2 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						begin match TextFile.get source index with
 						| '%' ->
-							let p3 = TextStream.junk_with_position stream in
-							begin match TextStream.hd stream with
-							| ':' ->
-								let p4 = TextStream.junk_with_position stream in
-								`cons ((p1, p4), `d_sharp, lazy (process ()))
-							| _ ->
-								incr tokens_in_line;
-								(* #%... *)
-								`cons ((p1, p2), `sharp, lazy (scan_after_percent p3))
+							let index = TextFile.succ source index in
+							begin match TextFile.get source index with
+							| ':' -> (* ## *)
+								let p4 = TextFile.position source index in
+								let index = TextFile.succ source index in
+								`cons ((p1, p4), `d_sharp, lazy (process state index))
+							| _ -> (* #%... *)
+								let p3 = TextFile.prev_position source index in
+								`cons ((p1, p2), `sharp, lazy (scan_after_percent p3 index))
 							end
 						| _ ->
-							`cons ((p1, p2), `sharp, lazy (process ()))
+							`cons ((p1, p2), `sharp, lazy (process state index))
 						end
 					| '>' ->
-						let p2 = TextStream.junk_with_position stream in
-						`cons ((p1, p2), `r_curly, lazy (process ()))
+						let p2 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						`cons ((p1, p2), `r_curly, lazy (process state index))
 					| '=' ->
-						let p2 = TextStream.junk_with_position stream in
-						`cons ((p1, p2), `rem_assign, lazy (process ()))
+						let p2 = TextFile.position source index in
+						let index = TextFile.succ source index in
+						`cons ((p1, p2), `rem_assign, lazy (process state index))
 					| _ ->
-						`cons ((p1, p1), `percent, lazy (process ()))
+						`cons ((p1, p1), `percent, lazy (process state index))
 					end
 				) in
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				scan_after_percent p1
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				scan_after_percent p1 index
 			| '^' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `xor_assign, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `xor_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `caret, lazy (process ()))
+					`cons ((p1, p1), `caret, lazy (process state index))
 				end
 			| '|' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '|' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `or_else, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `or_else, lazy (process state index))
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `or_assign, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `or_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `vertical, lazy (process ()))
+					`cons ((p1, p1), `vertical, lazy (process state index))
 				end
 			| '&' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '&' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `and_then, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `and_then, lazy (process state index))
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `and_assign, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `and_assign, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `ampersand, lazy (process ()))
+					`cons ((p1, p1), `ampersand, lazy (process state index))
 				end
 			| '!' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `ne, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `ne, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `exclamation, lazy (process ()))
+					`cons ((p1, p1), `exclamation, lazy (process state index))
 				end
 			| '=' ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '=' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `eq, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `eq, lazy (process state index))
 				| _ ->
-					`cons ((p1, p1), `assign, lazy (process ()))
+					`cons ((p1, p1), `assign, lazy (process state index))
 				end
 			| '#' ->
-				let first_of_line = !tokens_in_line = 0 in
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let first_of_line = state = `first in
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '#' ->
-					let p2 = TextStream.junk_with_position stream in
-					`cons ((p1, p2), `d_sharp, lazy (process ()))
+					let p2 = TextFile.position source index in
+					let index = TextFile.succ source index in
+					`cons ((p1, p2), `d_sharp, lazy (process state index))
 				| _ ->
 					if first_of_line then (
-						let junk_spaces () = (
-							while
-								begin match TextStream.hd stream with
-								| ' ' | '\t' ->
-									TextStream.junk stream;
-									true
-								| _ ->
-									false
-								end
-							do () done
-						) in
-						junk_spaces ();
-						let d = read_word () in
+						let index = junk_spaces index in
+						let d, index = read_word index in
 						if d = "" then (
-							`cons ((p1, p1), `sharp, lazy (process ()))
+							`cons ((p1, p1), `sharp, lazy (process state index))
 						) else if is_ppdirective d then (
-							need_eol := true;
 							let d = ppdirective_of_string d in
-							let p2 = TextStream.prev_position stream in
+							let p2 = TextFile.position source index in
 							begin match d with
 							| `sharp_INCLUDE | `sharp_INCLUDE_NEXT ->
-								junk_spaces ();
-								let p3 = TextStream.position stream in
-								let header =
-									begin match TextStream.hd stream with
+								let index = junk_spaces index in
+								let p3 = TextFile.position source index in
+								let header, index =
+									begin match TextFile.get source index with
 									| '\"' | '<' ->
-										read_header ()
+										read_header index
 									| _ ->
 										include_error (p3, p3) ();
-										let (_: string) = read_line () in
-										""
+										let (_: string), index = read_line index in
+										"", index
 									end
 								in
-								let p4 = TextStream.prev_position stream in
+								let p4 = TextFile.prev_position source index in
 								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
-									`cons ((p3, p4), `directive_parameter header, lazy (process ()))))
+									`cons ((p3, p4), `directive_parameter header, lazy (process `pp index))))
 							| `sharp_WARNING | `sharp_ERROR ->
-								let p3 = TextStream.position stream in
-								let message = Triming.trim (read_line ()) in
-								let p4 = TextStream.prev_position stream in
+								let p3 = TextFile.position source index in
+								let message, index = read_line index in
+								let message = Triming.trim message in
+								let p4 = TextFile.prev_position source index in
 								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
-									`cons ((p3, p4), `directive_parameter message, lazy (process ()))))
+									`cons ((p3, p4), `directive_parameter message, lazy (process `pp index))))
 							| _ ->
-								`cons ((p1, p2), (d :> LexicalElement.t), lazy (process ()))
+								`cons ((p1, p2), (d :> LexicalElement.t), lazy (process `pp index))
 							end
 						) else (
-							let p2 = TextStream.prev_position stream in
+							let p2 = TextFile.prev_position source index in
 							unknown_ppdirective_error (p1, p2) d;
-							let (_: string) = read_line () in (* skip line *)
-							process ()
+							let (_: string), index = read_line index in (* skip line *)
+							process state index
 						)
 					) else (
-						`cons ((p1, p1), `sharp, lazy (process ()))
+						`cons ((p1, p1), `sharp, lazy (process state index))
 					)
 				end
 			| '0'..'9' ->
-				incr tokens_in_line;
-				let p1 = TextStream.position stream in
-				let the_numeric_literal = NumericScanner.scan_numeric_literal
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let the_numeric_literal, index = NumericScanner.scan_numeric_literal
 					error
-					TextStream.position
-					TextStream.prev_position
-					TextStream.hd
-					TextStream.junk
-					stream
+					TextFile.position
+					TextFile.prev_position
+					TextFile.get
+					TextFile.succ
+					source
+					index
 				in
-				let p2 = TextStream.prev_position stream in
-				`cons ((p1, p2), the_numeric_literal, lazy (process ()))
+				let p2 = TextFile.prev_position source index in
+				`cons ((p1, p2), the_numeric_literal, lazy (process state index))
 			| '\'' ->
-				incr tokens_in_line;
-				let p1 = TextStream.position stream in
-				let s = read_string p1 ~quote:'\'' in
-				let p2 = TextStream.prev_position stream in
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let s, index = read_string p1 ~quote:'\'' index in
+				let p2 = TextFile.prev_position source index in
 				let length = String.length s in
 				let the_char_literal =
 					if length = 0 then (
@@ -606,83 +672,85 @@ struct
 						`numeric_literal ("", `int_literal (`unsigned_int, loop 0 Integer.zero))
 					)
 				in
-				`cons ((p1, p2), the_char_literal, lazy (process ()))
+				`cons ((p1, p2), the_char_literal, lazy (process state index))
 			| '\"' ->
-				incr tokens_in_line;
-				let p1 = TextStream.position stream in
-				let s = read_string p1 ~quote:'\"' in
-				let p2 = TextStream.prev_position stream in
-				`cons ((p1, p2), `chars_literal s, lazy (process ()))
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let s, index = read_string p1 ~quote:'\"' index in
+				let p2 = TextFile.prev_position source index in
+				`cons ((p1, p2), `chars_literal s, lazy (process state index))
 			| 'A'..'Z' | 'a'..'z' | '_' ->
-				incr tokens_in_line;
-				let p1 = TextStream.position stream in
-				let s = read_word () in
-				if s = "L" && TextStream.hd stream = '\'' then (
-					let s = read_string p1 ~quote:'\'' in
-					let p2 = TextStream.prev_position stream in
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let s, index = read_word index in
+				if s = "L" && TextFile.get source index = '\'' then (
+					let s, index = read_string p1 ~quote:'\'' index in
+					let p2 = TextFile.prev_position source index in
 					if String.length s <> 1 then (
 						char_literal_error (p1, p2) s
 					);
 					let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
 					let s = WideString.of_array s in
 					let c = (if s = WideString.empty then 0l else WideString.get s 0) in
-					`cons ((p1, p2), `wchar_literal c, lazy (process ()))
-				) else if s = "L" && TextStream.hd stream = '\"' then (
-					let s = read_string p1 ~quote:'\"' in
-					let p2 = TextStream.prev_position stream in
+					`cons ((p1, p2), `wchar_literal c, lazy (process state index))
+				) else if s = "L" && TextFile.get source index = '\"' then (
+					let s, index = read_string p1 ~quote:'\"' index in
+					let p2 = TextFile.prev_position source index in
 					let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
 					let s = WideString.of_array s in
-					`cons ((p1, p2), `wchars_literal s, lazy (process ()))
+					`cons ((p1, p2), `wchars_literal s, lazy (process state index))
 				) else (
-					let p2 = TextStream.prev_position stream in
+					let p2 = TextFile.prev_position source index in
 					if is_rw lang s then (
 						let rw = rw_of_string lang s in
-						`cons ((p1, p2), (rw :> LexicalElement.t), lazy (process ()))
+						`cons ((p1, p2), (rw :> LexicalElement.t), lazy (process state index))
 					) else if is_ew s then (
 						let ew = ew_of_string s in
-						`cons ((p1, p2), (ew :> LexicalElement.t), lazy (process ()))
+						`cons ((p1, p2), (ew :> LexicalElement.t), lazy (process state index))
 					) else (
-						`cons ((p1, p2), `ident s, lazy (process ()))
+						`cons ((p1, p2), `ident s, lazy (process state index))
 					)
 				)
 			| '@' when objc lang ->
-				incr tokens_in_line;
-				let p1 = TextStream.junk_with_position stream in
-				begin match TextStream.hd stream with
+				let state = nx state in
+				let p1 = TextFile.position source index in
+				let index = TextFile.succ source index in
+				begin match TextFile.get source index with
 				| '\"' ->
-					let s = read_string p1 ~quote:'\"' in
-					let p2 = TextStream.prev_position stream in
-					`cons ((p1, p2), `objc_string_literal s, lazy (process ()))
+					let s, index = read_string p1 ~quote:'\"' index in
+					let p2 = TextFile.prev_position source index in
+					`cons ((p1, p2), `objc_string_literal s, lazy (process state index))
 				| 'A'..'Z' | 'a'..'z' ->
-					let s = read_word () in
-					let p2 = TextStream.prev_position stream in
+					let s, index = read_word index in
+					let p2 = TextFile.prev_position source index in
 					if is_objcdirective s then (
 						let d = objcdirective_of_string s in
-						`cons ((p1, p2), (d :> LexicalElement.t), lazy (process ()))
+						`cons ((p1, p2), (d :> LexicalElement.t), lazy (process state index))
 					) else (
 						unknown_objcdirective_error (p1, p2) s;
-						process ();
+						process state index
 					)
 				| _ ->
 					unexpected_error (p1, p1) '@';
-					process ()
+					process state index
 				end
 			| '\x1a' ->
-				let p = TextStream.position stream in
+				let p = TextFile.position source index in
 				finalize ();
 				let ps = p, p in
-				if !need_eol then (
+				if state = `pp then (
 					`cons (ps, `end_of_line, lazy (next ps))
 				) else (
 					next ps
 				)
 			| _ as h ->
-				let p = TextStream.junk_with_position stream in
+				let p = TextFile.position source index in
+				let index = TextFile.succ source index in
 				unexpected_error (p, p) h;
-				process ()
+				process state index
 			end
 		) in
-		process ()
+		process `first 0
 	);;
 	
 end;;

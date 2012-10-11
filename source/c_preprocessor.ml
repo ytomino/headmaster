@@ -385,16 +385,16 @@ struct
 		assert (String.length s > 0);
 		if s.[0] >= '0' && s.[0] <= '9' then (
 			let error_flag = ref false in
-			let cursor = ref 0 in
-			let result = NumericScanner.scan_numeric_literal
+			let result, index = NumericScanner.scan_numeric_literal
 				(fun _ _ -> error_flag := true)
-				(fun _ -> 0)
-				(fun _ -> 0)
-				(fun _ -> if !cursor >= String.length s then '\x1a' else s.[!cursor])
-				(fun _ -> incr cursor)
+				(fun _ _ -> 0)
+				(fun _ _ -> 0)
+				(fun s index -> if index >= String.length s then '\x1a' else s.[index])
+				(fun _ index -> index + 1)
 				s
+				0
 			in
-			if !error_flag || !cursor <> String.length s then (
+			if !error_flag || index <> String.length s then (
 				error ps "concatenated token by ## is not able to be re-parsed."
 			);
 			result

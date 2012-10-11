@@ -53,8 +53,8 @@ module S = Scanner (Literals) (LE);;
 module PP = Preprocessor (Literals) (LE);;
 
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
-	let h = open_in name in
-	S.scan error `c name tab_width (fun () -> close_in h) (input h)
+	let file = TextFile.of_file ~random_access:false ~tab_width name in
+	S.scan error ignore `c file
 );;
 
 let read_include_file = make_include (fun name ->
@@ -96,8 +96,9 @@ let diff (xs: PP.define_map) (ys: PP.define_map): PP.define_map = (
 
 print_string "---- predefined ----\n";;
 
-let predefined_tokens: PP.in_t = lazy (S.scan
-	error `c predefined_name tab_width ignore (read env.en_predefined) S.make_nil);;
+let predefined_tokens: PP.in_t =
+	let file = TextFile.of_string ~random_access:false ~tab_width predefined_name env.en_predefined in
+	lazy (S.scan error ignore `c file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
 	error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
 

@@ -4,17 +4,10 @@ open Position;;
 open Value;;
 open Value_ocaml;;
 
-let read data = (
-	let cursor = ref 0 in
-	fun dest index length -> (
-		let really_length = (
-			if !cursor + length <= String.length data then length else
-			String.length data - !cursor
-		) in
-		String.blit data !cursor dest index really_length;
-		cursor := !cursor + really_length;
-		really_length
-	)
+let tab_width = 3;;
+
+let read (s: string): TextFile.t = (
+	TextFile.of_string ~random_access:false ~tab_width "<test>" s
 );;
 
 let error (ps: ranged_position) (m: string): unit = (
@@ -25,15 +18,14 @@ let error (ps: ranged_position) (m: string): unit = (
 module Test (L: LiteralsType) = struct
 	module E = LexicalElement (L);;
 	module S = Scanner (L) (E);;
-	let tab_width = 3;;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "") S.make_nil) with
-		| lazy (`nil ((("test", 0, 1, 1), _), _)) ->
+		match lazy (S.scan error ignore `c (read "") S.make_nil) with
+		| lazy (`nil ((("<test>", 0, 1, 1), _), _)) ->
 			print_string "o";
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "().") S.make_nil) with
+		match lazy (S.scan error ignore `c (read "().") S.make_nil) with
 		| lazy (`cons (_, `l_paren,
 			lazy (`cons (_, `r_paren,
 				lazy (`cons (_, `period,
@@ -42,7 +34,7 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "#define\n+") S.make_nil) with
+		match lazy (S.scan error ignore `c (read "#define\n+") S.make_nil) with
 		| lazy (`cons (_, `sharp_DEFINE,
 			lazy (`cons (_, `end_of_line,
 				lazy (`cons (_, `plus,
@@ -51,7 +43,7 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "#define") S.make_nil) with
+		match lazy (S.scan error ignore `c (read "#define") S.make_nil) with
 		| lazy (`cons (_, `sharp_DEFINE,
 			lazy (`cons (_, `end_of_line,
 				lazy (`nil _))))) ->
@@ -59,7 +51,7 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "*/**/*") S.make_nil) with
+		match lazy (S.scan error ignore `c (read "*/**/*") S.make_nil) with
 		| lazy (`cons (_, `asterisk,
 			lazy (`cons (_, `asterisk,
 				lazy (`nil _))))) ->
@@ -67,14 +59,26 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "\"a\\nb\"") S.make_nil) with
+		match lazy (S.scan error ignore `c (read "123 010U 0xfeL") S.make_nil) with
+		| lazy (`cons (_, `numeric_literal ("123", `int_literal (`signed_int, v1)),
+			lazy (`cons (_, `numeric_literal ("010U", `int_literal (`unsigned_int, v2)),
+				lazy (`cons (_, `numeric_literal ("0xfeL", `int_literal (`signed_long, v3)),
+					lazy (`nil _)))))))
+				when v1 = L.Integer.of_int 123
+				&& v2 = L.Integer.of_int 0o10
+				&& v3 = L.Integer.of_int 0xfe ->
+			print_string "o";
+			true
+		| _ -> false);;
+	assert (
+		match lazy (S.scan error ignore `c (read "\"a\\nb\"") S.make_nil) with
 		| lazy (`cons (_, `chars_literal "a\nb",
 			lazy (`nil _))) ->
 			print_string "o";
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `objc "test" tab_width ignore (read "@catch @finally") S.make_nil) with
+		match lazy (S.scan error ignore `objc (read "@catch @finally") S.make_nil) with
 		| lazy (`cons (_, `at_CATCH,
 			lazy (`cons (_, `at_FINALLY,
 				lazy (`nil _))))) ->
@@ -82,7 +86,7 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `c "test" tab_width ignore (read "bool _Bool") S.make_nil) with
+		match lazy (S.scan error ignore `c (read "bool _Bool") S.make_nil) with
 		| lazy (`cons (_, `ident "bool",
 			lazy (`cons (_, `_BOOL,
 				lazy (`nil _))))) ->
@@ -90,7 +94,7 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
-		match lazy (S.scan error `cxx "test" tab_width ignore (read "bool") S.make_nil) with
+		match lazy (S.scan error ignore `cxx (read "bool") S.make_nil) with
 		| lazy (`cons (_, `BOOL,
 			lazy (`nil _))) ->
 			print_string "o";

@@ -48,19 +48,6 @@ type environment = {
 	en_include: string list;
 	en_sys_include: string list};;
 
-let read data = (
-	let cursor = ref 0 in
-	begin fun dest index length ->
-		let really_length =
-			if !cursor + length <= String.length data then length else
-			String.length data - !cursor
-		in
-		String.blit data !cursor dest index really_length;
-		cursor := !cursor + really_length;
-		really_length
-	end
-);;
-
 type include_from = [`user | `system];;
 
 let find_include
