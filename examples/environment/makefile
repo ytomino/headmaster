@@ -12,8 +12,6 @@ endif
 endif
 
 BUILDDIR=build
-OCAMLMAKE=
-
 SOURCEDIR=../../source
 
 # export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)

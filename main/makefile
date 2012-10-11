@@ -9,8 +9,6 @@ RMDIR=rm -rf
 endif
 
 BUILDDIR=build
-OCAMLMAKE=
-
 SOURCEDIR=../source
 ifneq ($(HOMELOCAL),)
 DESTDIR=$(HOMELOCAL)
