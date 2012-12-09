@@ -1,45 +1,9 @@
+open C_literals;;
 open Position;;
-open Value;;
 
 type language = [`c | `cxx | `objc | `objcxx];;
 
 (* types *)
-
-type signed_int_prec = [
-	| `signed_char
-	| `signed_short
-	| `signed_int
-	| `signed_long
-	| `signed_long_long];;
-
-type unsigned_int_prec = [
-	| `unsigned_char
-	| `unsigned_short
-	| `unsigned_int
-	| `unsigned_long
-	| `unsigned_long_long];;
-
-let unsigned_of_signed (p: signed_int_prec): [> unsigned_int_prec] = (
-	match p with
-	| `signed_char -> `unsigned_char
-	| `signed_short -> `unsigned_short
-	| `signed_int -> `unsigned_int
-	| `signed_long -> `unsigned_long
-	| `signed_long_long -> `unsigned_long_long
-);;
-
-type int_prec = [signed_int_prec | unsigned_int_prec];;
-
-type float_prec = [
-	| `float
-	| `double
-	| `long_double];;
-
-type real_prec = [
-	| float_prec
-	| `decimal32 (* gcc's _Decimal32 *)
-	| `decimal64 (* gcc's _Decimal64 *)
-	| `decimal128];; (* gcc's _Decimal128 *)
 
 type predefined_numeric_type = [
 	| `bool
@@ -53,6 +17,15 @@ type predefined_numeric_type = [
 type predefined_type = [predefined_numeric_type
 	| `void
 	| `__builtin_va_list];;
+
+let unsigned_of_signed (p: signed_int_prec): [> unsigned_int_prec] = (
+	match p with
+	| `signed_char -> `unsigned_char
+	| `signed_short -> `unsigned_short
+	| `signed_int -> `unsigned_int
+	| `signed_long -> `unsigned_long
+	| `signed_long_long -> `unsigned_long_long
+);;
 
 (* operators in iso646.h *)
 
@@ -68,17 +41,6 @@ type operator = [
 	| `tilde
 	| `vertical
 	| `xor_assign];;
-
-(* for __attribute__((__mode__)) *)
-
-type bit_width_mode = [
-	| `__QI__ (* 8 *)
-	| `__HI__ (* 16 *)
-	| `__SI__ (* 32 *)
-	| `__DI__ (* 64 *)
-	| `__pointer__
-	| `__unwind_word__ (* pointer size ? *)
-	| `__word__];;
 
 (* storage class *)
 

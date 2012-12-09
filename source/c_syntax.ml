@@ -1,30 +1,5 @@
+open C_literals;;
 open Position;;
-open Value;;
-
-(* types *)
-
-type int_prec = [
-	| `signed_char
-	| `unsigned_char
-	| `signed_short
-	| `unsigned_short
-	| `signed_int
-	| `unsigned_int
-	| `signed_long
-	| `unsigned_long
-	| `signed_long_long
-	| `unsigned_long_long];;
-
-type float_prec = [
-	| `float
-	| `double
-	| `long_double];;
-
-type real_prec = [
-	| float_prec
-	| `decimal32 (* gcc's _Decimal32 *)
-	| `decimal64 (* gcc's _Decimal64 *)
-	| `decimal128];; (* gcc's _Decimal128 *)
 
 (* operators in iso646.h for define parser *)
 
@@ -40,17 +15,6 @@ type operator = [
 	| `tilde
 	| `vertical
 	| `xor_assign];;
-
-(* for __attribute__((__mode__)) *)
-
-type bit_width_mode = [
-	| `__QI__ (* 8 *)
-	| `__HI__ (* 16 *)
-	| `__SI__ (* 32 *)
-	| `__DI__ (* 64 *)
-	| `__pointer__
-	| `__unwind_word__ (* pointer size ? *)
-	| `__word__];;
 
 (* builtin functions *)
 

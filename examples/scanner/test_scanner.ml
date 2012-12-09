@@ -1,7 +1,7 @@
 open C_lexical;;
+open C_literals;;
 open C_scanner;;
 open Position;;
-open Value;;
 open Value_ocaml;;
 
 let tab_width = 3;;

@@ -1,8 +1,8 @@
 open C_lexical;;
 open C_lexical_scanner;;
+open C_literals;;
 (* open C_scanner_errors;; *)
 open Position;;
-open Value;;
 
 module Scanner
 	(Literals: LiteralsType)

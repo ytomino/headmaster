@@ -1,8 +1,8 @@
 open C_lexical;;
 open C_lexical_scanner;;
+open C_literals;;
 open C_preprocessor_errors;;
 open Position;;
-open Value;;
 
 module StringMap = Map.Make (String);;
 

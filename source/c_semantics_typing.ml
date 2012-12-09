@@ -1,6 +1,6 @@
+open C_literals;;
 open C_semantics;;
 open Position;;
-open Value;;
 
 let builtin_position: ranged_position =
 	let p = builtin_name, 0, 0, 0 in

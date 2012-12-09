@@ -1,10 +1,10 @@
 open C_define_parser_errors;;
 open C_lexical;;
+open C_literals;;
 open C_parser;;
 open C_preprocessor;;
 open C_syntax;;
 open Position;;
-open Value;;
 
 let list_combination
 	(f: ('b -> 'b) -> ('a * bool) list -> 'b -> 'b)

@@ -1,5 +1,5 @@
+open C_literals;;
 open C_syntax;;
-open Value;;
 
 module FirstSet
 	(Literals: LiteralsType)

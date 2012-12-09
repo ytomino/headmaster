@@ -1,6 +1,6 @@
+open C_literals;;
 open C_semantics;;
 open Position;;
-open Value;;
 
 module StringSet = Set.Make (String);;
 

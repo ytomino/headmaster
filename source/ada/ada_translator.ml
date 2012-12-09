@@ -1,11 +1,11 @@
 open Ada_format;;
 open Ada_naming;;
+open C_literals;;
 open C_semantics;;
 open C_semantics_dependency;;
 open C_semantics_finding;;
 open C_semantics_naming;;
 open Position;;
-open Value;;
 
 let string_of_pp (pp: Format.formatter -> 'a -> unit) (v: 'a): string = (
 	let b = Buffer.create 256 in

@@ -1,5 +1,5 @@
 open C_lexical;;
-open Value;;
+open C_literals;;
 
 module Output
 	(Literals: LiteralsType)

@@ -1,10 +1,10 @@
 open C_analyzer_errors;;
+open C_literals;;
 open C_semantics;;
 open C_semantics_typing;;
 open C_syntax;;
 open C_syntax_traversing;;
 open Position;;
-open Value;;
 
 let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
 	begin match x with

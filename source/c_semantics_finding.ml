@@ -1,5 +1,5 @@
+open C_literals;;
 open C_semantics;;
-open Value;;
 
 module Finding
 	(Literals: LiteralsType)

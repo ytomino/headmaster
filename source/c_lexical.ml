@@ -1,4 +1,4 @@
-open Value;;
+open C_literals;;
 
 type language = [`c | `cxx | `objc | `objcxx];;
 
@@ -440,31 +440,6 @@ let is_ppdirective (s: string): bool = (
 let ppdirective_of_string (s: string): preprocessor_directive = (
 	Hashtbl.find ppdirective_of_string_table s
 );;
-
-(* value types *)
-
-type int_prec = [
-	| `signed_char
-	| `unsigned_char
-	| `signed_short
-	| `unsigned_short
-	| `signed_int
-	| `unsigned_int
-	| `signed_long
-	| `unsigned_long
-	| `signed_long_long
-	| `unsigned_long_long];;
-
-type float_prec = [
-	| `float
-	| `double
-	| `long_double];;
-
-type real_prec = [
-	| float_prec
-	| `decimal32 (* gcc's _Decimal32 *)
-	| `decimal64 (* gcc's _Decimal64 *)
-	| `decimal128];; (* gcc's _Decimal128 *)
 
 module LexicalElement (Literals: LiteralsType) = struct
 	open Literals;;

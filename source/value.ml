@@ -32,20 +32,10 @@ module type RealType = sig
 end;;
 
 module type StringType = sig
-	type elm = Int32.t;;
+	type elm;;
 	type t;;
 	val length: t -> int;;
 	val empty: t;;
 	val of_array: elm array -> t;;
 	val get: t -> int -> elm;;
-end;;
-
-module type LiteralsType = sig
-	module Integer: IntegerType;;
-	module Real: RealType;;
-	module WideString: StringType;;
-	val integer_of_real: Real.t -> Integer.t;;
-	val real_of_integer: Integer.t -> Real.t;;
-	val round_to_float: Real.t -> Real.t;;
-	val round_to_double: Real.t -> Real.t;;
 end;;

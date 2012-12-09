@@ -1,5 +1,5 @@
+open C_literals;;
 open C_semantics;;
-open Value;;
 
 let list_unionq (xs: 'a list) (ys: 'a list): 'a list = (
 	if ys = [] then xs else

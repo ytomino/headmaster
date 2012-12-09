@@ -1,18 +1,4 @@
-type signed_int_prec = [
-	| `signed_char
-	| `signed_short
-	| `signed_int
-	| `signed_long
-	| `signed_long_long];;
-
-type unsigned_int_prec = [
-	| `unsigned_char
-	| `unsigned_short
-	| `unsigned_int
-	| `unsigned_long
-	| `unsigned_long_long];;
-
-type int_prec = [signed_int_prec | unsigned_int_prec];;
+open C_literals;;
 
 type sizeof =
 	[`sizeof_bool of int] *
