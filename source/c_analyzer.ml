@@ -26,7 +26,7 @@ struct
 	(* in *)
 	
 	type 'a p = 'a Syntax.p;;
-	type 'a pe = 'a Syntax.pe;;
+	type 'a e = 'a Syntax.e;;
 	type 'a opt = 'a Syntax.opt;;
 	
 	type define = [
@@ -1042,7 +1042,7 @@ struct
 			(dereferencing: bool)
 			(var: Syntax.expression p)
 			(var_request: [`lvalue | `rvalue])
-			(field: Syntax.identifier pe)
+			(field: Syntax.identifier e)
 			: derived_types * source_item list * expression option =
 		(
 			let derived_types, source, var = handle_expression error predefined_types derived_types namespace source var_request var in
@@ -1110,7 +1110,7 @@ struct
 				end
 			end
 		) in
-		let handle_unary (f: derived_types -> expression -> derived_types * expression option) request (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_unary (f: derived_types -> expression -> derived_types * expression option) request (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			begin match right with
 			| `some right ->
 				let derived_types, source, right = handle_expression error predefined_types derived_types namespace source request right in
@@ -1125,7 +1125,7 @@ struct
 				derived_types, source, None
 			end
 		) in
-		let handle_unary_folding (f: derived_types -> expression -> derived_types * expression option) (int_f: Integer.t -> Integer.t) (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_unary_folding (f: derived_types -> expression -> derived_types * expression option) (int_f: Integer.t -> Integer.t) (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			handle_unary (fun derived_types right ->
 				begin match integer_of_expression right with
 				| Some (prec, right) ->
@@ -1136,7 +1136,7 @@ struct
 				end
 			) `rvalue right
 		) in
-		let handle_unary_bool (f: expression -> expression_var option) (int_f: Integer.t -> bool) (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_unary_bool (f: expression -> expression_var option) (int_f: Integer.t -> bool) (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			handle_unary (fun derived_types right ->
 				let bool_type = find_predefined_type `bool predefined_types in
 				begin match integer_of_expression right with
@@ -1151,7 +1151,7 @@ struct
 				end
 			) `rvalue right
 		) in
-		let handle_binary (f: derived_types -> expression -> expression -> derived_types * expression option) (left: Syntax.expression p) (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_binary (f: derived_types -> expression -> expression -> derived_types * expression option) (left: Syntax.expression p) (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			begin match right with
 			| `some right ->
 				let derived_types, source, left = handle_expression error predefined_types derived_types namespace source `rvalue left in
@@ -1167,7 +1167,7 @@ struct
 				derived_types, source, None
 			end
 		) in
-		let handle_binary_folding op (f: expression -> expression -> expression_var option) (int_f: Integer.t -> Integer.t -> Integer.t) (left: Syntax.expression p) (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_binary_folding op (f: expression -> expression -> expression_var option) (int_f: Integer.t -> Integer.t -> Integer.t) (left: Syntax.expression p) (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			handle_binary (fun derived_types left right ->
 				begin match (integer_of_expression left), (integer_of_expression right) with
 				| Some (prec1, left), Some (prec2, right) ->
@@ -1197,7 +1197,7 @@ struct
 				end
 			) left right
 		) in
-		let handle_compare (f: expression -> expression -> expression_var option) (int_f: Integer.t -> Integer.t -> bool) (left: Syntax.expression p) (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_compare (f: expression -> expression -> expression_var option) (int_f: Integer.t -> Integer.t -> bool) (left: Syntax.expression p) (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			handle_binary (fun derived_types left right ->
 				let bool_type = find_predefined_type `bool predefined_types in
 				begin match (integer_of_expression left), (integer_of_expression right) with
@@ -1212,7 +1212,7 @@ struct
 				end
 			) left right
 		) in
-		let handle_shift (f: expression -> expression -> expression_var option) (int_f: Integer.t -> int -> Integer.t) (left: Syntax.expression p) (right: Syntax.expression pe): derived_types * source_item list * expression option = (
+		let handle_shift (f: expression -> expression -> expression_var option) (int_f: Integer.t -> int -> Integer.t) (left: Syntax.expression p) (right: Syntax.expression e): derived_types * source_item list * expression option = (
 			handle_binary (fun derived_types left right ->
 				begin match (integer_of_expression left), (integer_of_expression right) with
 				| Some (prec, left), Some (_, right) ->
@@ -2922,7 +2922,7 @@ struct
 			end
 		in
 		let derived_types, source, kind, list =
-			Traversing.fold_il (fun (derived_types, source, kind, rs) (d, i: Syntax.designation opt * Syntax.initializer_t pe) ->
+			Traversing.fold_il (fun (derived_types, source, kind, rs) (d, i: Syntax.designation opt * Syntax.initializer_t e) ->
 				let element_type, kind =
 					begin match kind with
 					| `aggregate items ->
@@ -2985,7 +2985,7 @@ struct
 		(x: Syntax.statement p)
 		: derived_types * source_item list * statement option =
 	(
-		let handle_statement_or_error ?control derived_types source (statement: Syntax.statement pe) = (
+		let handle_statement_or_error ?control derived_types source (statement: Syntax.statement e) = (
 			begin match statement with
 			| `some (cs_p, `compound cs_e) ->
 				handle_compound_statement ?control ?return_type error predefined_types derived_types namespace source alignment (cs_p, cs_e)

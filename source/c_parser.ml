@@ -124,7 +124,7 @@ struct
 		end
 	);;
 	
-	let rec skip_until_r_paren (xs: 'a in_t): [`r_paren] pe * 'a in_t = (
+	let rec skip_until_r_paren (xs: 'a in_t): [`r_paren] e * 'a in_t = (
 		begin match xs with
 		| lazy (`cons (_, `semicolon, _)) | lazy (`nil _) ->
 			`error, xs
@@ -135,7 +135,7 @@ struct
 		end
 	);;
 	
-	let rec skip_until_semicolon (xs: 'a in_t): [`semicolon] pe * 'a in_t = (
+	let rec skip_until_semicolon (xs: 'a in_t): [`semicolon] e * 'a in_t = (
 		begin match xs with
 		| lazy (`nil _) ->
 			`error, xs
@@ -149,7 +149,7 @@ struct
 	let parse_identifier_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: identifier pe * 'a in_t =
+		: identifier e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (id_p, (#identifier as id_e), xs)) ->
@@ -164,7 +164,7 @@ struct
 		(vs: (string * v) list)
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: v pe * 'a in_t =
+		: v e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (id_p, (`ident s), xs)) when List.mem_assoc s vs ->
@@ -178,7 +178,7 @@ struct
 	let parse_l_paren_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`l_paren] pe * 'a in_t =
+		: [`l_paren] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
@@ -192,7 +192,7 @@ struct
 	let parse_r_paren_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`r_paren] pe * 'a in_t =
+		: [`r_paren] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (rp_p, (`r_paren as rp_e), xs)) ->
@@ -206,7 +206,7 @@ struct
 	let parse_r_bracket_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`r_bracket] pe * 'a in_t =
+		: [`r_bracket] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (rb_p, (`r_bracket as rb_e), xs)) ->
@@ -220,7 +220,7 @@ struct
 	let parse_l_curly_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`l_curly] pe * 'a in_t =
+		: [`l_curly] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (lc_p, (`l_curly as lc_e), xs)) ->
@@ -234,7 +234,7 @@ struct
 	let parse_r_curly_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`r_curly] pe * 'a in_t =
+		: [`r_curly] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (rc_p, (`r_curly as rc_e), xs)) ->
@@ -248,7 +248,7 @@ struct
 	let parse_comma_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`comma] pe * 'a in_t =
+		: [`comma] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (c_p, (`comma as c_e), xs)) ->
@@ -262,7 +262,7 @@ struct
 	let parse_colon_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`colon] pe * 'a in_t =
+		: [`colon] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (c_p, (`colon as c_e), xs)) ->
@@ -277,7 +277,7 @@ struct
 		?(semicolon_need = true)
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`semicolon] pe * 'a in_t =
+		: [`semicolon] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (sc_p, (`semicolon as sc_e), xs)) ->
@@ -293,7 +293,7 @@ struct
 	let parse_while_or_error
 		(error: ranged_position -> string -> unit)
 		(xs: 'a in_t)
-		: [`WHILE] pe * 'a in_t =
+		: [`WHILE] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (w_p, (`WHILE as w_e), xs)) ->
@@ -329,7 +329,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: [`chars_literal of string] pe * 'a in_t =
+		: [`chars_literal of string] e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
@@ -427,7 +427,7 @@ struct
 							end
 						| lazy (`cons (v_p, `ident "visibility", xs)) ->
 							let v = v_p, `VISIBILITY in
-							let (visibility_argument: visibility_argument pe), xs =
+							let (visibility_argument: visibility_argument e), xs =
 								begin match xs with
 								| lazy (`cons (push_p, `ident "push", xs)) ->
 									let push = push_p, `PUSH in
@@ -521,7 +521,7 @@ struct
 							`error, xs
 						end
 					in
-					let (mapping: language_mapping pe), xs =
+					let (mapping: language_mapping e), xs =
 						begin match xs with
 						| lazy (`cons (type_p, `ident "type", xs)) ->
 							let type_token = type_p, `TYPE in
@@ -630,7 +630,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: attribute_item_list pe * 'a in_t =
+		: attribute_item_list e * 'a in_t =
 	(
 		let rec loop rs xs = (
 			begin match xs with
@@ -655,7 +655,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: attribute_item pe * 'a in_t =
+		: attribute_item e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (p4, `ident attr_keyword, xs)) ->
@@ -911,7 +911,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: ia_argument pe * 'a in_t =
+		: ia_argument e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
@@ -943,7 +943,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: ia_register_list pe * 'a in_t =
+		: ia_register_list e * 'a in_t =
 	(
 		let rec loop rs xs = (
 			begin match xs with
@@ -1201,7 +1201,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: argument_expression_list pe * 'a in_t =
+		: argument_expression_list e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_assignment_expression as it), xr)) ->
@@ -1284,7 +1284,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_unary_op_expression as it), xr)) ->
@@ -1337,7 +1337,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_cast_expression as it), xr)) ->
@@ -1383,7 +1383,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1424,7 +1424,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1465,7 +1465,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1516,7 +1516,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1557,7 +1557,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1593,7 +1593,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1629,7 +1629,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1665,7 +1665,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1701,7 +1701,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_binary_op_expression as it), xr)) ->
@@ -1756,7 +1756,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_conditional_expression as it), xr)) ->
@@ -1805,7 +1805,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: assignment_expression pe * 'a in_t =
+		: assignment_expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_assignment_expression as it), xr)) ->
@@ -1856,7 +1856,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: expression pe * 'a in_t =
+		: expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_expression as it), xr)) ->
@@ -1880,7 +1880,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: constant_expression pe * 'a in_t =
+		: constant_expression e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_constant_expression as it), xr)) ->
@@ -2030,7 +2030,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: init_declarator pe * 'a in_t =
+		: init_declarator e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_declarator as it), xr)) ->
@@ -2135,7 +2135,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: struct_declaration_list pe * 'a in_t =
+		: struct_declaration_list e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_struct_declaration as it), xr)) ->
@@ -2269,7 +2269,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: specifier_qualifier_list pe * 'a in_t =
+		: specifier_qualifier_list e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | #type_qualifier as it), xr)) ->
@@ -2289,7 +2289,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: struct_declarator_list pe * 'a in_t =
+		: struct_declarator_list e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`colon | #FirstSet.firstset_of_declarator as it), xr)) ->
@@ -2345,7 +2345,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: struct_declarator pe * 'a in_t =
+		: struct_declarator e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`colon | #FirstSet.firstset_of_declarator as it), xr)) ->
@@ -2402,7 +2402,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: enumerator_list pe * 'a in_t =
+		: enumerator_list e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`ident _ as it), xr)) ->
@@ -2449,7 +2449,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: enumerator pe * 'a in_t =
+		: enumerator e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`ident _ as it), xr)) ->
@@ -2511,7 +2511,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: declarator pe * 'a in_t =
+		: declarator e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_declarator as it), xr)) ->
@@ -2594,7 +2594,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: direct_declarator pe * 'a in_t =
+		: direct_declarator e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_direct_declarator as it), xr)) ->
@@ -2720,7 +2720,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: parameter_declaration pe * 'a in_t =
+		: parameter_declaration e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
@@ -2793,7 +2793,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: type_name pe * 'a in_t =
+		: type_name e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_name as it), xr)) ->
@@ -2854,7 +2854,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: abstract_declarator pe * 'a in_t =
+		: abstract_declarator e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_abstract_declarator as it), xr)) ->
@@ -2973,7 +2973,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: initializer_t pe * 'a in_t =
+		: initializer_t e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_initializer as it), xr)) ->
@@ -2989,7 +2989,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: initializer_list pe * 'a in_t =
+		: initializer_list e * 'a in_t =
 	(
 		let rec loop rs xs = (
 			begin match xs with
@@ -3279,7 +3279,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: statement pe * 'a in_t =
+		: statement e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (#FirstSet.firstset_of_statement as it), xr)) ->
@@ -3310,7 +3310,7 @@ struct
 		(lang: language)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: compound_statement pe * 'a in_t =
+		: compound_statement e * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (a, (`l_curly as it), xr)) ->

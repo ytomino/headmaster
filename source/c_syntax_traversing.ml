@@ -165,7 +165,7 @@ struct
 		end
 	);;
 	
-	let rec fold_il (f: 'a -> designation opt * initializer_t pe -> 'a) (a: 'a) (xs: initializer_list p): 'a = (
+	let rec fold_il (f: 'a -> designation opt * initializer_t e -> 'a) (a: 'a) (xs: initializer_list p): 'a = (
 		begin match snd xs with
 		| `nil x ->
 			f a x
