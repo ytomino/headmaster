@@ -16,6 +16,8 @@ let known_undefined_macros = make_setmap [
 		["PRAGMA_MARK"]; (* darwin10 *)
 	"_mingw.h",
 		["__GNUC_STDC_INLINE__"]; (* mingw32 *)
+	"mount.h",
+		["COMPAT_GETFSSTAT"]; (* darwin9 *)
 	"sdkddkver.h",
 		["_WIN32_WINNT"]; (* mingw-w64 *)
 	"shellapi.h",
