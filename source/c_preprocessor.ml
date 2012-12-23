@@ -27,7 +27,7 @@ struct
 			df_varargs: bool;
 			df_contents: in_t};;
 		
-		type concatable_element = [
+		type concatable_element = [reserved_word
 			| `ident of string
 			| `numeric_literal of string * LexicalElement.numeric_literal];;
 		
@@ -76,7 +76,7 @@ struct
 		df_varargs: bool;
 		df_contents: in_t};;
 	
-	type concatable_element = [
+	type concatable_element = [reserved_word
 		| `ident of string
 		| `numeric_literal of string * LexicalElement.numeric_literal];;
 	
@@ -395,7 +395,7 @@ struct
 				0
 			in
 			if !error_flag || index <> String.length s then (
-				error ps "concatenated token by ## is not able to be re-parsed."
+				error ps ("concatenated token \"" ^ s ^ "\" is not able to be re-parsed.")
 			);
 			result
 		) else (
@@ -553,6 +553,7 @@ struct
 				match it1 with
 				| `ident name1 -> name1
 				| `numeric_literal (name1, _) -> name1
+				| #reserved_word as rw -> string_of_rw rw
 			in
 			begin match xs with
 			| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
@@ -960,13 +961,6 @@ struct
 				| _ ->
 					process_replace ps token name xs
 				end
-			| #extended_word as ew when StringMap.mem (string_of_ew ew) predefined ->
-				begin match xs with
-				| lazy (`cons (ds_p, `d_sharp, xs)) ->
-					process_d_sharp ps (`ident (string_of_ew ew)) ds_p xs
-				| _ ->
-					process_replace ps token (string_of_ew ew) xs
-				end
 			| `ident _ | `numeric_literal _ as it1 -> (* ##-able *)
 				begin match xs with
 				| lazy (`cons (ds_p, `d_sharp, xs)) ->
@@ -974,6 +968,30 @@ struct
 				| _ ->
 					`cons (ps, token, lazy (
 						preprocess error lang read in_macro_expr predefined macro_arguments xs))
+				end
+			| #reserved_word as rw ->
+				begin match xs with
+				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+					process_d_sharp ps (`ident (string_of_rw rw)) ds_p xs
+				| _ ->
+					if StringMap.mem (string_of_rw rw) predefined then (
+						process_replace ps token (string_of_rw rw) xs
+					) else (
+						`cons (ps, token, lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
+					)
+				end
+			| #extended_word as ew ->
+				begin match xs with
+				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+					process_d_sharp ps (`ident (string_of_ew ew)) ds_p xs
+				| _ ->
+					if StringMap.mem (string_of_ew ew) predefined then (
+						process_replace ps token (string_of_ew ew) xs
+					) else (
+						`cons (ps, token, lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))
+					)
 				end
 			| _ ->
 				`cons (ps, token, lazy (
