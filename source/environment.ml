@@ -56,7 +56,7 @@ let find_include
 	) in
 	let current_dir = Filename.dirname current in
 	let add_current (xs: string list): string list = (
-		if List.mem current_dir xs then xs else current_dir :: xs
+		if List.mem current_dir xs then xs else xs @ current_dir :: []
 	) in
 	let next_filter (xs: string list): string list = (
 		if next then (
