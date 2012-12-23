@@ -1,5 +1,7 @@
 open Known_errors;;
 
+module StringMap = StringMap;; (* for C_preprocessor *)
+
 let known_undefined_macros = make_setmap [
 	"cdefs.h",
 		["__FreeBSD_cc_version"]; (* freebsd7 *)

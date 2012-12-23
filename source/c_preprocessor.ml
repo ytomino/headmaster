@@ -4,7 +4,7 @@ open C_literals;;
 open C_preprocessor_errors;;
 open Position;;
 
-module StringMap = Map.Make (String);;
+module StringMap = StringMap;;
 
 module PreprocessorType
 	(Literals: LiteralsType)

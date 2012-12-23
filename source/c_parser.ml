@@ -1,11 +1,9 @@
 open C_lexical;;
 open C_literals;;
-(* open C_parser_errors;; *)
+open C_parser_errors;;
 open C_syntax;;
 open C_syntax_firstset;;
 open Position;;
-
-module StringSet = Set.Make (String);;
 
 module Parser
 	(Literals: LiteralsType)

@@ -1,6 +1,9 @@
 open Known_errors;;
 open Position;;
 
+module StringSet = StringSet;; (* for C_define_parser *)
+module StringMap = StringMap;; (* for C_define_parser *)
+
 let known_define_parser_errors = make_setmap [
 	"basetyps.h", [
 		"_COM_interface"; (* mingw32 / alias of reserved word *)
