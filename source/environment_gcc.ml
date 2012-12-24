@@ -230,6 +230,7 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_inff", [], `float;
 		"__builtin_inf", [], `double;
 		"__builtin_infl", [], `long_double;
+		"__builtin_llabs", [`signed_long_long], `signed_long_long;
 		"__builtin___memcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
 		"__builtin___memmove_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
 		"__builtin___memset_chk", [`pointer `char; `signed_int; `unsigned_long; `unsigned_long], `pointer `char;

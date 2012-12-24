@@ -27,7 +27,9 @@ struct
 			df_varargs: bool;
 			df_contents: in_t};;
 		
-		type concatable_element = [reserved_word
+		type macro_argument_map = macro_argument_item StringMap.t
+		and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
+		and concatable_element = [reserved_word
 			| `ident of string
 			| `numeric_literal of string * LexicalElement.numeric_literal];;
 		
@@ -37,7 +39,7 @@ struct
 			(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
 			bool ->
 			define_map ->
-			((ranged_position * concatable_element) option * out_t) StringMap.t ->
+			macro_argument_map ->
 			in_t ->
 			out_prim;;
 		
@@ -76,7 +78,9 @@ struct
 		df_varargs: bool;
 		df_contents: in_t};;
 	
-	type concatable_element = [reserved_word
+	type macro_argument_map = macro_argument_item StringMap.t
+	and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
+	and concatable_element = [reserved_word
 		| `ident of string
 		| `numeric_literal of string * LexicalElement.numeric_literal];;
 	
@@ -405,11 +409,13 @@ struct
 	
 	let for_d_sharp
 		(xs: (ranged_position, LexicalElement.t, 'c) LazyList.t)
-		: (ranged_position * concatable_element) option =
+		: ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option =
 	(
 		begin match xs with
-		| lazy (`cons (ps, (`ident _ | `numeric_literal _ as e), lazy (`nil _))) ->
-			Some (ps, e)
+		| lazy (`cons (ps, (#concatable_element as e), lazy (`nil _))) ->
+			Some (None, ps, e)
+		| lazy (`cons (p1, (`minus as e1), lazy (`cons (ps, (#concatable_element as e), lazy (`nil _))))) ->
+			Some (Some (p1, e1), ps, e) (* for -1 ## L *)
 		| _ ->
 			None
 		end
@@ -421,7 +427,7 @@ struct
 		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim)
 		(in_macro_expr: bool)
 		(predefined: define_map)
-		(macro_arguments: ((ranged_position * concatable_element) option * out_t) StringMap.t)
+		(macro_arguments: macro_argument_map)
 		(xs: in_t)
 		: out_prim =
 	(
@@ -472,8 +478,8 @@ struct
 						let rec loop
 							(names: (ranged_position * string) list)
 							(in_arguments: (in_t * comma_token option) list)
-							(out_arguments: ((ranged_position * concatable_element) option * out_t) StringMap.t)
-							: ((ranged_position * concatable_element) option * out_t) StringMap.t =
+							(out_arguments: macro_argument_map)
+							: macro_argument_map =
 						(
 							begin match names, in_arguments with
 							| [], [] ->
@@ -559,7 +565,7 @@ struct
 			| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
 				let arg = StringMap.find name2 macro_arguments in
 				begin match arg with
-				| Some (ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* ## use unexpanded token *)
+				| Some (None, ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* ## use unexpanded token *)
 					let merged_ps = merge_positions ps1 ps2 in
 					let merged_token = rescan error merged_ps (name1 ^ name2) in
 					preprocess error lang read in_macro_expr predefined macro_arguments
@@ -853,7 +859,7 @@ struct
 				| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
 					let arg = StringMap.find name2 macro_arguments in
 					begin match arg with
-					| Some (ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* # use unexpanded token *)
+					| Some (None, ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* # use unexpanded token *)
 						let chars_token = `chars_literal name2 in
 						let merged_ps = merge_positions ps ps2 in
 						`cons (merged_ps, chars_token, lazy (
@@ -920,13 +926,18 @@ struct
 			| `ident name when StringMap.mem name macro_arguments ->
 				let arg = StringMap.find name macro_arguments in
 				begin match xs with
-				| lazy (`cons (ds_p, `d_sharp, xs)) ->
+				| lazy (`cons (ds_p, (`d_sharp as ds_e), xs)) ->
 					begin match arg with
-					| Some (ps1, it1), _ -> (* ## use unexpanded token *)
-						process_d_sharp ps1 it1 ds_p xs
+					| Some (pre_item, ps1, it1), _ -> (* ## use unexpanded token *)
+						begin match pre_item with
+						| Some (pre_p, pre_e) ->
+							`cons (pre_p, pre_e, lazy (process_d_sharp ps1 it1 ds_p xs))
+						| None ->
+							process_d_sharp ps1 it1 ds_p xs
+						end
 					| _ ->
-						LazyList.append (snd arg) (lazy (
-							preprocess error lang read in_macro_expr predefined macro_arguments xs))
+						LazyList.append (snd arg) (lazy (`cons (ds_p, ds_e, lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))))
 					end
 				| _ ->
 					let has_following_arguments =

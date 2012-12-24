@@ -274,6 +274,14 @@ let known_define_parser_errors = make_setmap [
 		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT_1_4_"; (* mingw-w64 / parameterized declaration *)
 		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_MEMORY_0_3_"; (* mingw-w64 / parameterized declaration *)
 		"__MINGW_CRT_NAME_CONCAT1"]; (* mingw-w64 / ??? *)
+	"_mingw_secapi.h", [
+		"__CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_0_2_"; (* mingw-w64 / parameterized declaraton *)
+		"__CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_MEMORY_0_3_"; (* mingw-w64 / parameterized declaraton *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_0_2_"; (* mingw-w64 / parameterized declaraton *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT_0_3_"; (* mingw-w64 / parameterized declaraton *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT_1_4_"; (* mingw-w64 / parameterized declaraton *)
+		"__CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_MEMORY_0_3_"; (* mingw-w64 / parameterized declaraton *)
+		"__MINGW_CRT_NAME_CONCAT1"]; (* mingw-w64 / :: *)
 	"_mingw_unicode.h", [
 		"__MINGW_TYPEDEF_AW"; (* mingw-w64 / parameterized declaration *)
 		"__MINGW_TYPEDEF_UAW"]; (* mingw-w64 / parameterized declaration *)
@@ -456,6 +464,9 @@ let known_define_parser_errors = make_setmap [
 	"stdint.h", [
 		"INTMAX_C"; (* mingw32 / ## *)
 		"UINTMAX_C"]; (* mingw32 / ## *)
+	"stdio.h", [
+		"__MINGW_PRINTF_FORMAT"; (* mingw-w64 / ms_printf is undefined *)
+		"__MINGW_SCANF_FORMAT"]; (* mingw-w64 / ms_scanf is undefined *)
 	"_stdio.h", [
 		"snprintf"; (* darwin10 / varargs macro *)
 		"sprintf"]; (* darwin10 / varargs macro *)
