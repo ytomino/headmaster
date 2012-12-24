@@ -79,7 +79,6 @@ struct
 		| lazy (`cons (_, `ident target_name, lazy (`nil _))) ->
 			begin try
 				let result = StringMap.find target_name macros in
-				if result == macro then None else (* #define A A *)
 				Some result
 			with Not_found ->
 				None
@@ -109,7 +108,7 @@ struct
 			end
 		in
 		begin match is_alias_of_other_macro macros macro macro.Preprocessor.df_contents with
-		| Some target ->
+		| Some target when target != macro ->
 			(* deriving *)
 			let _, result = parse_define
 				~name
@@ -120,7 +119,7 @@ struct
 				target
 			in
 			ps, result
-		| None ->
+		| _ ->
 			let xs = macro.Preprocessor.df_contents in
 			let has_arguments = macro.Preprocessor.df_has_arguments in
 			if has_arguments && has_sharps xs then ps, (`any "has # or ##") else (* exclude macros having # or ## *)
@@ -182,7 +181,7 @@ struct
 					) macro.Preprocessor.df_args last_f (ps, `any "parser error")
 				) else (
 					begin match is_alias_of_other_macro macros macro xs with
-					| Some target ->
+					| Some target when target != macro ->
 						(* deriving *)
 						let _, result = parse_define
 							~name
@@ -193,6 +192,9 @@ struct
 							target
 						in
 						ps, result
+					| Some _ ->
+						(* self *)
+						ps, `any "repeating itself"
 					| None ->
 						let op, xr = has_error := false; parse_operator_option xs in
 						if not !has_error && LazyList.is_empty xr && op <> None then (
