@@ -129,6 +129,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_objc_gc: [`none | `weak];
 		at_optimize: string option;
 		at_pure: bool;
+		at_regparm: int option;
 		at_returns_twice: bool;
 		at_sentinel: bool;
 		at_selectany: bool;
@@ -159,6 +160,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_objc_gc = `none;
 		at_optimize = None;
 		at_pure = false;
+		at_regparm = None;
 		at_returns_twice = false;
 		at_sentinel = false;
 		at_selectany = false;

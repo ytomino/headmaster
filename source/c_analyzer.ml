@@ -1009,6 +1009,18 @@ struct
 			{attributes with at_aligned = `packed}
 		| `pure ->
 			{attributes with at_pure = true}
+		| `regparm (_, _, arg, _) ->
+			begin match arg with
+			| `some expr ->
+				begin match int_of_expr expr with
+				| Some _ as r ->
+					{attributes with at_regparm = r}
+				| None ->
+					attributes
+				end
+			| `error ->
+				attributes
+			end
 		| `returns_twice ->
 			{attributes with at_returns_twice = true}
 		| `sentinel ->

@@ -95,6 +95,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `optimize of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
 		| `packed of string
 		| `pure
+		| `regparm of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `returns_twice
 		| `selectany
 		| `sentinel

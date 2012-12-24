@@ -773,6 +773,13 @@ struct
 				`some (p4, `packed attr_keyword), xs
 			| "__pure__" ->
 				`some (p4, `pure), xs
+			| "__regparm__" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_assignment_expression_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				`some (ps, `regparm (n, l_paren, arg, r_paren)), xs
 			| "__returns_twice__" ->
 				`some (p4, `returns_twice), xs
 			| "selectany" ->
