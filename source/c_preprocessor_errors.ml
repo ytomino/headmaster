@@ -16,6 +16,10 @@ let known_undefined_macros = make_setmap [
 		"COMPAT_43_TTY"]; (* darwin9 *)
 	"kmod.h",
 		["PRAGMA_MARK"]; (* darwin10 *)
+	"mathdef.h", [
+		"__FP_FAST_FMA"; (* linux *)
+		"__FP_FAST_FMAF"; (* linux *)
+		"__FP_FAST_FMAL"]; (* linux *)
 	"_mingw.h",
 		["__GNUC_STDC_INLINE__"]; (* mingw32 *)
 	"mount.h",
@@ -57,6 +61,10 @@ let known_redefine_compiler_macros = make_setmap [
 	"features.h", [
 		"__STDC_ISO_10646__"]; (* linux *)
 	"predefs.h", [
+		"__STDC_IEC_559__"; (* linux *)
+		"__STDC_IEC_559_COMPLEX__"]; (* linux *)
+	"stdc-predef.h", [
+		"__STDC_ISO_10646__"; (* linux *)
 		"__STDC_IEC_559__"; (* linux *)
 		"__STDC_IEC_559_COMPLEX__"]];; (* linux *)
 

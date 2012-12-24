@@ -73,6 +73,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `aligned of string p * ([`l_paren] p * assignment_expression e * [`r_paren] e) opt
 		| `alloc_size of string p * [`l_paren] e * argument_expression_list e * [`r_paren] e
 		| `always_inline of string
+		| `artificial
 		| `blocks of string p * [`l_paren] e * [`BYREF] e * [`r_paren] e
 		| `cdecl of string
 		| `const of string
@@ -83,6 +84,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `format of string p * [`l_paren] e * identifier e * [`comma] e * assignment_expression e * [`comma] e * assignment_expression e * [`r_paren] e
 		| `format_arg of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `inline of string
+		| `leaf
 		| `malloc
 		| `mode of string p * [`l_paren] e * bit_width_mode e * [`r_paren] e
 		| `noinline of string
@@ -98,6 +100,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `sentinel
 		| `stdcall
 		| `thiscall
+		| `transparent_union
 		| `unavailable
 		| `unused of string
 		| `used

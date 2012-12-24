@@ -681,6 +681,8 @@ struct
 				`some (ps, `alloc_size (n, l_paren, args, r_paren)), xs
 			| "always_inline" | "__always_inline__" ->
 				`some (p4, `always_inline attr_keyword), xs
+			| "__artificial__" ->
+				`some (p4, `artificial), xs
 			| "__blocks__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
@@ -720,6 +722,8 @@ struct
 				`some (ps, `format_arg (n, l_paren, arg, r_paren)), xs
 			| "__gnu_inline__" ->
 				`some (p4, `inline attr_keyword), xs
+			| "__leaf__" ->
+				`some (p4, `leaf), xs
 			| "__malloc__" ->
 				`some (p4, `malloc), xs
 			| "__mode__" ->
@@ -779,6 +783,8 @@ struct
 				`some (p4, `stdcall), xs
 			| "__thiscall__" ->
 				`some (p4, `thiscall), xs
+			| "__transparent_union__" ->
+				`some (p4, `transparent_union), xs
 			| "unavailable" ->
 				`some (p4, `unavailable), xs
 			| "unused" | "__unused__" ->

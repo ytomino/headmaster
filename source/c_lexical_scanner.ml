@@ -102,16 +102,19 @@ struct
 					if h = '.' then (
 						Buffer.add_char b h;
 						let index = succ source index in
-						read_digits_to_buffer  ~base:10 b index
+						(* reading only 10-based digits becaue 'E' means exponent *)
+						read_digits_to_buffer ~base:10 b index
 					) else (
 						index
 					)
 				in
 				let mantissa =
 					let image = Buffer.sub b start (Buffer.length b - start) in
-					Real.of_based_string ~base:10 image
+					Real.of_based_string ~base image
 				in
-				if base <> 10 then (
+				if base <> 10
+					&& Real.compare mantissa Real.one <> 0 (* accept 0x1.0p2047 *)
+				then (
 					let p2 = prev_position source index in
 					error (p1, p2) not_10_based_float_literal
 				);

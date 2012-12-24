@@ -5,6 +5,9 @@ module StringSet = StringSet;; (* for C_define_parser *)
 module StringMap = StringMap;; (* for C_define_parser *)
 
 let known_define_parser_errors = make_setmap [
+	"assert.h", [
+		"__ASSERT_FUNCTION"; (* linux / __PRETTY_FUNCTION__ outside of a function *)
+		"__ASSERT_VOID_CAST"]; (* linux / partial cast *)
 	"basetyps.h", [
 		"_COM_interface"; (* mingw32 / alias of reserved word *)
 		"DECLARE_ENUMERATOR_"; (* mingw32 / parameterized declaration *)
@@ -113,7 +116,9 @@ let known_define_parser_errors = make_setmap [
 		"__FBSDID"; (* freebsd7 / generic declaration *)
 		"__flexarr"; (* linux / [] *)
 		"__format_arg"; (* freebsd7 / parameterized attribute *)
+		"__fortify_function"; (* linux / attribute and storage class *)
 		"__IDSTRING"; (* darwin9 / generic declaration *)
+		"__LEAF"; (* linux / attribute and comma *)
 		"__LDBL_REDIR"; (* linux / parameterized partial declaration *)
 		"__LDBL_REDIR_NTH"; (* linux / parameterized partial declaration *)
 		"__LDBL_REDIR1"; (* linux / parameterized partial declaration *)
@@ -132,8 +137,12 @@ let known_define_parser_errors = make_setmap [
 		"__scanflike"; (* darwin9 / parameterized attribute *)
 		"__SCCSID"; (* darwin9 / generic declaration *)
 		"__section"; (* freebsd7 / parameterized attribute *)
+		"__va_arg_pack"; (* linux / other languages can not use this feature *)
+		"__va_arg_pack_len"; (* linux / other languages can not use this feature *)
 		"__warnattr"; (* linux / parameterized declaration *)
 		"__warndecl"]; (* linux / parameterized declaration *)
+	"cmathcalls.h", [
+		"_Mdouble_complex_"]; (* linux / parameterized type specifier *)
 	"commdlg.h", [
 		"CDSIZEOF_STRUCT"]; (* mingw-w64 / parameterized field *)
 	"complex.h", [
@@ -141,6 +150,8 @@ let known_define_parser_errors = make_setmap [
 	"ctype.h", [
 		"__chvalidchk"; (* mingw-w64 / _pctype is defined as expression *)
 		"_chvalidchk_l"; (* mingw-w64 / _pctype is defined as expression *)
+		"__exctype"; (* linux / parameterized declaration *)
+		"__exctype_l"; (* linux / parameterized declaration *)
 		"_isalnum_l"; (* mingw-w64 / _pctype is defined as expression *)
 		"_isalpha_l"; (* mingw-w64 / _pctype is defined as expression *)
 		"_ischartype_l"; (* mingw-w64 / _pctype is defined as expression *)
@@ -157,7 +168,8 @@ let known_define_parser_errors = make_setmap [
 		"_isxdigit_l"; (* mingw-w64 / _pctype is defined as expression *)
 		"__PCTYPE_FUNC"; (* mingw-w64 / _pctype is defined as expression *)
 		"__pctype_func"; (* mingw-w64 / _pctype is defined as expression *)
-		"__pwctype_func"]; (* mingw-w64 / _pctype is defined as expression *)
+		"__pwctype_func"; (* mingw-w64 / _pctype is defined as expression *)
+		"__tobody"]; (* linux / parameterized statement *)
 	"dirent.h", [
 		"__DARWIN_STRUCT_DIRENTRY"; (* darwin9 / partial declaration *)
 		"d_ino"]; (* freebsd7 / renaming field of struct in the other file *)
@@ -178,6 +190,15 @@ let known_define_parser_errors = make_setmap [
 		"GC_ATTR_ALLOC_SIZE"]; (* Boehm-GC / parameterized attribute *)
 	"gc_typed.h", [
 		"GC_WORD_OFFSET"]; (* Boehm-GC / parameterized field *)
+	"_G_config.h", [
+		"_G_FSTAT64"; (* linux / __fxstat64 is undefined *)
+		"_G_HAVE_ST_BLKSIZE"; (* linux / using defined outside of #if *)
+		"_G_LSEEK64"; (* __lseek64 is undefined *)
+		"_G_MMAP64"; (* __mmap64 is undefined *)
+		"_G_OPEN64"; (* __open64 is undefined *)
+		"_G_stat64"; (* linux / stat64 is undefined *)
+		"_G_VTABLE_LABEL_PREFIX_ID"; (* linux / __vt__ is undefined *)
+		"_G_wint_t"]; (* linux / wint_t is undefined *)
 	"gmp.h", [
 		"__GMP_CAST"; (* GMP / unclear cast or function call *)
 		"__GMP_DECLSPEC_EXPORT"; (* GMP / __declspec in no Windows *)
@@ -252,8 +273,14 @@ let known_define_parser_errors = make_setmap [
 		"M_AUTHIPHDR"; (* freebsd7 / M_PROTO2 was undefined *)
 		"M_DECRYPTED"; (* freebsd7 / M_PROTO3 was undefined *)
 		"M_LOOP"]; (* freebsd7 / M_PROTO4 was undefined *)
+	"libio.h", [
+		"_IO_iconv_t"; (* linux / _G_iconv_t is undefined *)
+		"_IO_wint_t"]; (* linux / _G_wint_t is undefined *)
 	"malloc.h", [
 		"_STATIC_ASSERT"]; (* mingw-w64 / parameterized declaration *)
+	"math.h", [
+		"__MATHCALLX"; (* linux / parameterized declaration *)
+		"__MATHDECLX"]; (* linux / parameterized declaration *)
 	"memory_object_types.h", [
 		"invalid_memory_object_flavor"]; (* darwin9 / OLD_MEMORY_OBJECT_BEHAVIOR_INFO and OLD_MEMORY_OBJECT_ATTRIBUTE_INFO are undefined *)
 	"_mingw.h", [
@@ -453,6 +480,9 @@ let known_define_parser_errors = make_setmap [
 		"SHDOCAPI_"; (* mingw-w64 / storage class and parameterized type *)
 		"SHSTDAPI"; (* mingw-w64 / storage class and type *)
 		"SHSTDAPI_"]; (* mingw-w64 / storage class and parameterized type *)
+	"siginfo.h", [
+		"si_int"; (* linux / (siginfo_t)._sifields._rt.si_sigval is not struct *)
+		"si_ptr"]; (* linux / (siginfo_t)._sifields._rt.si_sigval is not struct *)
 	"socket.h", [
 		"CTL_NET_NAMES"; (* freebsd7 / partial initializer *)
 		"CTL_NET_RT_NAMES"]; (* freebsd7 / partial initializer *)
@@ -470,6 +500,16 @@ let known_define_parser_errors = make_setmap [
 	"_stdio.h", [
 		"snprintf"; (* darwin10 / varargs macro *)
 		"sprintf"]; (* darwin10 / varargs macro *)
+	"stdlib.h", [
+		"__WAIT_INT"; (* linux / new type is declared in expression statement *)
+		"__WAIT_STATUS_DEFN"; (* linux / declaration specifier and pointer *)
+		"WEXITSTATUS"; (* linux / using __WAIT_INT *)
+		"WIFCONTINUED"; (* linux / using __WAIT_INT *)
+		"WIFEXITED"; (* linux / using __WAIT_INT *)
+		"WIFSIGNALED"; (* linux / using __WAIT_INT *)
+		"WIFSTOPPED"; (* linux / using __WAIT_INT *)
+		"WSTOPSIG"; (* linux / using __WAIT_INT *)
+		"WTERMSIG"]; (* linux / using __WAIT_INT *)
 	"stralign.h", [
 		"__UA_STACKCOPY"]; (* mingw-w64 / _alloca is undefined *)
 	"_structs.h", [
@@ -556,6 +596,7 @@ let known_define_parser_errors = make_setmap [
 		"remquo"; (* gcc / magic macro *)
 		"rint"; (* gcc / magic macro *)
 		"round"; (* gcc / magic macro *)
+		"scalb"; (* linux / magic macro *)
 		"scalbln"; (* gcc / magic macro *)
 		"scalbn"; (* gcc / magic macro *)
 		"sin"; (* gcc / magic macro *)
@@ -569,6 +610,8 @@ let known_define_parser_errors = make_setmap [
 		"__tg_cplx"; (* gcc / magic macro *)
 		"__tg_dbl"; (* gcc / magic macro *)
 		"__tg_ldbl"; (* gcc / magic macro *)
+		"__tgmath_real_type"; (* linux / magic macro *)
+		"__tgmath_real_type_sub"; (* linux / magic macro *)
 		"tgamma"; (* gcc / magic macro *)
 		"trunc"]; (* gcc / magic macro *)
 	"trap.h", [
@@ -580,6 +623,8 @@ let known_define_parser_errors = make_setmap [
 	"_types.h", [
 		"__strfmonlike"; (* darwin10 / parameterized attribute *)
 		"__strftimelike"]; (* darwin10 / parameterized attribute *)
+	"typesizes.h", [
+		"__TIMER_T_TYPE"]; (* linux / declaration specifier and pointer *)
 	"ucred.h", [
 		"cr_gid"]; (* darwin10 / alias of element and dereferencing *)
 	"urlmon.h", [

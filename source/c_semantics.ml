@@ -111,6 +111,7 @@ module Semantics (Literals: LiteralsType) = struct
 	type attributes = {
 		at_aligned: alignment;
 		at_alloc_size: int list;
+		at_artificial: bool;
 		at_blocks: [`none | `byref];
 		at_const: bool;
 		at_conventions: calling_convention;
@@ -119,6 +120,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_dllexport: bool;
 		at_format: [`none | `like of string * int * int | `arg of int];
 		at_inline: [`none | `noinline | `inline | `always_inline];
+		at_leaf: bool;
 		at_malloc: bool;
 		at_mode: bit_width_mode option;
 		at_nonnull: int list;
@@ -130,6 +132,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_returns_twice: bool;
 		at_sentinel: bool;
 		at_selectany: bool;
+		at_transparent_union: bool;
 		at_unavailable: bool;
 		at_used: [`none | `used | `unused];
 		at_warn_unused_result : bool;
@@ -138,6 +141,7 @@ module Semantics (Literals: LiteralsType) = struct
 	let no_attributes = {
 		at_aligned = `default;
 		at_alloc_size = [];
+		at_artificial = false;
 		at_blocks = `none;
 		at_const = false;
 		at_conventions = `cdecl;
@@ -146,6 +150,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_dllexport = false;
 		at_format = `none;
 		at_inline = `none;
+		at_leaf = false;
 		at_malloc = false;
 		at_mode = None;
 		at_nonnull = [];
@@ -157,6 +162,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_returns_twice = false;
 		at_sentinel = false;
 		at_selectany = false;
+		at_transparent_union = false;
 		at_unavailable = false;
 		at_used = `none;
 		at_warn_unused_result = false;

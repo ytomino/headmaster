@@ -919,6 +919,8 @@ struct
 			end
 		| `always_inline _ ->
 			{attributes with at_inline = `always_inline}
+		| `artificial ->
+			{attributes with at_artificial = true}
 		| `blocks (_, _, arg, _) ->
 			begin match arg with
 			| `some (_, `BYREF) ->
@@ -965,6 +967,8 @@ struct
 		| `inline _ ->
 			if attributes.at_inline = `always_inline then attributes else
 			{attributes with at_inline = `inline}
+		| `leaf ->
+			{attributes with at_leaf = true}
 		| `malloc ->
 			{attributes with at_malloc = true}
 		| `mode (_, _, mode, _) ->
@@ -1015,6 +1019,8 @@ struct
 			{attributes with at_conventions = `stdcall}
 		| `thiscall ->
 			{attributes with at_conventions = `thiscall}
+		| `transparent_union ->
+			{attributes with at_transparent_union = true}
 		| `unavailable ->
 			{attributes with at_unavailable = true}
 		| `unused _ ->
@@ -1276,7 +1282,7 @@ struct
 					assert false
 				end
 			with Not_found ->
-				if name = "__func__" then (
+				if name = "__func__" || name = "__PRETTY_FUNCTION__" then (
 					let base_type = find_predefined_type `char predefined_types in
 					let t, derived_types = Typing.find_array_type None base_type derived_types in
 					derived_types, source, Some (`__func__, t)

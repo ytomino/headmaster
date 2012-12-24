@@ -580,15 +580,20 @@ struct
 							preprocess error lang read in_macro_expr predefined macro_arguments rs))
 					) else (
 						error ds_p "## requires two identifiers.";
-						`cons (ps1, (it1 :> LexicalElement.t), lazy (
+						`cons (ps1, (it1 :> LexicalElement.t), lazy (`cons (ds_p, `d_sharp, lazy (
 							LazyList.append (snd arg) (lazy (
-								preprocess error lang read in_macro_expr predefined macro_arguments xs))))
+								preprocess error lang read in_macro_expr predefined macro_arguments xs))))))
 					)
-				| _ ->
-					error ds_p "## requires two identifiers.";
+				| None, lazy (`nil _) ->
+					(* skip ## *)
 					`cons (ps1, (it1 :> LexicalElement.t), lazy (
 						LazyList.append (snd arg) (lazy (
 							preprocess error lang read in_macro_expr predefined macro_arguments xs))))
+				| _ ->
+					error ds_p "## requires two identifiers.";
+					`cons (ps1, (it1 :> LexicalElement.t), lazy (`cons (ds_p, `d_sharp, lazy (
+						LazyList.append (snd arg) (lazy (
+							preprocess error lang read in_macro_expr predefined macro_arguments xs))))))
 				end
 			| lazy (`cons (ps2, (`ident name2 | `numeric_literal (name2, _)), xs)) ->
 				let merged_ps = merge_positions ps1 ps2 in
@@ -597,9 +602,8 @@ struct
 					(lazy (`cons (merged_ps, merged_token, xs)))
 			| _ ->
 				error ds_p "## requires two identifiers.";
-				(* skip ## *)
-				`cons (ps1, (it1 :> LexicalElement.t), lazy (
-					preprocess error lang read in_macro_expr predefined macro_arguments xs))
+				`cons (ps1, (it1 :> LexicalElement.t), lazy (`cons (ds_p, `d_sharp, lazy (
+					preprocess error lang read in_macro_expr predefined macro_arguments xs))))
 			end
 		) in
 		begin match xs with
