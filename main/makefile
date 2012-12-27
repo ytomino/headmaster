@@ -34,7 +34,7 @@ else
 endif
 
 $(BUILDDIR)/gmp.cmxa:
-	make -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+	make -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cmxa:
 	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))

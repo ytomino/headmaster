@@ -40,6 +40,15 @@ Makefile variables to specify the destination directory
 ``BINDIR=...``
  Specify the directory that an executable file should be copied to.
 
+Makefile variables for the library locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``WITH_GMP=...``
+ Specify GMP directory. (ex. ``WITH_GMP=/opt/gmp``,
+ then ``/opt/gmp/include`` and ``/opt/gmp/lib`` would be used.)
+``WITH_MPFR=...``
+ Specify MPFR directory.
+
 "hmcpp" command
 +++++++++++++++
 

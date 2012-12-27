@@ -44,7 +44,7 @@ ifneq ($(OCAMLMAKE),)
 endif
 
 $(BUILDDIR)/gmp.cma:
-	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cma:
 	make -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
