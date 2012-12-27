@@ -2762,6 +2762,12 @@ struct
 			let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			if Naming.is_hidden ps item name_mapping then (
 				fprintf ff "@ --  function %s ... (hidden by macro)" name
+			) else if (
+				match t with
+				| `named (_, _, #Semantics.opaque_type_var, _) as t when Semantics.is_opaque t opaque_mapping -> true
+				| _ -> false)
+			then (
+				fprintf ff "@ --  extern %s (opaque type)" name
 			) else (
 				let ada_name = ada_name_of current ps name `namespace name_mapping in
 				begin match item with

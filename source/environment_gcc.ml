@@ -219,6 +219,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 	in
 	let builtin = [
 		"__builtin_alloca", [`unsigned_long], `pointer `char;
+		"__builtin_bswap32", [`unsigned_int], `unsigned_int;
+		"__builtin_bswap64", [`unsigned_long_long], `unsigned_long_long;
 		"__builtin_bzero", [`pointer `char; `unsigned_long], `void;
 		"__builtin_fabsf", [`float], `float;
 		"__builtin_fabs", [`double], `double;

@@ -275,6 +275,9 @@ let known_define_parser_errors = make_setmap [
 		"M_LOOP"]; (* freebsd7 / M_PROTO4 was undefined *)
 	"libio.h", [
 		"_IO_iconv_t"; (* linux / _G_iconv_t is undefined *)
+		"_IO_stderr"; (* linux / _IO_2_1_stderr_ is opaque *)
+		"_IO_stdin"; (* linux / _IO_2_1_stdin_ is opaque *)
+		"_IO_stdout"; (* linux / _IO_2_1_stdout_ is opaque *)
 		"_IO_wint_t"]; (* linux / _G_wint_t is undefined *)
 	"malloc.h", [
 		"_STATIC_ASSERT"]; (* mingw-w64 / parameterized declaration *)
@@ -570,6 +573,7 @@ let known_define_parser_errors = make_setmap [
 		"fabs"; (* gcc / magic macro *)
 		"fdim"; (* gcc / magic macro *)
 		"floor"; (* gcc / magic macro *)
+		"__floating_type"; (* linux / magic macro *)
 		"fma"; (* gcc / magic macro *)
 		"fmax"; (* gcc / magic macro *)
 		"fmin"; (* gcc / magic macro *)
