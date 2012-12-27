@@ -6,6 +6,22 @@ open C_syntax;;
 open C_syntax_traversing;;
 open Position;;
 
+let list_remove (a: 'a) (xs: 'a list): 'a list = (
+	let rec loop a ys xs orig_xs = (
+		begin match xs with
+		| x :: xr ->
+			if x == a then (
+				List.rev_append ys xr
+			) else (
+				loop a (x :: ys) xr orig_xs
+			)
+		| [] ->
+			orig_xs
+		end
+	) in
+	loop a [] xs xs
+);;
+
 let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
 	begin match x with
 	| Some x -> Some (f x)
@@ -93,6 +109,37 @@ struct
 			(try (StringMap.find name namespace.ns_union :> all_type) with Not_found -> t)
 		| _ ->
 			t
+		end
+	);;
+	
+	let is_function_conflicted (item: function_item) (namespace: namespace): [`error | `precedence of named_item | `none] = (
+		let id, `function_type prototype, alias =
+			begin match item with
+			| `named (_, id, `extern (t, alias), _) -> id, t, alias
+			| `named (_, id, `function_forward (_, t), _) -> id, t, `none
+			| `named (_, id, `function_definition (_, t, _), _) -> id, t, `none
+			end
+		in
+		begin try
+			let previous = StringMap.find id namespace.ns_namespace in
+			begin match previous with
+			| `named (_, _, `extern ((`function_type previous_prototype), _), _)
+			| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) as previous ->
+				if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype = `just then (
+					begin match previous with
+					| `named (_, _, `extern (_, prev_alias), _) when prev_alias <> alias ->
+						`precedence previous
+					| _ ->
+						`none (* no error when same prototype *)
+					end
+				) else (
+					`error (* prototype mismatch *)
+				)
+			| _ ->
+				`error
+			end
+		with Not_found ->
+			`none
 		end
 	);;
 	
@@ -1924,10 +1971,28 @@ struct
 				if init <> None then (
 					error ps "initializer was found with extern."
 				);
-				let result = `named (ps, id, `extern (t, alias), attr) in
-				let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
-				let source = (result :> source_item) :: source in
-				derived_types, namespace, source, Some result
+				begin match t with
+				| `function_type _ as t ->
+					let result = `named (ps, id, `extern (t, alias), attr) in
+					begin match is_function_conflicted result namespace with
+					| `error ->
+						error ps ("\"" ^ id ^ "\" was conflicted.");
+						derived_types, namespace, source, None
+					| `precedence previous ->
+						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
+						let source = (result :> source_item) :: list_remove (previous :> source_item) source in
+						derived_types, namespace, source, Some result
+					| `none ->
+						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
+						let source = (result :> source_item) :: source in
+						derived_types, namespace, source, Some result
+					end
+				| _ ->
+					let result = `named (ps, id, `extern (t, alias), attr) in
+					let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
+					let source = (result :> source_item) :: source in
+					derived_types, namespace, source, Some result
+				end
 			| `static ->
 				begin match t with
 				| `function_type _ as t ->
@@ -1958,37 +2023,24 @@ struct
 				end
 			| `none ->
 				begin match t with
-				| `function_type prototype ->
+				| `function_type _ as t ->
 					if init <> None then (
 						error ps "initializer was found with function."
 					);
-					let conflicted =
-						begin try
-							let previous = StringMap.find id namespace.ns_namespace in
-							begin match previous with
-							| `named (_, _, `extern ((`function_type previous_prototype), _), _)
-							| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) ->
-								(* no error when two external declaration has same prototype *)
-								if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype <> `just then (
-									error ps ("\"" ^ id ^ "\" was conflicted.");
-								);
-								true
-							| _ ->
-								error ps ("\"" ^ id ^ "\" was conflicted.");
-								true
-							end
-						with Not_found ->
-							false
-						end
-					in
-					if not conflicted then (
-						let result = `named (ps, id, `extern (t, alias), attr) in
+					let result = `named (ps, id, `extern (t, alias), attr) in
+					begin match is_function_conflicted result namespace with
+					| `error ->
+						error ps ("\"" ^ id ^ "\" was conflicted.");
+						derived_types, namespace, source, None
+					| `precedence previous ->
+						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
+						let source = (result :> source_item) :: list_remove (previous :> source_item) source in
+						derived_types, namespace, source, Some result
+					| `none ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
 						let source = (result :> source_item) :: source in
 						derived_types, namespace, source, Some result
-					) else (
-						derived_types, namespace, source, None
-					)
+					end
 				| _ ->
 					let result = `named (ps, id, `variable (t, init), attr) in
 					let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
