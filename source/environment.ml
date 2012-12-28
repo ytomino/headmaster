@@ -56,9 +56,6 @@ let find_include
 		end
 	) in
 	let current_dir = Filename.dirname current in
-	let add_current (xs: string list): string list = (
-		if List.mem current_dir xs then xs else xs @ current_dir :: []
-	) in
 	let next_filter (xs: string list): string list = (
 		if next then (
 			let rec loop xs = (
@@ -77,11 +74,17 @@ let find_include
 	) in
 	begin match from with
 	| `user ->
-		begin try find_loop (next_filter (add_current env.en_include)) with
-		| Not_found -> find_loop (next_filter env.en_sys_include)
+		begin try find_loop (next_filter env.en_include) with
+		| Not_found ->
+			begin try
+				if next then raise Not_found else
+				find_loop (current_dir :: [])
+			with
+			| Not_found -> find_loop (next_filter env.en_sys_include)
+			end
 		end
 	| `system ->
-		find_loop (next_filter (add_current env.en_sys_include))
+		find_loop (next_filter env.en_sys_include)
 	end
 );;
 
