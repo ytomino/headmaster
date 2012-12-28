@@ -181,3 +181,80 @@ let succ_line (s: t) (index: int): int = (
 		raise (Failure "junk_newline")
 	end
 );;
+
+let succ_while (f: char -> bool) (s: t) (index: int): int = (
+	if index <> s.tf_index then seek s index;
+	let rec internal_succ_while f s index = (
+		let c = get s index in
+		if f c then (
+			let index = internal_succ s index in
+			internal_succ_while f s index
+		) else (
+			index
+		)
+	) in
+	internal_succ_while f s index
+);;
+
+let succ_while_to_buffer (f: char -> bool) (buf: Buffer.t) (s: t) (index: int): int = (
+	if index <> s.tf_index then seek s index;
+	let rec internal_succ_while_to_buffer f buf s index = (
+		let c = get s index in
+		if f c then (
+			Buffer.add_char buf c;
+			let index = internal_succ s index in
+			internal_succ_while_to_buffer f buf s index
+		) else (
+			index
+		)
+	) in
+	internal_succ_while_to_buffer f buf s index
+);;
+
+let succ_until_line (is_escape: char -> bool) (s: t) (index: int): int = (
+	if index <> s.tf_index then seek s index;
+	let rec internal_succ_until_line is_escape s index = (
+		begin match get s index with
+		| '\n' | '\r' | '\x0c' | '\x1a' ->
+			index
+		| _ as c when is_escape c ->
+			let index = internal_succ s index in
+			begin match get s index with
+			| '\n' | '\r' | '\x0c' ->
+				let index = succ_line s index in
+				internal_succ_until_line is_escape s index
+			| _ ->
+				internal_succ_until_line is_escape s index
+			end
+		| _ ->
+			let index = internal_succ s index in
+			internal_succ_until_line is_escape s index
+		end
+	) in
+	internal_succ_until_line is_escape s index
+);;
+
+let succ_until_line_to_buffer (is_escape: char -> bool) (buf: Buffer.t) (s: t) (index: int): int = (
+	if index <> s.tf_index then seek s index;
+	let rec internal_succ_until_line_to_buffer is_escape buf s index = (
+		begin match get s index with
+		| '\n' | '\r' | '\x0c' | '\x1a' ->
+			index
+		| _ as c when is_escape c ->
+			let index = internal_succ s index in
+			begin match get s index with
+			| '\n' | '\r' | '\x0c' ->
+				let index = succ_line s index in
+				internal_succ_until_line_to_buffer is_escape buf s index
+			| _ ->
+				Buffer.add_char buf c;
+				internal_succ_until_line_to_buffer is_escape buf s index
+			end
+		| _ as c ->
+			Buffer.add_char buf c;
+			let index = internal_succ s index in
+			internal_succ_until_line_to_buffer is_escape buf s index
+		end
+	) in
+	internal_succ_until_line_to_buffer is_escape buf s index
+);;

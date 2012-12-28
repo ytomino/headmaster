@@ -392,6 +392,7 @@ struct
 			let error_flag = ref false in
 			let result, index = NumericScanner.scan_numeric_literal
 				(fun _ _ -> error_flag := true)
+				(Buffer.create 256)
 				(fun _ _ -> 0)
 				(fun _ _ -> 0)
 				(fun s index -> if index >= String.length s then '\x1a' else s.[index])

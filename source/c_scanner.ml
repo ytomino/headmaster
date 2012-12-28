@@ -11,6 +11,43 @@ struct
 	open Literals;;
 	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
 	
+	(* error messages *)
+	
+	let unexpected (c: char): string =
+		"\'" ^ Char.escaped c ^ "\' is bad character.";;
+	let illegal_char_literal (s: string): string =
+		"\'" ^ String.escaped s ^ "\' is illegal char literal.";;
+	let unclosed_string (s: string): string =
+		"\"" ^ String.escaped s ^ "\" is not closed string.";;
+	let unclosed_comment: string =
+		"unclosed comment.";;
+	let illegal_include_form: string =
+		"include form should be \"...\" or <...>.";;
+	let unknown_objcdirective (s: string): string =
+		"@" ^ s ^ " is unknown Objective-C directive.";;
+	let unknown_ppdirective (s: string): string =
+		"#" ^ s ^ " is unknown preprocessor directive.";;
+	
+	(* char handling *)
+	
+	let is_leading (c: char): bool = (
+		begin match c with
+		| 'A'..'Z' | 'a'..'z' | '_' -> true
+		| _ -> false
+		end
+	);;
+	
+	let is_tailing (c: char): bool = (
+		begin match c with
+		| 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
+		| _ -> false
+		end
+	);;
+	
+	let is_lineescape (c: char): bool = c = '\\';;
+	
+	(* scanner *)
+	
 	type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
 	type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
 	
@@ -23,59 +60,36 @@ struct
 		(source: TextFile.t)
 		(next: ranged_position -> prim): prim =
 	(
-		(* errors *)
-		let unexpected_error (ps: ranged_position) (c: char): unit = (
-			error ps ("\'" ^ Char.escaped c ^ "\' is bad character.")
-		) in
-		let char_literal_error (ps: ranged_position) (c: string): unit = (
-			error ps ("\'" ^ String.escaped c ^ "\' is invalid char literal.")
-		) in
-		let unclosed_string_error (ps: ranged_position) (s: string): unit = (
-			error ps ("\"" ^ String.escaped s ^ "\" is not closed string.")
-		) in
-		let unclosed_comment_error (ps: ranged_position) (): unit = (
-			error ps ("unclosed comment.")
-		) in
-		let include_error (ps: ranged_position) (): unit = (
-			error ps "include form should be \"...\" or <...>."
-		) in
-		let unknown_objcdirective_error (ps: ranged_position) (d: string): unit = (
-			error ps ("@" ^ d ^ " is unknown Objective-C directive.")
-		) in
-		let unknown_ppdirective_error (ps: ranged_position) (d: string): unit = (
-			error ps ("#" ^ d ^ " is unknown preprocessor directive.")
-		) in
 		(* reading functions *)
-		let read_string (p1: position) ~(quote: char) (index: int): string * int = (
+		let read_string_to_buffer (p1: position) ~(quote: char) (buf: Buffer.t) (index: int): int = (
 			assert (TextFile.get source index = quote);
 			let index = TextFile.succ source index in
-			let b = Buffer.create 256 in
-			let rec loop (index: int): string * int = (
+			let rec loop (index: int): int = (
 				begin match TextFile.get source index with
 				| '\\' ->
 					let index = TextFile.succ source index in
 					let index =
 						begin match TextFile.get source index with
 						| 'a' ->
-							Buffer.add_char b '\x07';
+							Buffer.add_char buf '\x07';
 							TextFile.succ source index
 						| 'b' ->
-							Buffer.add_char b '\x08';
+							Buffer.add_char buf '\x08';
 							TextFile.succ source index
 						| 'f' ->
-							Buffer.add_char b '\x0c';
+							Buffer.add_char buf '\x0c';
 							TextFile.succ source index
 						| 'n' ->
-							Buffer.add_char b '\n';
+							Buffer.add_char buf '\n';
 							TextFile.succ source index
 						| 'r' ->
-							Buffer.add_char b '\r';
+							Buffer.add_char buf '\r';
 							TextFile.succ source index
 						| 't' ->
-							Buffer.add_char b '\t';
+							Buffer.add_char buf '\t';
 							TextFile.succ source index
 						| 'v' ->
-							Buffer.add_char b '\x0b';
+							Buffer.add_char buf '\x0b';
 							TextFile.succ source index
 						| 'x' ->
 							let index = TextFile.succ source index in
@@ -94,7 +108,7 @@ struct
 									let index = TextFile.succ source index in
 									loop_x code index
 								| _ ->
-									Buffer.add_char b (Char.chr code);
+									Buffer.add_char buf (Char.chr code);
 									index
 								end
 							) in
@@ -107,109 +121,63 @@ struct
 									let index = TextFile.succ source index in
 									loop_o code index
 								| _ ->
-									Buffer.add_char b (Char.chr code);
+									Buffer.add_char buf (Char.chr code);
 									index
 								end
 							) in
 							loop_o 0 index
 						| _ as h ->
-							Buffer.add_char b h;
+							Buffer.add_char buf h;
 							TextFile.succ source index
 						end
 					in
 					loop index
 				| '\n' | '\r' | '\x0c' | '\x1a' ->
 					let p2 = TextFile.position source index in
-					let result = Buffer.contents b in
-					unclosed_string_error (p1, p2) result;
-					result, index
+					let result = Buffer.contents buf in
+					error (p1, p2) (unclosed_string result);
+					index
 				| h when h = quote ->
 					let index = TextFile.succ source index in
-					let result = Buffer.contents b in
-					result, index
+					index
 				| _ as h ->
-					Buffer.add_char b h;
+					Buffer.add_char buf h;
 					let index = TextFile.succ source index in
 					loop index
 				end
 			) in
 			loop index
 		) in
-		let read_word (index: int): string * int = (
-			let b = Buffer.create 256 in
-			let rec loop (index: int): string * int = (
-				begin match TextFile.get source index with
-				| ('A'..'Z' | 'a'..'z' | '_' | '0'..'9') as c ->
-					Buffer.add_char b c;
-					let index = TextFile.succ source index in
-					loop index
-				| _ ->
-					let result = Buffer.contents b in
-					result, index
-				end
-			) in
-			loop index
-		) in
-		let read_line (index: int): string * int = (
-			let b = Buffer.create 256 in
-			let rec loop (index: int): string * int = (
-				begin match TextFile.get source index with
-				| '\n' | '\r' | '\x0c' | '\x1a' ->
-					let result = Buffer.contents b in
-					result, index
-				| '\\' ->
-					let index = TextFile.succ source index in
-					begin match TextFile.get source index with
-					| '\n' | '\r' | '\x0c' ->
-						let index = TextFile.succ_line source index in
-						loop index
-					| _ ->
-						Buffer.add_char b '\\';
-						loop index
-					end
-				| _ as c ->
-					Buffer.add_char b c;
-					let index = TextFile.succ source index in
-					loop index
-				end
-			) in
-			loop index
-		) in
-		let read_header (index: int): string * int = (
-			let b = Buffer.create 256 in
+		let read_header_to_buffer (buf: Buffer.t) (index: int): int = (
 			let p1 = TextFile.position source index in
 			let k = TextFile.get source index in
-			assert (k = '<' || k = '\"');
-			let pair = (if k = '<' then '>' else '\"') in
-			let index = TextFile.succ source index in
-			Buffer.add_char b k;
-			let rec loop (index: int): string * int = (
-				begin match TextFile.get source index with
-				| '\n' | '\r' | '\x0c' | '\x1a' ->
-					let p2 = TextFile.prev_position source index in
-					include_error (p1, p2) ();
-					Buffer.add_char b pair;
-					let result = Buffer.contents b in
-					result, index
-				| _ as c ->
-					Buffer.add_char b c;
-					let index = TextFile.succ source index in
-					if c <> pair then loop index else
-					let result = Buffer.contents b in
-					result, index
-				end
-			) in
-			loop index
-		) in
-		let rec junk_spaces (index: int): int = (
-			begin match TextFile.get source index with
-			| ' ' | '\t' ->
+			begin match k with
+			| '\"' | '<' ->
+				let pair = (if k = '<' then '>' else '\"') in
 				let index = TextFile.succ source index in
-				junk_spaces index
+				Buffer.add_char buf k;
+				let rec loop (index: int): int = (
+					begin match TextFile.get source index with
+					| '\n' | '\r' | '\x0c' | '\x1a' ->
+						let p2 = TextFile.prev_position source index in
+						error (p1, p2) illegal_include_form;
+						Buffer.add_char buf pair; (* error recovery *)
+						index
+					| _ as c ->
+						Buffer.add_char buf c;
+						let index = TextFile.succ source index in
+						if c <> pair then loop index else
+						index
+					end
+				) in
+				loop index
 			| _ ->
-				index
+				error (p1, p1) illegal_include_form;
+				TextFile.succ_until_line is_lineescape source index (* skip line *)
 			end
 		) in
+		(* shared buffer *)
+		let buf = Buffer.create 256 in
 		(* main *)
 		let rec process (state: [`first | `pp | `normal]) (index: int): prim = (
 			(* nested functions *)
@@ -248,7 +216,7 @@ struct
 							TextFile.succ_line source index
 						| _ ->
 							let p = TextFile.prev_position source index in
-							unexpected_error (p, p) '\\';
+							error (p, p) (unexpected '\\');
 							index
 						end
 					in
@@ -259,7 +227,7 @@ struct
 						() (* '\' and line feed be skipped *)
 					| _ ->
 						let p = TextFile.prev_position source index in
-						unexpected_error (p, p) '\\'
+						error (p, p) (unexpected '\\')
 					end;
 					process state index
 				)
@@ -439,7 +407,7 @@ struct
 				begin match TextFile.get source index with
 				| '/' ->
 					let index = TextFile.succ source index in
-					let (_: string), index = read_line index in
+					let index = TextFile.succ_until_line is_lineescape source index in
 					process state index
 				| '*' ->
 					let index = TextFile.succ source index in
@@ -447,7 +415,7 @@ struct
 						begin match TextFile.get source index with
 						| '\x1a' ->
 							let p2 = TextFile.prev_position source index in
-							unclosed_comment_error (p1, p2) ();
+							error (p1, p2) unclosed_comment;
 							index
 						| '*' ->
 							let index = TextFile.succ source index in
@@ -589,8 +557,10 @@ struct
 					`cons ((p1, p2), `d_sharp, lazy (process state index))
 				| _ ->
 					if first_of_line then (
-						let index = junk_spaces index in
-						let d, index = read_word index in
+						let index = TextFile.succ_while Triming.is_space source index in
+						Buffer.reset buf;
+						let index = TextFile.succ_while_to_buffer is_tailing buf source index in
+						let d = Buffer.contents buf in
 						if d = "" then (
 							`cons ((p1, p1), `sharp, lazy (process state index))
 						) else if is_ppdirective d then (
@@ -598,24 +568,19 @@ struct
 							let p2 = TextFile.position source index in
 							begin match d with
 							| `sharp_INCLUDE | `sharp_INCLUDE_NEXT ->
-								let index = junk_spaces index in
+								let index = TextFile.succ_while Triming.is_space source index in
 								let p3 = TextFile.position source index in
-								let header, index =
-									begin match TextFile.get source index with
-									| '\"' | '<' ->
-										read_header index
-									| _ ->
-										include_error (p3, p3) ();
-										let (_: string), index = read_line index in
-										"", index
-									end
-								in
+								Buffer.reset buf;
+								let index = read_header_to_buffer buf index in
+								let header = Buffer.contents buf in (* empty if error *)
 								let p4 = TextFile.prev_position source index in
 								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
 									`cons ((p3, p4), `directive_parameter header, lazy (process `pp index))))
 							| `sharp_WARNING | `sharp_ERROR ->
 								let p3 = TextFile.position source index in
-								let message, index = read_line index in
+								Buffer.reset buf;
+								let index = TextFile.succ_until_line_to_buffer is_lineescape buf source index in
+								let message = Buffer.contents buf in
 								let message = Triming.trim message in
 								let p4 = TextFile.prev_position source index in
 								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
@@ -625,8 +590,8 @@ struct
 							end
 						) else (
 							let p2 = TextFile.prev_position source index in
-							unknown_ppdirective_error (p1, p2) d;
-							let (_: string), index = read_line index in (* skip line *)
+							error (p1, p2) (unknown_ppdirective d);
+							let index = TextFile.succ_until_line is_lineescape source index in (* skip line *)
 							process state index
 						)
 					) else (
@@ -638,6 +603,7 @@ struct
 				let p1 = TextFile.position source index in
 				let the_numeric_literal, index = NumericScanner.scan_numeric_literal
 					error
+					buf
 					TextFile.position
 					TextFile.prev_position
 					TextFile.get
@@ -650,12 +616,14 @@ struct
 			| '\'' ->
 				let state = nx state in
 				let p1 = TextFile.position source index in
-				let s, index = read_string p1 ~quote:'\'' index in
+				Buffer.reset buf;
+				let index = read_string_to_buffer p1 ~quote:'\'' buf index in
+				let s = Buffer.contents buf in
 				let p2 = TextFile.prev_position source index in
 				let length = String.length s in
 				let the_char_literal =
 					if length = 0 then (
-						char_literal_error (p1, p2) s;
+						error (p1, p2) (illegal_char_literal s);
 						`char_literal '\x00'
 					) else if length = 1 then (
 						`char_literal s.[0]
@@ -676,25 +644,34 @@ struct
 			| '\"' ->
 				let state = nx state in
 				let p1 = TextFile.position source index in
-				let s, index = read_string p1 ~quote:'\"' index in
+				Buffer.reset buf;
+				let index = read_string_to_buffer p1 ~quote:'\"' buf index in
+				let s = Buffer.contents buf in
 				let p2 = TextFile.prev_position source index in
 				`cons ((p1, p2), `chars_literal s, lazy (process state index))
 			| 'A'..'Z' | 'a'..'z' | '_' ->
 				let state = nx state in
 				let p1 = TextFile.position source index in
-				let s, index = read_word index in
-				if s = "L" && TextFile.get source index = '\'' then (
-					let s, index = read_string p1 ~quote:'\'' index in
+				Buffer.reset buf;
+				let index = TextFile.succ_while_to_buffer is_tailing buf source index in
+				let s = Buffer.contents buf in
+				let is_L = s = "L" in
+				if is_L && TextFile.get source index = '\'' then (
+					Buffer.reset buf;
+					let index = read_string_to_buffer p1 ~quote:'\'' buf index in
+					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
 					if String.length s <> 1 then (
-						char_literal_error (p1, p2) s
+						error (p1, p2) (illegal_char_literal s)
 					);
 					let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
 					let s = WideString.of_array s in
 					let c = (if s = WideString.empty then 0l else WideString.get s 0) in
 					`cons ((p1, p2), `wchar_literal c, lazy (process state index))
-				) else if s = "L" && TextFile.get source index = '\"' then (
-					let s, index = read_string p1 ~quote:'\"' index in
+				) else if is_L && TextFile.get source index = '\"' then (
+					Buffer.reset buf;
+					let index = read_string_to_buffer p1 ~quote:'\"' buf index in
+					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
 					let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
 					let s = WideString.of_array s in
@@ -717,21 +694,25 @@ struct
 				let index = TextFile.succ source index in
 				begin match TextFile.get source index with
 				| '\"' ->
-					let s, index = read_string p1 ~quote:'\"' index in
+					Buffer.reset buf;
+					let index = read_string_to_buffer p1 ~quote:'\"' buf index in
+					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
 					`cons ((p1, p2), `objc_string_literal s, lazy (process state index))
-				| 'A'..'Z' | 'a'..'z' ->
-					let s, index = read_word index in
+				| 'A'..'Z' | 'a'..'z' | '_' ->
+					Buffer.reset buf;
+					let index = TextFile.succ_while_to_buffer is_tailing buf source index in
+					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
 					if is_objcdirective s then (
 						let d = objcdirective_of_string s in
 						`cons ((p1, p2), (d :> LexicalElement.t), lazy (process state index))
 					) else (
-						unknown_objcdirective_error (p1, p2) s;
+						error (p1, p2) (unknown_objcdirective s);
 						process state index
 					)
 				| _ ->
-					unexpected_error (p1, p1) '@';
+					error (p1, p1) (unexpected '@');
 					process state index
 				end
 			| '\x1a' ->
@@ -746,7 +727,7 @@ struct
 			| _ as h ->
 				let p = TextFile.position source index in
 				let index = TextFile.succ source index in
-				unexpected_error (p, p) h;
+				error (p, p) (unexpected h);
 				process state index
 			end
 		) in
