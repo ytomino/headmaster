@@ -26,6 +26,7 @@ type type_for_builtin = [
 	| `pointer of [`void | `char | `const of [`void | `char]]];;
 
 type environment = {
+	en_target: string;
 	en_sizeof: sizeof;
 	en_typedef: language_typedef;
 	en_precision: int * int * int; (* mantissa-bits of float, double, long double *)

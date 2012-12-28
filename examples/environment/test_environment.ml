@@ -19,6 +19,9 @@ let rec parse_args i = (
 parse_args 1;;
 
 let print_env (env: environment): unit = (
+	print_string "---- target ----\n";
+	print_string env.en_target;
+	print_newline ();
 	print_string "---- predefined ----\n";
 	print_string env.en_predefined;
 	print_string "---- include ----\n";

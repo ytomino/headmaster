@@ -39,14 +39,7 @@ let bytes_of_digits (d: int): int = (
 );;
 
 let gcc_env (command: string) (lang: [< language]): environment = (
-	let predefined = Buffer.create 4096 in
-	let include_path = ref [] in
-	let sys_include_path = ref [] in
-	let command = command ^ " -E -dM -v -x " ^ gcc_lang lang ^ " /dev/null" in
-	let (p_in, _, p_err) as ps = Unix.open_process_full command (Unix.environment ()) in
-	let in_eof = ref false in
-	let err_eof = ref false in
-	let in_include: [`none | `normal | `sys] ref = ref `none in
+	let target = ref "" in
 	let sizeof_short = ref 0 in
 	let sizeof_int = ref 0 in
 	let sizeof_long = ref 0 in
@@ -61,6 +54,15 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 	let float_mantissa = ref 0 in
 	let double_mantissa = ref 0 in
 	let long_double_mantissa = ref 0 in
+	let predefined = Buffer.create 4096 in
+	let include_path = ref [] in
+	let sys_include_path = ref [] in
+	(* execute cpp *)
+	let command = command ^ " -E -dM -v -x " ^ gcc_lang lang ^ " /dev/null" in
+	let (p_in, _, p_err) as ps = Unix.open_process_full command (Unix.environment ()) in
+	let in_eof = ref false in
+	let err_eof = ref false in
+	let state: [`none | `in_include | `in_sys_include] ref = ref `none in
 	while not !in_eof || not !err_eof do
 		if not !in_eof then (
 			begin try
@@ -137,12 +139,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		if not !err_eof then (
 			begin try
 				let line = input_line p_err in
-				if line = "End of search list." then (
-					in_include := `none
-				) else if line = "#include <...> search starts here:" then (
-					in_include := `sys
-				) else if (
-					let line_length = String.length line in
+				let line_length = String.length line in
+				if (
 					let nr = "not recognized" in
 					let nr_length = String.length nr in
 					line_length > nr_length
@@ -150,23 +148,40 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 				) then (
 					let (_: Unix.process_status) = Unix.close_process_full ps in
 					raise (Failure command)
-				) else 	if !in_include = `normal then (
-					assert (line.[0] = ' ');
-					let item = String.sub line 1 (String.length line - 1) in
-					include_path := item :: !include_path
-				) else 	if !in_include = `sys then (
-					assert (line.[0] = ' ');
-					let item = String.sub line 1 (String.length line - 1) in
-					let item_length = String.length item in
-					let fw = " (framework directory)" in
-					let fw_length = String.length fw in
-					if item_length >= fw_length
-						&& String.sub item (item_length - fw_length) fw_length = fw
-					then (
-						(* not handling frameworks *)
-					) else (
-						sys_include_path := item :: !sys_include_path
-					)
+				) else if line = "End of search list." then (
+					state := `none
+				) else if line = "#include \"...\" search starts here:" then (
+					state := `in_include
+				) else if line = "#include <...> search starts here:" then (
+					state := `in_sys_include
+				) else (
+					begin match !state with
+					| `none ->
+						let tg = "Target: " in
+						let tg_length = String.length tg in
+						if line_length > tg_length
+							&& String.sub line 0 tg_length = tg
+						then (
+							target := String.sub line tg_length (line_length - tg_length)
+						)
+					| `in_include ->
+						assert (line.[0] = ' ');
+						let item = String.sub line 1 (String.length line - 1) in
+						include_path := item :: !include_path
+					| `in_sys_include ->
+						assert (line.[0] = ' ');
+						let item = String.sub line 1 (String.length line - 1) in
+						let item_length = String.length item in
+						let fw = " (framework directory)" in
+						let fw_length = String.length fw in
+						if item_length >= fw_length
+							&& String.sub item (item_length - fw_length) fw_length = fw
+						then (
+							(* not handling frameworks *)
+						) else (
+							sys_include_path := item :: !sys_include_path
+						)
+					end
 				)
 			with
 			| End_of_file -> err_eof := true
@@ -177,6 +192,27 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 	| Unix.WEXITED 0 -> ()
 	| _ -> raise (Failure command)
 	end;
+	assert (!target <> "");
+	let target =
+		let target_length = String.length !target in
+		let i686 = "i686-" in
+		let i686_length = String.length i686 in
+		let x86_64 = "x86_64-" in
+		let x86_64_length = String.length x86_64 in
+		if target_length > i686_length
+			&& String.sub !target 0 i686_length = i686
+			&& ! !sizeof_intptr = 8
+		then (
+			x86_64 ^ String.sub !target i686_length (target_length - i686_length)
+		) else if target_length > x86_64_length
+			&& String.sub !target 0 x86_64_length = x86_64
+			&& ! !sizeof_intptr = 4
+		then (
+			i686 ^ String.sub !target x86_64_length (target_length - x86_64_length)
+		) else (
+			!target
+		)
+	in
 	assert (!sizeof_short > 0);
 	assert (!sizeof_int > 0);
 	assert (!sizeof_long > 0);
@@ -247,6 +283,7 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin___strncpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char];
 	in
 	let result = {
+		en_target = target;
 		en_sizeof = sizeof;
 		en_typedef = typedef;
 		en_precision = precision;
