@@ -1,5 +1,6 @@
 open Ada_format;;
 open Ada_naming;;
+open C_filename;;
 open C_literals;;
 open C_semantics;;
 open C_semantics_dependency;;
@@ -680,7 +681,7 @@ struct
 				let name = ada_name_of current ~hiding ps name `opaque_union name_mapping in
 				pp_print_string ff name
 			| `named (ps, ("ptrdiff_t" | "size_t" | "wchar_t" as name), _, _)
-				when (let (filename, _, _, _), _ = ps in filename.[0] = '<')
+				when (let (filename, _, _, _), _ = ps in is_special_filename filename)
 			->
 				if StringSet.mem name hiding then pp_print_string ff "Standard.C.";
 				pp_print_string ff name

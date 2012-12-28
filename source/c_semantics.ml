@@ -1,3 +1,4 @@
+open C_filename;;
 open C_literals;;
 open Position;;
 
@@ -469,7 +470,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `named (ps, _, `typedef t, _)
 			when (
 				not stop_on_language_typedef
-				|| let (filename, _, _, _), _ = ps in filename.[0] <> '<')
+				|| let (filename, _, _, _), _ = ps in not (is_special_filename filename))
 		->
 			resolve_typedef ~stop_on_language_typedef t
 		| _ ->

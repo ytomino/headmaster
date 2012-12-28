@@ -1,3 +1,4 @@
+open C_filename;;
 open C_literals;;
 open C_semantics;;
 open C_semantics_naming;;
@@ -266,7 +267,7 @@ let strip_package_name (name: string): string = (
 );;
 
 let ada_package_name (remove_include_dir: string -> string) (s: string): string = (
-	if s.[0] = '<' then "" else
+	if is_special_filename s then "" else
 	let h = remove_include_dir s in
 	begin try
 		StringMap.find h special_package_name_mapping

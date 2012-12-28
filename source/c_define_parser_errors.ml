@@ -1,5 +1,5 @@
+open C_filename;;
 open Known_errors;;
-open Position;;
 
 module StringSet = StringSet;; (* for C_define_parser *)
 module StringMap = StringMap;; (* for C_define_parser *)

@@ -1,9 +1,6 @@
 type position = (string * int * int * int);;
 type ranged_position = position * position;;
 
-let predefined_name = "<predefined>";;
-let builtin_name = "<builtin>";;
-
 let make_string_of_position (output: string -> unit) (p: position): unit = (
 	let f, _, l, c = p in
 	output f;

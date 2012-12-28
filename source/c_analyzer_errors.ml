@@ -1,5 +1,5 @@
+open C_filename;;
 open Known_errors;;
-open Position;;
 
 let known_uninterpretable_macros = make_setmap [
 	"clock_types.h", [
