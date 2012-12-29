@@ -9,6 +9,7 @@ open C_semantics;;
 open C_syntax;;
 open Environment;;
 open Environment_gcc;;
+open Known_errors;;
 open Position;;
 open Version;;
 
@@ -170,6 +171,9 @@ module DP = DefineParser (Literals) (LE) (PP) (AST);;
 module P = DP.Parser;;
 module A = Analyzer (Literals) (AST) (SEM);;
 
+let remove_include_dir = make_remove_include_dir env;;
+let is_known_error = make_is_known_error env.en_target remove_include_dir;;
+
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let file = TextFile.of_file ~random_access:false ~tab_width:options.tab_width name in
 	S.scan error ignore options.lang file
@@ -181,7 +185,7 @@ let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
 	lazy (S.scan error ignore options.lang file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error options.lang read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error options.lang read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -209,20 +213,20 @@ let source_tokens: PP.in_t =
 	loop (List.rev options.source_filenames) dummy_ps;;
 
 let source_tokens': PP.out_t = lazy (PP.preprocess
-	error options.lang read_include_file
+	error is_known_error options.lang read_include_file
 	false predefined StringMap.empty source_tokens);;
 
 let (tu: AST.translation_unit),
 	(typedefs: P.typedef_set),
 	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error `c source_tokens';;
 
-let defines: DP.define AST.p StringMap.t = DP.map error `c typedefs defined_tokens;;
+let defines: DP.define AST.p StringMap.t = DP.map error is_known_error `c typedefs defined_tokens;;
 
 let (predefined_types: SEM.predefined_types),
 	(derived_types: SEM.derived_types),
 	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error is_known_error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
 let opaque_mapping = A.opaque_mapping namespace;;
 
@@ -234,7 +238,7 @@ begin match options.to_lang with
 | `ada ->
 	let module T = AdaTranslator (Literals) (SEM) in
 	let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options in
-	let filename_mapping = T.filename_mapping (remove_include_dir env) ada_mapping sources in
+	let filename_mapping = T.filename_mapping remove_include_dir ada_mapping sources in
 	let dirs = T.dir_packages filename_mapping in
 	List.iter (fun x ->
 		let filename = Filename.concat options.dest_dir (T.spec_filename x) in
@@ -258,7 +262,7 @@ begin match options.to_lang with
 		end;
 		close_out f;
 	) dirs;
-	let items_per_package = T.items_per_package (remove_include_dir env) ada_mapping filename_mapping sources in
+	let items_per_package = T.items_per_package remove_include_dir ada_mapping filename_mapping sources in
 	let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package in
 	StringMap.iter (fun package items ->
 		let ads_filename = Filename.concat options.dest_dir (T.spec_filename package) in

@@ -6,6 +6,7 @@ open C_scanner;;
 open C_syntax;;
 open Environment;;
 open Environment_gcc;;
+open Known_errors;;
 open Position;;
 open Value_ocaml;;
 
@@ -58,6 +59,9 @@ module PP = Preprocessor (Literals) (LE);;
 module DP = DefineParser (Literals) (LE) (PP) (AST);;
 module P = DP.Parser;;
 
+let remove_include_dir = make_remove_include_dir env;;
+let is_known_error = make_is_known_error env.en_target remove_include_dir;;
+
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let file = TextFile.of_file ~random_access:false ~tab_width name in
 	S.scan error ignore `c file
@@ -69,7 +73,7 @@ let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width predefined_name env.en_predefined in
 	lazy (S.scan error ignore `c file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -86,10 +90,10 @@ print_string "---- standard libraries ----\n";;
 
 let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil);;
 let lib_tokens': PP.out_t = lazy (PP.preprocess
-	error `c read_include_file false predefined StringMap.empty lib_tokens);;
+	error is_known_error `c read_include_file false predefined StringMap.empty lib_tokens);;
 
 let (tu, typedefs, lazy (`nil (_, defined_tokens)): AST.translation_unit * P.typedef_set * (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error `c lib_tokens';;
 
 print_string "---- define ----\n";; flush stdout;;
 
-let defines: DP.define AST.p StringMap.t = DP.map error `c typedefs defined_tokens;;
+let defines: DP.define AST.p StringMap.t = DP.map error is_known_error `c typedefs defined_tokens;;

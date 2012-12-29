@@ -101,18 +101,18 @@ let make_include
 	f name
 );;
 
-let remove_include_dir (env: environment) (filename: string): string = (
+let make_remove_include_dir (env: environment) (filename: string): string = (
 	let rec loop (r: string option) (xs: string list): string option = (
 		begin match xs with
 		| x :: xr ->
 			let x_length = String.length x in
+			let sep_index = if x.[x_length - 1] = '/' then x_length - 1 else x_length in
 			let fn_length = String.length filename in
-			if x_length < fn_length then (
-				let parent_part = String.sub filename 0 x_length in
-				if parent_part = x
-					&& (filename.[x_length] = '/' || filename.[x_length] = '\\')
+			if sep_index < fn_length then (
+				if String.sub filename 0 x_length = x
+					&& (filename.[sep_index] = '/' || filename.[sep_index] = '\\')
 				then (
-					let i = x_length + 1 in
+					let i = sep_index + 1 in
 					let h_part = String.sub filename i (fn_length - i) in
 					begin match r with
 					| Some prev when String.length prev < String.length h_part ->

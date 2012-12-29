@@ -23,6 +23,7 @@ clean:
 	make -C $< test
 	make -C $< test H=../cc.h
 	make -C $< test H=../posix.h
+	make -C $< test GCC='gcc -m32 -isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5'
 	make -C $< test GCC=i686-pc-freebsd7-gcc
 	make -C $< test GCC=i686-pc-freebsd7-gcc H=../cc.h
 	make -C $< test GCC=i686-pc-freebsd7-gcc H=../posix.h

@@ -1,4 +1,3 @@
-open C_analyzer_errors;;
 open C_filename;;
 open C_literals;;
 open C_semantics;;
@@ -29,6 +28,9 @@ let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
 	| None -> None
 	end
 );;
+
+type known_errors_of_analzer = [
+	| `uninterpretable_macro];;
 
 module Analyzer
 	(Literals: LiteralsType)
@@ -3504,6 +3506,7 @@ struct
 	
 	let handle_define
 		(error: ranged_position -> string -> unit)
+		(is_known_error: ranged_position -> string -> [> known_errors_of_analzer] -> bool)
 		(predefined_types: predefined_types)
 		(derived_types: derived_types)
 		(namespace: namespace)
@@ -3696,7 +3699,7 @@ struct
 								raise Not_found
 							end
 						with Not_found ->
-							if is_known_uninterpretable_macro def_p name then (
+							if is_known_error def_p name `uninterpretable_macro then (
 								(`uninterpretable :> [all_type | `uninterpretable])
 							) else (
 								`named (def_p, "", `generic_type, no_attributes) (* dummy type *)
@@ -3727,7 +3730,7 @@ struct
 					end
 				end
 			| `function_expr (args, varargs, expr) ->
-				if is_known_uninterpretable_macro def_p name then (
+				if is_known_error def_p name `uninterpretable_macro then (
 					let source = new_any "uninterpretable" :: source in
 					derived_types, source
 				) else (
@@ -3745,7 +3748,7 @@ struct
 					derived_types, source
 				)
 			| `function_stmt (args, varargs, stmt) ->
-				if is_known_uninterpretable_macro def_p name then (
+				if is_known_error def_p name `uninterpretable_macro then (
 					let source = new_any "uninterpretable" :: source in
 					derived_types, source
 				) else (
@@ -3771,6 +3774,7 @@ struct
 	
 	let analyze
 		(error: ranged_position -> string -> unit)
+		(is_known_error: ranged_position -> string -> [> known_errors_of_analzer] -> bool)
 		(lang: language)
 		(sizeof: sizeof)
 		(typedef: language_typedef)
@@ -3821,7 +3825,7 @@ struct
 				let current_source, current_info =
 					StringMap.find_or ~default:empty_source current_filename sources
 				in
-				let derived_types, current_source = handle_define error predefined_types derived_types namespace current_source mapping_options.mo_instances name define in
+				let derived_types, current_source = handle_define error is_known_error predefined_types derived_types namespace current_source mapping_options.mo_instances name define in
 				let sources = StringMap.add current_filename (current_source, current_info) sources in
 				derived_types, sources
 			) defines (derived_types, sources)

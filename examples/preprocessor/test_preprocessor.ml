@@ -4,6 +4,7 @@ open C_preprocessor;;
 open C_scanner;;
 open Environment;;
 open Environment_gcc;;
+open Known_errors;;
 open Position;;
 open Value_ocaml;;
 
@@ -53,6 +54,9 @@ module LE = LexicalElement (Literals);;
 module S = Scanner (Literals) (LE);;
 module PP = Preprocessor (Literals) (LE);;
 
+let remove_include_dir = make_remove_include_dir env;;
+let is_known_error = make_is_known_error env.en_target remove_include_dir;;
+
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let file = TextFile.of_file ~random_access:false ~tab_width name in
 	S.scan error ignore `c file
@@ -101,7 +105,7 @@ let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width predefined_name env.en_predefined in
 	lazy (S.scan error ignore `c file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -120,7 +124,7 @@ print_string "---- stddef ----\n";;
 
 let stddef_tokens: PP.in_t = lazy (read_include_file ~current:"" `system "stddef.h" S.make_nil);;
 let stddef_tokens': PP.out_t = lazy (PP.preprocess
-	error `c read_include_file false predefined StringMap.empty stddef_tokens);;
+	error is_known_error `c read_include_file false predefined StringMap.empty stddef_tokens);;
 let `nil (_, stddef_defined) = LazyList.find_nil stddef_tokens';;
 
 print_defined (diff stddef_defined predefined);;
@@ -129,7 +133,7 @@ print_string "---- standard libraries ----\n";;
 
 let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil);;
 let lib_tokens': PP.out_t = lazy (PP.preprocess
-	error `c read_include_file false predefined StringMap.empty lib_tokens);;
+	error is_known_error `c read_include_file false predefined StringMap.empty lib_tokens);;
 let `nil (lib_defined, _) = LazyList.find_nil lib_tokens';;
 
 (* for interpreter *)

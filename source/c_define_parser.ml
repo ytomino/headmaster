@@ -1,4 +1,3 @@
-open C_define_parser_errors;;
 open C_lexical;;
 open C_literals;;
 open C_parser;;
@@ -23,6 +22,9 @@ let list_combination
 	) in
 	loop xs last [] start
 );;
+
+type known_errors_of_define_parser = [known_errors_of_preprocessor
+	| `unparsible_macro];;
 
 module DefineParser
 	(Literals: LiteralsType)
@@ -91,6 +93,7 @@ struct
 	let rec parse_define
 		?(name: string option)
 		(error: ranged_position -> string -> unit)
+		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
 		(lang: language)
 		(typedefs: Parser.typedef_set)
 		(macros: Preprocessor.define_map)
@@ -98,7 +101,7 @@ struct
 		: define p =
 	(
 		let ps = macro.Preprocessor.df_position in
-		if is_known_define_parser_error ps macro.Preprocessor.df_name then ps, (`any "unparsible") else
+		if is_known_error ps macro.Preprocessor.df_name `unparsible_macro then ps, (`any "unparsible") else
 		let name =
 			begin match name with
 			| Some name ->
@@ -113,6 +116,7 @@ struct
 			let _, result = parse_define
 				~name
 				error
+				is_known_error
 				lang
 				typedefs
 				(StringMap.remove macro.Preprocessor.df_name macros)
@@ -127,6 +131,7 @@ struct
 			let dummy_error _ _ = has_error := true in
 			let xs = lazy (Preprocessor.preprocess
 				dummy_error
+				is_known_error
 				lang
 				(fun ~current ?next _ _ _ ->
 					ignore current;
@@ -159,7 +164,7 @@ struct
 						in
 						let typedefs =
 							List.fold_right (fun ((_, k), is_type) v ->
-								if is_type = `typedef then StringSet.add k v else v
+								if is_type = `typedef then TypedefSet.add k v else v
 							) args typedefs
 						in
 						let expr, xr = has_error := false; Parser.parse_expression_or_error dummy_error lang typedefs xs in
@@ -186,6 +191,7 @@ struct
 						let _, result = parse_define
 							~name
 							error
+							is_known_error
 							lang
 							typedefs
 							(StringMap.remove macro.Preprocessor.df_name macros)
@@ -235,12 +241,13 @@ struct
 	
 	let map
 		(error: ranged_position -> string -> unit)
+		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
 		(lang: language)
 		(typedefs: Parser.typedef_set)
 		(items: Preprocessor.define_map)
 		: define p StringMap.t =
 	(
-		StringMap.map (parse_define error lang typedefs items) items
+		StringMap.map (parse_define error is_known_error lang typedefs items) items
 	);;
 	
 end;;
