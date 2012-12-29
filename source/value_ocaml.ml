@@ -116,7 +116,16 @@ module Real = struct
 	let frexp = frexp;;
 end;;
 
-module WideString = struct
+module String16 = struct
+	type elm = int;;
+	type t = int array;;
+	let length = Array.length;;
+	let empty = [| |];;
+	let of_array a = a;;
+	let get a i = a.(i);;
+end;;
+
+module String32 = struct
 	type elm = Int32.t;;
 	type t = Int32.t array;;
 	let length = Array.length;;

@@ -108,7 +108,7 @@ print_string "---- ocaml ----\n";;
 module Literals_ocaml = struct
 	module Integer = Integer;;
 	module Real = Real;;
-	module WideString = WideString;;
+	module WideString = String32;;
 	let integer_of_real = int_of_float;;
 	let real_of_integer = float_of_int;;
 	let round_to_float x = x;;
@@ -122,7 +122,7 @@ print_string "---- ocaml (int64) ----\n";;
 module Literals_ocaml64 = struct
 	module Integer = Integer64;;
 	module Real = Real;;
-	module WideString = WideString;;
+	module WideString = String32;;
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;
 	let round_to_float x = x;;
