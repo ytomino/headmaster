@@ -22,10 +22,6 @@ struct
 	type 'a nil = (ranged_position, 'a) LazyList.nil;;
 	type typedef_set = TypedefSet.t;;
 	
-	let typedef_set_of_list xs = (
-		List.fold_left (fun r x -> TypedefSet.add x r) TypedefSet.empty xs
-	);;
-	
 	let add_declarators_to_typedef_set (xs: init_declarator_list opt) (set: typedef_set): typedef_set = (
 		let add (x: init_declarator) (set: typedef_set): typedef_set = (
 			let rec name_of_declarator (dd: direct_declarator): string option = (
