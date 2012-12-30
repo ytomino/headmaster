@@ -115,7 +115,7 @@ struct
 		end
 	);;
 	
-	let is_function_conflicted (item: function_item) (namespace: namespace): [`error | `precedence of named_item | `none] = (
+	let is_function_conflicted (item: function_item) (namespace: namespace): [`error | `same | `precedence of named_item | `none] = (
 		let id, `function_type prototype, alias =
 			begin match item with
 			| `named (_, id, `extern (t, alias), _) -> id, t, alias
@@ -133,7 +133,7 @@ struct
 					| `named (_, _, `extern (_, prev_alias), _) when prev_alias <> alias ->
 						`precedence previous
 					| _ ->
-						`none (* no error when same prototype *)
+						`same (* no error when same prototype *)
 					end
 				) else (
 					`error (* prototype mismatch *)
@@ -1981,6 +1981,8 @@ struct
 					| `error ->
 						error ps ("\"" ^ id ^ "\" was conflicted.");
 						derived_types, namespace, source, None
+					| `same ->
+						derived_types, namespace, source, None
 					| `precedence previous ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
 						let source = (result :> source_item) :: list_remove (previous :> source_item) source in
@@ -2034,6 +2036,8 @@ struct
 					begin match is_function_conflicted result namespace with
 					| `error ->
 						error ps ("\"" ^ id ^ "\" was conflicted.");
+						derived_types, namespace, source, None
+					| `same ->
 						derived_types, namespace, source, None
 					| `precedence previous ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
