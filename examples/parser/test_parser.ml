@@ -1,6 +1,7 @@
 open C_define_parser;;
 open C_filename;;
 open C_lexical;;
+open C_parser;;
 open C_preprocessor;;
 open C_scanner;;
 open C_syntax;;
@@ -55,9 +56,9 @@ end;;
 module LE = LexicalElement (Literals);;
 module AST = Syntax (Literals);;
 module S = Scanner (Literals) (LE);;
-module PP = Preprocessor (Literals) (LE);;
-module DP = DefineParser (Literals) (LE) (PP) (AST);;
-module P = DP.Parser;;
+module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
+module P = Parser (Literals) (LE) (AST);;
+module DP = DefineParser (Literals) (LE) (PP) (AST) (P);;
 
 let remove_include_dir = make_remove_include_dir env;;
 let is_known_error = make_is_known_error env.en_target remove_include_dir;;

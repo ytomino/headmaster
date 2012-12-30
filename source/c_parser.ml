@@ -3519,3 +3519,11 @@ struct
 	);;
 	
 end;;
+
+module ParserType
+	(Literals: LiteralsType)
+	(LexicalElement: LexicalElementType (Literals).S)
+	(Syntax: SyntaxType (Literals).S) =
+struct
+	module type S = module type of Parser (Literals) (LexicalElement) (Syntax);;
+end;;

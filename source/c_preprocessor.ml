@@ -58,10 +58,10 @@ end;;
 module Preprocessor
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType (Literals).S)
+	(NumericScanner: NumericScannerType (Literals) (LexicalElement).S)
 	: PreprocessorType (Literals) (LexicalElement).S =
 struct
 	open Literals;;
-	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
 	
 	(* error messages *)
 	

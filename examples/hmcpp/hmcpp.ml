@@ -120,7 +120,7 @@ end;;
 
 module LE = LexicalElement (Literals);;
 module S = Scanner (Literals) (LE);;
-module PP = Preprocessor (Literals) (LE);;
+module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
 module O = Output (Literals) (LE);;
 
 let remove_include_dir = make_remove_include_dir env;;

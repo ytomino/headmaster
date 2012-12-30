@@ -3,9 +3,33 @@ open C_lexical_scanner;;
 open C_literals;;
 open Position;;
 
-module Scanner
+module ScannerType
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType (Literals).S) =
+struct
+	module type S = sig
+		module NumericScanner: NumericScannerType (Literals) (LexicalElement).S;;
+		
+		type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
+		type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
+		
+		val make_nil: ranged_position -> prim;;
+		
+		val scan:
+			(ranged_position -> string -> unit) ->
+			(unit -> unit) ->
+			language ->
+			TextFile.t ->
+			(ranged_position -> prim) ->
+			prim;;
+		
+	end;;
+end;;
+
+module Scanner
+	(Literals: LiteralsType)
+	(LexicalElement: LexicalElementType (Literals).S)
+	: ScannerType (Literals) (LexicalElement).S =
 struct
 	open Literals;;
 	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
@@ -28,13 +52,6 @@ struct
 		"#" ^ s ^ " is unknown preprocessor directive.";;
 	
 	(* char handling *)
-	
-	let is_leading (c: char): bool = (
-		begin match c with
-		| 'A'..'Z' | 'a'..'z' | '_' -> true
-		| _ -> false
-		end
-	);;
 	
 	let is_tailing (c: char): bool = (
 		begin match c with

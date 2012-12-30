@@ -3,6 +3,7 @@ open C_analyzer;;
 open C_define_parser;;
 open C_filename;;
 open C_lexical;;
+open C_parser;;
 open C_preprocessor;;
 open C_scanner;;
 open C_semantics;;
@@ -166,9 +167,9 @@ module LE = LexicalElement (Literals);;
 module AST = Syntax (Literals);;
 module SEM = Semantics (Literals);;
 module S = Scanner (Literals) (LE);;
-module PP = Preprocessor (Literals) (LE);;
-module DP = DefineParser (Literals) (LE) (PP) (AST);;
-module P = DP.Parser;;
+module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
+module P = Parser (Literals) (LE) (AST);;
+module DP = DefineParser (Literals) (LE) (PP) (AST) (P);;
 module A = Analyzer (Literals) (AST) (SEM);;
 
 let remove_include_dir = make_remove_include_dir env;;
@@ -217,15 +218,15 @@ let source_tokens': PP.out_t = lazy (PP.preprocess
 
 let (tu: AST.translation_unit),
 	(typedefs: P.typedef_set),
-	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error `c source_tokens';;
+	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error options.lang source_tokens';;
 
-let defines: DP.define AST.p StringMap.t = DP.map error is_known_error `c typedefs defined_tokens;;
+let defines: DP.define AST.p StringMap.t = DP.map error is_known_error options.lang typedefs defined_tokens;;
 
 let (predefined_types: SEM.predefined_types),
 	(derived_types: SEM.derived_types),
 	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(mapping_options: SEM.mapping_options) = A.analyze error is_known_error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error is_known_error options.lang env.en_sizeof env.en_typedef env.en_builtin tu defines;;
 
 let opaque_mapping = A.opaque_mapping namespace;;
 

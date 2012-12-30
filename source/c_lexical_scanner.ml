@@ -1,12 +1,32 @@
 open C_lexical;;
 open C_literals;;
 
-module NumericScanner
+module NumericScannerType
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType (Literals).S) =
 struct
+	module type S = sig
+		
+		val scan_numeric_literal:
+			(('p * 'p) -> string -> unit) ->
+			Buffer.t ->
+			('s -> 'i -> 'p) ->
+			('s -> 'i -> 'p) ->
+			('s -> 'i -> char) ->
+			('s -> 'i -> 'i) ->
+			('s) ->
+			'i ->
+			[> `numeric_literal of string * LexicalElement.numeric_literal] * 'i;;
+		
+	end;;
+end;;
+
+module NumericScanner
+	(Literals: LiteralsType)
+	(LexicalElement: LexicalElementType (Literals).S)
+	: NumericScannerType (Literals) (LexicalElement).S =
+struct
 	open Literals;;
-	open LexicalElement;;
 	
 	(* error messages *)
 	
@@ -35,7 +55,7 @@ struct
 		(succ: 's -> 'i -> 'i)
 		(source: 's)
 		(index: 'i)
-		: [> `numeric_literal of string * numeric_literal] * 'i =
+		: [> `numeric_literal of string * LexicalElement.numeric_literal] * 'i =
 	(
 		(* reading functions *)
 		let rec read_digits_to_buffer ~(base: int) (buf: Buffer.t) (index: 'i): 'i = (
@@ -97,7 +117,7 @@ struct
 		) in
 		(* body *)
 		Buffer.reset buf;
-		let wrap (literal: numeric_literal) (index: 'i) = (
+		let wrap (literal: LexicalElement.numeric_literal) (index: 'i) = (
 			`numeric_literal ((Buffer.contents buf), literal), index
 		) in
 		begin match get source index with
