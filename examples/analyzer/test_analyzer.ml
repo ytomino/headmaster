@@ -79,7 +79,7 @@ let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width predefined_name env.en_predefined in
 	lazy (S.scan error ignore `c file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error `c read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error `c read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -94,7 +94,7 @@ let predefined = (
 
 let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil);;
 let lib_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error `c read_include_file false predefined StringMap.empty lib_tokens);;
+	error is_known_error `c read_include_file `top_level predefined StringMap.empty lib_tokens);;
 
 let (tu: AST.translation_unit),
 	(typedefs: P.typedef_set),

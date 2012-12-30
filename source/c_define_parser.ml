@@ -138,7 +138,7 @@ struct
 					ignore next;
 					has_error := true;
 					(LazyList.find_nil xs :> Preprocessor.in_prim))
-				false
+				`top_level
 				(StringMap.remove macro.Preprocessor.df_name macros)
 				StringMap.empty
 				xs)

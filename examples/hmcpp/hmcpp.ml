@@ -137,7 +137,7 @@ let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
 	lazy (S.scan error ignore options.lang file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error options.lang read_include_file false StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error options.lang read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -152,8 +152,7 @@ let predefined = (
 
 let source_tokens: PP.in_t = lazy (read_file options.source_filename S.make_nil);;
 let source_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error options.lang read_include_file
-	false predefined StringMap.empty source_tokens);;
+	error is_known_error options.lang read_include_file `top_level predefined StringMap.empty source_tokens);;
 
 type state = [`home | `word | `symbol of string];;
 let state: (position * state) ref = ref (("", 0, 0, 0), `home);;

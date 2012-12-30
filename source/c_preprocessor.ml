@@ -39,12 +39,14 @@ struct
 			| `ident of string
 			| `numeric_literal of string * LexicalElement.numeric_literal];;
 		
+		type state_t = [`top_level | `in_ifdef of int | `in_macro_expr];;
+		
 		val preprocess:
 			(ranged_position -> string -> unit) ->
 			(ranged_position -> string -> [> known_errors_of_preprocessor] -> bool) ->
 			language ->
 			(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
-			bool ->
+			state_t ->
 			define_map ->
 			macro_argument_map ->
 			in_t ->
@@ -61,16 +63,87 @@ struct
 	open Literals;;
 	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
 	
-	type include_from = [`user | `system];;
+	(* error messages *)
+	
+	let unexpected_extra_tokens: string =
+		"extra token(s) exists. (preprocessor)";;
+	let unexpected_elif: string =
+		"#elif without #if.";;
+	let unexpected_else: string =
+		"#else without #if.";;
+	let unexpected_endif: string =
+		"#endif without #if.";;
+	let endif_is_missing: string =
+		"#endif is missing.";;
+	let parenthesis_is_missing: string =
+		"\")\" is missing. (preprocessor)";;
+	let term_is_missing: string =
+		"term is missing. (preprocessor)";;
+	let colon_is_missing: string =
+		"\":\" is missing. (preprocessor)";;
+	let macro_name_is_missing_for_define: string =
+		"macro name is missing for #define";;
+	let macro_name_is_missing_for_undef: string =
+		"macro name is missing for #undef";;
+	let macro_name_is_missing_for_ifdef: string =
+		"macro name is missing for #ifdef";;
+	let macro_name_is_missing_for_ifndef: string =
+		"macro name is missing for #ifndef";;
+	let redefined_extended_word (s: string): string =
+		"extended keyword " ^ s ^ " is re-defined.";;
+	let redefined_compiler_macro (s: string): string =
+		"compiler macro " ^ s ^ " is re-defined.";;
+	let defined_macro_is_pushed (s: string): string =
+		s ^ " is defined, and pushed. (not supported)"
+	let undefined_macro (s: string): string =
+		s ^ " is undefined. (preprocessor)";;
+	let too_many_arguments (s: string): string =
+		"too many arguments for " ^ s ^ ".";;
+	let too_few_arguments (s: string): string =
+		"too few arguments for " ^ s ^ ".";;
+	let one_identifier_is_required_for_shap: string =
+		"one identifier_is_required for #.";;
+	let two_identifiers_are_required_for_d_shap: string =
+		"two identifiers are required for ##.";;
+	let illegal_concatenated_token (s: string): string =
+		"concatenated token \"" ^ s ^ "\" is illegal.";;
+	let header_file_is_not_found (s: string): string =
+		s ^ " is not found.";;
+	let error_message (s: string): string =
+		"#error " ^ s;;
+	let warning_message (s: string): string =
+		"#warning " ^ s;;
+	let pragma_syntax_error (s: string): string =
+		"#pragma " ^ s ^ " syntax error.";;
+	let defined_syntax_error: string =
+		"defined expression requires single name of macro.";;
+	
+	(* literals *)
 	
 	let the_one = `numeric_literal (
 		"1",
 		`int_literal (`signed_int, Integer.one));;
 	
+	let leinteger_of_bool (n: bool): Integer.t = (
+		if n then (
+			Integer.one
+		) else (
+			Integer.zero
+		)
+	);;
+	
+	let bool_of_leinteger (n: Integer.t): bool = (
+		Integer.compare n Integer.zero <> 0
+	);;
+	
 	let __STDC__ = the_one;;
 	let __STDC_VERSION__ = `numeric_literal (
 		"199901L",
 		`int_literal (`signed_long, Integer.of_int 199901));;
+	
+	(* types *)
+	
+	type include_from = [`user | `system];;
 	
 	type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
 	and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
@@ -91,16 +164,19 @@ struct
 		| `ident of string
 		| `numeric_literal of string * LexicalElement.numeric_literal];;
 	
-	let leinteger_of_bool (n: bool): Integer.t = (
-		if n then (
-			Integer.one
-		) else (
-			Integer.zero
-		)
-	);;
+	(* line *)
 	
-	let bool_of_leinteger (n: Integer.t): bool = (
-		Integer.compare n Integer.zero <> 0
+	let rec skip_line (xs: in_t): in_t = (
+		begin match xs with
+		| lazy (`cons (_, token, xs)) ->
+			if token = `end_of_line then (
+				xs
+			) else (
+				skip_line xs
+			)
+		| lazy (`nil _) as eof ->
+			eof
+		end
 	);;
 	
 	let rec take_line (xs: in_t): in_t * in_t = (
@@ -116,6 +192,55 @@ struct
 			eof, eof
 		end
 	);;
+	
+	let take_end_of_line
+		(error: ranged_position -> string -> unit)
+		(xs: in_t)
+		: in_t =
+	(
+		begin match xs with
+		| lazy (`cons (_, `end_of_line, xs)) ->
+			xs
+		| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
+			error ps unexpected_extra_tokens;
+			xs
+		end
+	);;
+	
+	(* ifdef *)
+	
+	let rec skip_structure_until
+		(f: LexicalElement.t -> bool)
+		(level: int)
+		(xs: in_t)
+		: in_t =
+	(
+		begin match xs with
+		| lazy (`cons (_, (`sharp_IF | `sharp_IFDEF | `sharp_IFNDEF), xs)) ->
+			skip_structure_until f (level + 1) xs
+		| lazy (`cons (_, `sharp_ENDIF, xs)) when level > 0 ->
+			skip_structure_until f (level - 1) xs
+		| lazy (`cons (_, token, xs)) when level > 0 || not (f token) ->
+			skip_structure_until f level xs
+		| _ ->
+			xs
+		end
+	);;
+	
+	let is_endif (x: LexicalElement.t): bool = (
+		x = `sharp_ENDIF
+	);;
+	
+	let is_else_or_endif (x: LexicalElement.t): bool = (
+		begin match x with
+		| `sharp_ELIF | `sharp_ELSE | `sharp_ENDIF ->
+			true
+		| _ ->
+			false
+		end
+	);;
+	
+	(* expression *)
 	
 	let rec take_assignment_expression (level: int) (xs: in_t): in_t * in_t = (
 		begin match xs with
@@ -135,29 +260,6 @@ struct
 		end
 	);;
 	
-	let rec take_structure_while
-		(f: LexicalElement.t -> bool)
-		(level: int)
-		(xs: in_t)
-		: in_t * in_t =
-	(
-		begin match xs with
-		| lazy (`cons (ps, ((`sharp_IF | `sharp_IFDEF | `sharp_IFNDEF) as token), xs)) ->
-			let cs, xs = take_structure_while f (level + 1) xs in
-			lazy (`cons (ps, token, cs)), xs
-		| lazy (`cons (ps, `sharp_ENDIF, xs)) when level > 0 ->
-			let cs, xs = take_structure_while f (level - 1) xs in
-			lazy (`cons (ps, `sharp_ENDIF, cs)), xs
-		| lazy (`cons (ps, token, xs)) when level > 0 || f token ->
-			let cs, xs = take_structure_while f level xs in
-			lazy (`cons (ps, token, cs)), xs
-		| lazy (`cons (ps, _, _)) ->
-			lazy (`nil (ps, ())), xs
-		| lazy (`nil _) as eof ->
-			eof, eof
-		end
-	);;
-	
 	let calc_expr
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_preprocessor] -> bool)
@@ -172,7 +274,7 @@ struct
 				| lazy (`cons (_, `r_paren, xs)) ->
 					value, xs
 				| lazy (`cons (ps, _, _) | `nil (ps, _)) ->
-					error ps "parenthesis mismatched.";
+					error ps parenthesis_is_missing;
 					value, xs
 				end
 			| lazy (`cons (_, `exclamation, xs)) ->
@@ -190,11 +292,11 @@ struct
 				Integer.of_int x, xs
 			| lazy (`cons (ps, `ident name, xs)) ->
 				if not shortcircuit && not (is_known_error ps name `undefined_macro) then (
-					error ps (name ^ " is undefined.")
+					error ps (undefined_macro name)
 				);
 				Integer.zero, xs
 			| lazy (`cons (ps, _, _) | `nil (ps, _)) ->
-				error ps "term is required.";
+				error ps term_is_missing;
 				Integer.zero, xs
 			end
 		) and calc_sum (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
@@ -294,7 +396,7 @@ struct
 					let value2, xs = calc_or_else (shortcircuit || cond) xs in
 					(if cond then value1 else value2), xs
 				| lazy (`cons (ps, _, _) | `nil (ps, _)) ->
-					error ps "colon is required.";
+					error ps colon_is_missing;
 					(if cond then value1 else Integer.zero), xs
 				end
 			| _ ->
@@ -304,24 +406,11 @@ struct
 		let result, xs = calc_cond false xs in
 		begin match xs with
 		| lazy (`cons (ps, _, _)) ->
-			error ps "extra token(s) exists in the expression.";
+			error ps unexpected_extra_tokens;
 		| lazy (`nil _) ->
 			()
 		end;
 		result
-	);;
-	
-	let is_not_endif (x: LexicalElement.t): bool = (
-		x <> `sharp_ENDIF
-	);;
-	
-	let is_not_else_or_endif (x: LexicalElement.t): bool = (
-		begin match x with
-		| `sharp_ELIF | `sharp_ELSE | `sharp_ENDIF ->
-			false
-		| _ ->
-			true
-		end
 	);;
 	
 	type comma_token = ranged_position * [`comma];;
@@ -346,7 +435,7 @@ struct
 					let rs = (arg, None) :: rs in
 					List.rev rs, xs
 				| lazy (`cons (ps, _, _)) | lazy (`nil (ps, ())) ->
-					error ps "parenthesis mismatched.";
+					error ps parenthesis_is_missing;
 					let rs = (arg, None) :: rs in
 					rs, xs
 				end
@@ -378,6 +467,8 @@ struct
 		LazyList.concat ys
 	);;
 	
+	(* ## *)
+	
 	let merge_positions (ps1: ranged_position) (ps2: ranged_position): ranged_position = (
 		let (filename1, _, line1, column1 as ps1_fst), _ = ps1 in
 		let _, (filename2, _, line2, column2 as ps2_snd) = ps2 in
@@ -408,7 +499,7 @@ struct
 				0
 			in
 			if !error_flag || index <> String.length s then (
-				error ps ("concatenated token \"" ^ s ^ "\" is not able to be re-parsed.")
+				error ps (illegal_concatenated_token s)
 			);
 			result
 		) else (
@@ -430,15 +521,51 @@ struct
 		end
 	);;
 	
+	(* preprocessor *)
+	
+	type state_t = [`top_level | `in_ifdef of int | `in_macro_expr];;
+	
+	let inc_level (state: state_t): state_t = (
+		begin match state with
+		| `top_level ->
+			`in_ifdef 1
+		| `in_ifdef n ->
+			assert (n > 0);
+			`in_ifdef (n + 1)
+		| `in_macro_expr ->
+			assert false
+		end
+	);;
+	
+	let dec_level (state: state_t): state_t = (
+		begin match state with
+		| `in_ifdef n ->
+			if n = 1 then `top_level else
+			if n > 0 then `in_ifdef (n - 1) else
+			assert false
+		| `top_level | `in_macro_expr ->
+			assert false
+		end
+	);;
+	
+	let expanding_level (state: state_t): state_t = (
+		begin match state with
+		| `top_level | `in_ifdef _ ->
+			`top_level
+		| `in_macro_expr ->
+			`in_macro_expr
+		end
+	);;
+	
 	let preprocess
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_preprocessor] -> bool)
 		(_: language)
 		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim)
-		: bool -> define_map -> macro_argument_map -> in_t -> out_prim =
+		: state_t -> define_map -> macro_argument_map -> in_t -> out_prim =
 	(
 		let rec process
-			(in_macro_expr: bool)
+			(state: state_t)
 			(predefined: define_map)
 			(macro_arguments: macro_argument_map)
 			(xs: in_t)
@@ -446,38 +573,24 @@ struct
 		(
 			let rec process_if (cond: bool) (xs: in_t): out_prim = (
 				if cond then (
-					let cs, xs = take_structure_while is_not_else_or_endif 0 xs in
-					let cs' = lazy (process false predefined StringMap.empty cs) in
-					let _, xs = take_structure_while is_not_endif 0 xs in
-					let xs =
-						begin match xs with
-						| lazy (`cons (_, `sharp_ENDIF, xs)) ->
-							let _, xs = take_line xs in
-							xs
-						| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
-							error ps "#endif mismatched.";
-							xs
-						end
-					in
-					LazyList.append_f cs' (fun (_, predefined) ->
-						process false predefined StringMap.empty xs)
+					process (inc_level state) predefined StringMap.empty xs
 				) else (
-					let _, xs = take_structure_while is_not_else_or_endif 0 xs in
+					let xs = skip_structure_until is_else_or_endif 0 xs in
 					begin match xs with
 					| lazy (`cons (_, `sharp_ELIF, xs)) ->
 						let expr, xs = take_line xs in
-						let expr' = lazy (process true predefined StringMap.empty expr) in
+						let expr' = lazy (process `in_macro_expr predefined StringMap.empty expr) in
 						let cond = bool_of_leinteger (calc_expr error is_known_error expr') in
 						process_if cond xs
 					| lazy (`cons (_, `sharp_ELSE, xs)) ->
-						let _, xs = take_line xs in
+						let xs = skip_line xs in
 						process_if true xs
 					| lazy (`cons (_, `sharp_ENDIF, xs)) ->
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
 					| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
-						error ps "#endif mismatched.";
-						process false predefined StringMap.empty xs
+						error ps endif_is_missing;
+						process state predefined StringMap.empty xs
 					end
 				)
 			) in
@@ -501,14 +614,14 @@ struct
 									if item.df_varargs then (
 										let n = string_of_rw `__VA_ARGS__ in
 										let a = lazy (concat_with_comma in_arguments) in
-										let expanded_a = lazy (process false predefined macro_arguments a) in
+										let expanded_a = lazy (process (expanding_level state) predefined macro_arguments a) in
 										StringMap.add n (for_d_sharp expanded_a, expanded_a) out_arguments
 									) else (
-										error ps "too many arguments.";
+										error ps (too_many_arguments name);
 										out_arguments
 									)
 								| _ :: _, [] ->
-									error ps "too few arguments.";
+									error ps (too_few_arguments name);
 									out_arguments
 								| (_, n) :: nr, (a, _) :: ar ->
 									let a_pair =
@@ -517,7 +630,7 @@ struct
 											let expanded_a = snd (StringMap.find a_name macro_arguments) in
 											for_d_sharp expanded_a, expanded_a
 										| _ ->
-											let expanded_a = lazy (process false predefined macro_arguments a) in
+											let expanded_a = lazy (process (expanding_level state) predefined macro_arguments a) in
 											for_d_sharp a, expanded_a
 										end
 									in
@@ -528,7 +641,7 @@ struct
 						in
 						let ys =
 							let removed = StringMap.remove name predefined in
-							let ys = lazy (process in_macro_expr removed the_macro_arguments item.df_contents) in
+							let ys = lazy (process (expanding_level state) removed the_macro_arguments item.df_contents) in
 							(* replace position-info to current *)
 							let (filename, _, line, _), _ = ps in
 							lazy (LazyList.map_a
@@ -539,15 +652,15 @@ struct
 								ys)
 						in
 						LazyList.append ys (lazy (
-							process in_macro_expr predefined macro_arguments xs))
+							process state predefined macro_arguments xs))
 					| _ ->
 						(* not expainding when the function macro used without arguments *)
 						`cons (ps, token, lazy (
-							process in_macro_expr predefined macro_arguments xs))
+							process state predefined macro_arguments xs))
 					end
 				) else (
 					let removed = StringMap.remove name predefined in
-					let ys = lazy (process in_macro_expr removed StringMap.empty item.df_contents) in
+					let ys = lazy (process (expanding_level state) removed StringMap.empty item.df_contents) in
 					begin match ys with
 					| lazy (`cons (_, `ident replaced, lazy (`nil _)))
 						when StringMap.mem replaced removed
@@ -557,13 +670,13 @@ struct
 						(* re-expanding function-macro with following arguments *)
 						(* replace position-info to current *)
 						let ys = lazy (LazyList.map_a (fun _ -> ps) ys) in
-						process in_macro_expr predefined macro_arguments (lazy (
+						process state predefined macro_arguments (lazy (
 							LazyList.append ys xs))
 					| _ ->
 						(* replace position-info to current *)
 						let ys = lazy (LazyList.map_a (fun _ -> ps) ys) in
 						LazyList.append ys (lazy (
-							process in_macro_expr predefined macro_arguments xs))
+							process state predefined macro_arguments xs))
 					end
 				)
 			) in
@@ -581,7 +694,7 @@ struct
 					| Some (None, ps2, (`ident name2 | `numeric_literal (name2, _))), _ -> (* ## use unexpanded token *)
 						let merged_ps = merge_positions ps1 ps2 in
 						let merged_token = rescan error merged_ps (name1 ^ name2) in
-						process in_macro_expr predefined macro_arguments
+						process state predefined macro_arguments
 							(lazy (`cons (merged_ps, merged_token, xs)))
 					| None, lazy (`cons (ps2, `chars_literal s, ys)) ->
 						if name1 = "L" then (
@@ -590,40 +703,40 @@ struct
 							let merged_token = `wchars_literal (WideString.of_array s) in
 							let rs = lazy (LazyList.append ys xs) in
 							`cons (merged_ps, merged_token, lazy (
-								process in_macro_expr predefined macro_arguments rs))
+								process state predefined macro_arguments rs))
 						) else (
-							error ds_p "## requires two identifiers.";
+							error ds_p two_identifiers_are_required_for_d_shap;
 							`cons (ps1, (it1 :> LexicalElement.t), lazy (`cons (ds_p, `d_sharp, lazy (
 								LazyList.append (snd arg) (lazy (
-									process in_macro_expr predefined macro_arguments xs))))))
+									process state predefined macro_arguments xs))))))
 						)
 					| None, lazy (`nil _) ->
 						(* skip ## *)
 						`cons (ps1, (it1 :> LexicalElement.t), lazy (
 							LazyList.append (snd arg) (lazy (
-								process in_macro_expr predefined macro_arguments xs))))
+								process state predefined macro_arguments xs))))
 					| _ ->
-						error ds_p "## requires two identifiers.";
+						error ds_p two_identifiers_are_required_for_d_shap;
 						`cons (ps1, (it1 :> LexicalElement.t), lazy (`cons (ds_p, `d_sharp, lazy (
 							LazyList.append (snd arg) (lazy (
-								process in_macro_expr predefined macro_arguments xs))))))
+								process state predefined macro_arguments xs))))))
 					end
 				| lazy (`cons (ps2, (`ident name2 | `numeric_literal (name2, _)), xs)) ->
 					let merged_ps = merge_positions ps1 ps2 in
 					let merged_token = rescan error merged_ps (name1 ^ name2) in
-					process in_macro_expr predefined macro_arguments
+					process state predefined macro_arguments
 						(lazy (`cons (merged_ps, merged_token, xs)))
 				| _ ->
-					error ds_p "## requires two identifiers.";
+					error ds_p two_identifiers_are_required_for_d_shap;
 					`cons (ps1, (it1 :> LexicalElement.t), lazy (`cons (ds_p, `d_sharp, lazy (
-						process in_macro_expr predefined macro_arguments xs))))
+						process state predefined macro_arguments xs))))
 				end
 			) in
 			begin match xs with
 			| lazy (`cons (ps, token, xs)) ->
 				begin match token with
 				| `sharp_DEFINE ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
 					| lazy (`cons (name_ps, `ident name, xs)) ->
 						let (_, (name_file, name_lpos, _, _)) = name_ps in
@@ -646,7 +759,7 @@ struct
 								| lazy (`cons (_, `r_paren, xs)) ->
 									[], false, xs
 								| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
-									error ps "parenthesis mismatched.";
+									error ps parenthesis_is_missing;
 									[], false, xs
 								end
 							) in
@@ -660,7 +773,7 @@ struct
 								df_varargs = varargs;
 								df_contents = cs} predefined
 							in
-							process false predefined StringMap.empty xs
+							process state predefined StringMap.empty xs
 						| _ ->
 							(* simple macro *)
 							let cs, xs = take_line xs in
@@ -672,114 +785,135 @@ struct
 								df_varargs = false;
 								df_contents = cs} predefined
 							in
-							process false predefined StringMap.empty xs
+							process state predefined StringMap.empty xs
 						end
 					| lazy (`cons (name_ps, (#extended_word as ew), xs)) ->
 						let filename, _, _, _ = fst name_ps in
 						let name = string_of_ew ew in
 						if filename <> predefined_name && not (is_known_error name_ps name `redefine_extended_word) then (
-							error name_ps ("extended keyword " ^ name ^ " be re-defined.");
+							error name_ps (redefined_extended_word name)
 						);
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
 					| lazy (`cons (name_ps, (#compiler_macro as be_defined), xs)) ->
 						let filename, _, _, _ = fst name_ps in
 						let name = string_of_rw be_defined in
 						if filename <> predefined_name && not (is_known_error name_ps name `redefine_compiler_macro) then (
-							error name_ps ("compiler macro " ^ name ^ " be re-defined.")
+							error name_ps (redefined_compiler_macro name)
 						);
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
 					| _ ->
-						error ps "#define requires name of macro.";
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						error ps macro_name_is_missing_for_define;
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
 					end
 				| `sharp_UNDEF ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
-					| lazy (`cons (_, `ident name,
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, `ident name, xs)) ->
 						let predefined = StringMap.remove name predefined in
-						process in_macro_expr predefined StringMap.empty xs
-					| lazy (`cons (_, (#reserved_word as rw),
-						lazy (`cons (_, `end_of_line, xs)))) ->
+						let xs = take_end_of_line error xs in
+						process state predefined StringMap.empty xs
+					| lazy (`cons (_, (#reserved_word as rw), xs)) ->
 						let name = string_of_rw rw in
 						let predefined = StringMap.remove name predefined in
-						process in_macro_expr predefined StringMap.empty xs
-					| lazy (`cons (_, (#extended_word as ew),
-						lazy (`cons (_, `end_of_line, xs)))) ->
+						let xs = take_end_of_line error xs in
+						process state predefined StringMap.empty xs
+					| lazy (`cons (_, (#extended_word as ew), xs)) ->
 						let name = string_of_ew ew in
 						let predefined = StringMap.remove name predefined in
-						process in_macro_expr predefined StringMap.empty xs
+						let xs = take_end_of_line error xs in
+						process state predefined StringMap.empty xs
 					| _ ->
-						error ps "#undef requires single name of macro.";
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						error ps macro_name_is_missing_for_undef;
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
 					end
 				| `sharp_IF ->
+					assert (state <> `in_macro_expr);
 					let expr, xs = take_line xs in
-					let expr' = lazy (process true predefined StringMap.empty expr) in
+					let expr' = lazy (process `in_macro_expr predefined StringMap.empty expr) in
 					let cond = bool_of_leinteger (calc_expr error is_known_error expr') in
 					process_if cond xs
 				| `sharp_IFDEF ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
-					| lazy (`cons (_, `ident name,
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, `ident name, xs)) ->
 						let cond = StringMap.mem name predefined in
+						let xs = take_end_of_line error xs in
 						process_if cond xs
-					| lazy (`cons (_, (#extended_word as ew),
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, (#extended_word as ew), xs)) ->
 						let name = string_of_ew ew in
 						let cond = StringMap.mem name predefined in
+						let xs = take_end_of_line error xs in
 						process_if cond xs
-					| lazy (`cons (_, #compiler_macro,
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, #compiler_macro, xs)) ->
+						let xs = take_end_of_line error xs in
 						process_if true xs
 					| _ ->
-						error ps "#ifdef requires single name of macro.";
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						error ps macro_name_is_missing_for_ifdef;
+						let xs = skip_line xs in
+						process_if false xs
 					end
 				| `sharp_IFNDEF ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
-					| lazy (`cons (_, `ident name,
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, `ident name, xs)) ->
 						let cond = not (StringMap.mem name predefined) in
+						let xs = take_end_of_line error xs in
 						process_if cond xs
-					| lazy (`cons (_, (#extended_word as ew),
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, (#extended_word as ew), xs)) ->
 						let name = string_of_ew ew in
 						let cond = not (StringMap.mem name predefined) in
+						let xs = take_end_of_line error xs in
 						process_if cond xs
-					| lazy (`cons (_, #compiler_macro,
-						lazy (`cons (_, `end_of_line, xs)))) ->
+					| lazy (`cons (_, #compiler_macro, xs)) ->
+						let xs = take_end_of_line error xs in
 						process_if false xs
 					| _ ->
-						error ps "#ifndef requires single name of macro.";
-						let _, xs = take_line xs in
-						process false predefined StringMap.empty xs
+						error ps macro_name_is_missing_for_ifndef;
+						let xs = skip_line xs in
+						process_if false xs
 					end
-				| `sharp_ELIF ->
-					assert (not in_macro_expr);
-					error ps "#elif without #if.";
-					let _, xs = take_line xs in
-					process false predefined StringMap.empty xs
-				| `sharp_ELSE ->
-					assert (not in_macro_expr);
-					error ps "#else without #if.";
-					let _, xs = take_line xs in
-					process false predefined StringMap.empty xs
+				| `sharp_ELIF
+				| `sharp_ELSE as token ->
+					begin match state with
+					| `top_level ->
+						begin match token with
+						| `sharp_ELIF -> error ps unexpected_elif
+						| `sharp_ELSE -> error ps unexpected_else
+						end;
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
+					| `in_ifdef _ ->
+						let xs = skip_structure_until is_endif 0 xs in
+						begin match xs with
+						| lazy (`cons (_, `sharp_ENDIF, xs)) ->
+							let xs = skip_line xs in
+							process (dec_level state) predefined StringMap.empty xs
+						| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
+							error ps endif_is_missing;
+							process (dec_level state) predefined StringMap.empty xs
+						end
+					| `in_macro_expr ->
+						assert false
+					end
 				| `sharp_ENDIF ->
-					assert (not in_macro_expr);
-					error ps "#endif without #if.";
-					let _, xs = take_line xs in
-					process false predefined StringMap.empty xs
+					begin match state with
+					| `top_level ->
+						error ps unexpected_endif;
+						let xs = skip_line xs in
+						process state predefined StringMap.empty xs
+					| `in_ifdef _ ->
+						let xs = skip_line xs in
+						process (dec_level state) predefined StringMap.empty xs
+					| `in_macro_expr ->
+						assert false
+					end
 				| `sharp_INCLUDE
 				| `sharp_INCLUDE_NEXT as token ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
 					| lazy (`cons (_, `directive_parameter s,
 						lazy (`cons (_, `end_of_line, xs)))) ->
@@ -802,40 +936,40 @@ struct
 								let next = token = `sharp_INCLUDE_NEXT in
 								lazy (read ~current ~next from filename (fun _ -> Lazy.force xs))
 							in
-							process false predefined StringMap.empty included
+							process state predefined StringMap.empty included
 						with Not_found ->
-							error ps (s ^ " is not found.");
-							process false predefined StringMap.empty xs
+							error ps (header_file_is_not_found s);
+							process state predefined StringMap.empty xs
 						end
 					| _ ->
 						assert false
 					end
 				| `sharp_ERROR ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
 					| lazy (`cons (_, `directive_parameter message,
 						lazy (`cons (_, `end_of_line, xs)))) ->
-						error ps ("#error " ^ message);
-						process false predefined StringMap.empty xs
+						error ps (error_message message);
+						process state predefined StringMap.empty xs
 					| _ ->
 						assert false
 					end
 				| `sharp_WARNING ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
 					| lazy (`cons (_, `directive_parameter message,
 						lazy (`cons (_, `end_of_line, xs)))) ->
-						error ps ("#warning " ^ message);
-						process false predefined StringMap.empty xs
+						error ps (warning_message message);
+						process state predefined StringMap.empty xs
 					| _ ->
 						assert false
 					end
 				| `sharp_LINE -> (* does not handle #line *)
-					assert (not in_macro_expr);
-					let _, xs = take_line xs in
-					process false predefined StringMap.empty xs
+					assert (state <> `in_macro_expr);
+					let xs = skip_line xs in
+					process state predefined StringMap.empty xs
 				| `sharp_PRAGMA ->
-					assert (not in_macro_expr);
+					assert (state <> `in_macro_expr);
 					begin match xs with
 					| lazy (`cons (_, `ident ("push_macro" | "pop_macro" as pragma), xs)) ->
 						begin match xs with
@@ -853,23 +987,23 @@ struct
 									if StringMap.mem target_name predefined
 										&& not (is_known_error ps target_name `push_defined_macro)
 									then (
-										error target_ps (target_name ^ " is defined. (not supported)");
+										error target_ps (defined_macro_is_pushed target_name);
 									);
 									predefined
 								| `pop ->
 									StringMap.remove target_name predefined
 								end
 							in
-							process in_macro_expr predefined StringMap.empty xs
+							process state predefined StringMap.empty xs
 						| _ ->
-							error ps ("#pragma " ^ pragma ^ " syntax error.");
-							let _, xs = take_line xs in
-							process in_macro_expr predefined StringMap.empty xs
+							error ps (pragma_syntax_error pragma);
+							let xs = skip_line xs in
+							process state predefined StringMap.empty xs
 						end
 					| _ ->
 						(* #pragma should be handled by compiler, not preprocessor *)
 						`cons (ps, token, lazy (
-							process in_macro_expr predefined StringMap.empty xs))
+							process state predefined StringMap.empty xs))
 					end
 				| `sharp ->
 					begin match xs with
@@ -880,27 +1014,27 @@ struct
 							let chars_token = `chars_literal name2 in
 							let merged_ps = merge_positions ps ps2 in
 							`cons (merged_ps, chars_token, lazy (
-								process in_macro_expr predefined macro_arguments xs))
+								process state predefined macro_arguments xs))
 						| None, lazy (`nil (ps2, _)) -> (* #define S(X) #X and used without argument as S() *)
 							let chars_token = `chars_literal "" in
 							let merged_ps = merge_positions ps ps2 in
 							`cons (merged_ps, chars_token, lazy (
-								process in_macro_expr predefined macro_arguments xs))
+								process state predefined macro_arguments xs))
 						| _ ->
-							error ps "# requires one identifier.";
+							error ps one_identifier_is_required_for_shap;
 							LazyList.append (snd arg) (lazy (
-								process in_macro_expr predefined macro_arguments xs))
+								process state predefined macro_arguments xs))
 						end
 					| lazy (`cons (ps2, `ident name2, xs)) ->
 						let chars_token = `chars_literal name2 in
 						let merged_ps = merge_positions ps ps2 in
 						`cons (merged_ps, chars_token, lazy (
-							process in_macro_expr predefined macro_arguments xs))
+							process state predefined macro_arguments xs))
 					| _ ->
-						error ps "# requires one identifier.";
-						process in_macro_expr predefined macro_arguments xs
+						error ps one_identifier_is_required_for_shap;
+						process state predefined macro_arguments xs
 					end
-				| `ident "defined" when in_macro_expr ->
+				| `ident "defined" when state = `in_macro_expr ->
 					begin match xs with
 					| lazy (`cons (_, `l_paren,
 						lazy (`cons (_, `ident name,
@@ -911,7 +1045,7 @@ struct
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
 						`cons ((p1, p2), value, lazy (
-							process true predefined macro_arguments xs))
+							process `in_macro_expr predefined macro_arguments xs))
 					| lazy (`cons (_, `l_paren,
 						lazy (`cons (_, (#extended_word as ew),
 							lazy (`cons ((_, p2), `r_paren, xs))))))
@@ -922,24 +1056,24 @@ struct
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
 						`cons ((p1, p2), value, lazy (
-							process true predefined macro_arguments xs))
+							process `in_macro_expr predefined macro_arguments xs))
 					| lazy (`cons (_, `l_paren,
 						lazy (`cons (_, #compiler_macro,
 							lazy (`cons ((_, p2), `r_paren, xs))))))
 					| lazy (`cons ((_, p2), #compiler_macro, xs)) ->
 						let (p1, _) = ps in
 						`cons ((p1, p2), the_one, lazy (
-							process true predefined macro_arguments xs))
+							process `in_macro_expr predefined macro_arguments xs))
 					| _ ->
-						error ps "defined requires single name of macro.";
-						process true predefined macro_arguments xs
+						error ps defined_syntax_error;
+						process `in_macro_expr predefined macro_arguments xs
 					end
 				| `__STDC__ ->
 					`cons (ps, __STDC__, lazy (
-						process in_macro_expr predefined macro_arguments xs))
+						process state predefined macro_arguments xs))
 				| `__STDC_VERSION__ ->
 					`cons (ps, __STDC_VERSION__, lazy (
-						process in_macro_expr predefined macro_arguments xs))
+						process state predefined macro_arguments xs))
 				| `ident name when StringMap.mem name macro_arguments ->
 					let arg = StringMap.find name macro_arguments in
 					begin match xs with
@@ -954,7 +1088,7 @@ struct
 							end
 						| _ ->
 							LazyList.append (snd arg) (lazy (`cons (ds_p, ds_e, lazy (
-								process in_macro_expr predefined macro_arguments xs))))
+								process state predefined macro_arguments xs))))
 						end
 					| _ ->
 						let has_following_arguments =
@@ -976,10 +1110,10 @@ struct
 						if has_following_arguments then (
 							(* re-expanding function-macro with following arguments *)
 							let rs = lazy (LazyList.append (snd arg) xs) in
-							process in_macro_expr predefined macro_arguments rs
+							process state predefined macro_arguments rs
 						) else (
 							LazyList.append (snd arg) (lazy (
-								process in_macro_expr predefined macro_arguments xs))
+								process state predefined macro_arguments xs))
 						)
 					end
 				| `ident name as it1 when StringMap.mem name predefined ->
@@ -995,7 +1129,7 @@ struct
 						process_d_sharp ps it1 ds_p xs
 					| _ ->
 						`cons (ps, token, lazy (
-							process in_macro_expr predefined macro_arguments xs))
+							process state predefined macro_arguments xs))
 					end
 				| #reserved_word as rw ->
 					begin match xs with
@@ -1006,7 +1140,7 @@ struct
 							process_replace ps token (string_of_rw rw) xs
 						) else (
 							`cons (ps, token, lazy (
-								process in_macro_expr predefined macro_arguments xs))
+								process state predefined macro_arguments xs))
 						)
 					end
 				| #extended_word as ew ->
@@ -1018,14 +1152,18 @@ struct
 							process_replace ps token (string_of_ew ew) xs
 						) else (
 							`cons (ps, token, lazy (
-								process in_macro_expr predefined macro_arguments xs))
+								process state predefined macro_arguments xs))
 						)
 					end
 				| _ ->
 					`cons (ps, token, lazy (
-						process in_macro_expr predefined macro_arguments xs))
+						process state predefined macro_arguments xs))
 				end
 			| lazy (`nil (ps, _)) ->
+				begin match state with
+				| `in_ifdef _ -> error ps endif_is_missing
+				| _ -> ()
+				end;
 				`nil (ps, predefined)
 			end
 		) in
