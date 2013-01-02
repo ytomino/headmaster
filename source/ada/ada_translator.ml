@@ -1590,8 +1590,14 @@ struct
 		| `named (_, _, `defined_operator _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
 			assert false
-		| `named (_, _, `defined_specifiers _, _) ->
-			fprintf ff "@ --  %s renames type specifier (macro)" name
+		| `named (_, _, `defined_attributes, _) ->
+			fprintf ff "@ --  %s renames __attribute__((...)) (macro)" name
+		| `named (_, _, `defined_storage_class _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `defined_type_specifier _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
 		| `named (_, _, `defined_type_qualifier _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
 			assert false
@@ -2906,25 +2912,25 @@ struct
 				in
 				fprintf ff "@ --  function %s (Left, Right : T) return T renames \"%s\"" name op_s
 			end
-		| `named (ps, name, `defined_specifiers storage_class, attrs) ->
+		| `named (ps, name, `defined_attributes, attrs) ->
+			if attrs = {Semantics.no_attributes with Semantics.at_conventions = attrs.Semantics.at_conventions} then (
+				let _, _, name_mapping, _ = mappings in
+				let ada_name = ada_name_of current ps name `namespace name_mapping in
+				let conv = attrs.Semantics.at_conventions in
+				begin match conv with
+				| `fastcall | `thiscall ->
+					fprintf ff "@ --  pragma Convention_Identifier (%s, %s);"
+						name (convention_identifier conv)
+				| _ ->
+					pp_pragma_convention_identifier ff ada_name conv
+				end
+			) else (
+				(* available.h (darwin9) has very long identifiers *)
+				let name = omit_long_word 60 name in
+				fprintf ff "@ --  %s (attribute)" name
+			)
+		| `named (_, name, `defined_storage_class storage_class, _) ->
 			begin match storage_class with
-			| `none ->
-				if attrs = {Semantics.no_attributes with Semantics.at_conventions = attrs.Semantics.at_conventions} then (
-					let _, _, name_mapping, _ = mappings in
-					let ada_name = ada_name_of current ps name `namespace name_mapping in
-					let conv = attrs.Semantics.at_conventions in
-					begin match conv with
-					| `fastcall | `thiscall ->
-						fprintf ff "@ --  pragma Convention_Identifier (%s, %s);"
-							name (convention_identifier conv)
-					| _ ->
-						pp_pragma_convention_identifier ff ada_name conv
-					end
-				) else (
-					(* available.h (darwin9) has very long identifiers *)
-					let name = omit_long_word 60 name in
-					fprintf ff "@ --  %s (attribute)" name
-				)
 			| `auto ->
 				fprintf ff "@ --  %s (alias of static)" name
 			| `extern ->
@@ -2935,6 +2941,13 @@ struct
 				fprintf ff "@ --  %s (alias of static)" name
 			| `typedef ->
 				fprintf ff "@ --  %s (alias of typedef)" name
+			end
+		| `named (_, name, `defined_type_specifier ts, _) ->
+			begin match ts with
+			| `complex ->
+				fprintf ff "@ --  %s (alias of _Complex)" name
+			| `imaginary ->
+				fprintf ff "@ --  %s (alias of _Imaginary)" name
 			end
 		| `named (_, name, `defined_type_qualifier q, _) ->
 			begin match q with

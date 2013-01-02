@@ -126,7 +126,11 @@ struct
 			of_prototype ~of_argument prototype
 		| `named (_, _, `defined_operator _, _) ->
 			[]
-		| `named (_, _, `defined_specifiers _, _) ->
+		| `named (_, _, `defined_attributes, _) ->
+			[]
+		| `named (_, _, `defined_storage_class _, _) ->
+			[]
+		| `named (_, _, `defined_type_specifier _, _) ->
 			[]
 		| `named (_, _, `defined_type_qualifier _, _) ->
 			[]

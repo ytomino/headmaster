@@ -39,6 +39,9 @@ type known_error = [
 
 let known_error_table: (string * (string * (known_error * string list) list) list) list = [
 	"*-apple-darwin*", [
+		"complex.h", [
+			`undefined_macro, [
+				"__WANT_LONG_DOUBLE_FORMAT__"]]; (* darwin10 *)
 		"dirent.h", [
 			`uninterpretable_macro, [
 				"dirfd"]]; (* darwin9 / accessing element of untyped parameter *)
@@ -919,11 +922,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__USER_LABEL_PREFIX__"]]];
 	"*-*-*", [
 		(* gcc or libc *)
-		"complex.h", [
-			`undefined_macro, [
-				"__WANT_LONG_DOUBLE_FORMAT__"]; (* darwin10 *)
-			`unparsible_macro, [
-				"complex"]]; (* alias of _Complex *)
 		"stddef.h", [
 			`unparsible_macro, [
 				"offsetof"]]; (* parameterized field *)

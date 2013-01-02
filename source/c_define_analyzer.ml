@@ -191,7 +191,11 @@ struct
 				let source = item :: source in
 				derived_types, source
 			| `declaration_specifiers spec ->
-				let rec only_no_type (storage_class, type_qualifiers, attributes) (x: Syntax.declaration_specifiers): ([storage_class | `none] * type_qualifier_set * attributes) option = (
+				let rec only_no_type
+					(storage_class, type_qualifiers, type_specifiers, attributes)
+					(x: Syntax.declaration_specifiers)
+					: ([storage_class | `none] * type_qualifier_set * type_specifier_set * attributes) option =
+				(
 					let do_next result next = (
 						begin match next with
 						| `some (_, next) ->
@@ -201,56 +205,83 @@ struct
 						end
 					) in
 					begin match x with
-					| `type_specifier _ ->
-						None
-					| `extension (_, next) ->
-						do_next (storage_class, type_qualifiers, attributes) next
-					| `type_qualifier (tq, next) ->
-						let type_qualifiers = handle_type_qualifier error type_qualifiers tq in
-						do_next (storage_class, type_qualifiers, attributes) next
 					| `storage_class_specifier (sc, next) ->
 						let storage_class = handle_storage_class error storage_class sc in
-						do_next (storage_class, type_qualifiers, attributes) next
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+					| `type_specifier ((_, `_COMPLEX), next) ->
+						let type_specifiers = {type_specifiers with ts_complex = type_specifiers.ts_complex + 1} in
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+					| `type_specifier ((_, `_IMAGINARY), next) ->
+						let type_specifiers = {type_specifiers with ts_imaginary = type_specifiers.ts_imaginary + 1} in
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+					| `type_specifier _ ->
+						None
+					| `type_qualifier (tq, next) ->
+						let type_qualifiers = handle_type_qualifier error type_qualifiers tq in
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
 					| `function_specifier (fs, next) ->
 						let attributes = handle_function_specifier error attributes fs in
-						do_next (storage_class, type_qualifiers, attributes) next
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
 					| `attributes (attr, next) ->
 						let attributes = handle_attribute error attributes attr in
-						do_next (storage_class, type_qualifiers, attributes) next
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+					| `extension (_, next) ->
+						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
 					end
 				) in
-				begin match only_no_type (`none, no_type_qualifier_set, no_attributes) spec with
-				| Some (storage_class, type_qualifiers, attributes) ->
-					let type_qualifier =
-						begin match type_qualifiers with
-						| {tq_const = true; tq_restrict = false; tq_volatile = false} ->
-							Some `const
-						| {tq_const = true; tq_restrict = _; tq_volatile = _} ->
-							error def_p "plural type-qualifier was found in alias macro.";
-							Some `const
-						| {tq_const = false; tq_restrict = true; tq_volatile = false} ->
-							Some `restrict
-						| {tq_const = false; tq_restrict = true; tq_volatile = _} ->
-							error def_p "plural type-qualifier was found in alias macro.";
-							Some `restrict
-						| {tq_const = false; tq_restrict = false; tq_volatile = true} ->
-							Some `volatile
-						| {tq_const = false; tq_restrict = false; tq_volatile = false} ->
-							None
+				begin match only_no_type (`none, no_type_qualifier_set, no_type_specifier_set, no_attributes) spec with
+				| Some (storage_class, type_qualifiers, type_specifiers, attributes) ->
+					(* storage class *)
+					begin match storage_class with
+					| #storage_class as storage_class ->
+						let item = `named (def_p, name, `defined_storage_class storage_class, attributes) in
+						let source = item :: source in
+						derived_types, source
+					| `none ->
+						(* type qualifiers *)
+						let type_qualifier =
+							begin match type_qualifiers with
+							| {tq_const = true; tq_restrict = false; tq_volatile = false} ->
+								Some `const
+							| {tq_const = true; tq_restrict = _; tq_volatile = _} ->
+								error def_p "plural type-qualifier was found in alias macro.";
+								Some `const
+							| {tq_const = false; tq_restrict = true; tq_volatile = false} ->
+								Some `restrict
+							| {tq_const = false; tq_restrict = true; tq_volatile = _} ->
+								error def_p "plural type-qualifier was found in alias macro.";
+								Some `restrict
+							| {tq_const = false; tq_restrict = false; tq_volatile = true} ->
+								Some `volatile
+							| {tq_const = false; tq_restrict = false; tq_volatile = false} ->
+								None
+							end
+						in
+						begin match type_qualifier with
+						| Some type_qualifier ->
+							if storage_class <> `none then (
+								error def_p "storage-class was found in type-qualifier alias macro."
+							);
+							let item = `named (def_p, name, `defined_type_qualifier type_qualifier, attributes) in
+							let source = item :: source in
+							derived_types, source
+						| None ->
+							(* type specifiers *)
+							if type_specifiers = {no_type_specifier_set with ts_complex = 1} then (
+								let item = `named (def_p, name, `defined_type_specifier `complex, attributes) in
+								let source = item :: source in
+								derived_types, source
+							) else if type_specifiers = {no_type_specifier_set with ts_imaginary = 1} then (
+								let item = `named (def_p, name, `defined_type_specifier `imaginary, attributes) in
+								let source = item :: source in
+								derived_types, source
+							) else (
+								(* attributes *)
+								let item = `named (def_p, name, `defined_attributes, attributes) in
+								let source = item :: source in
+								derived_types, source
+							)
 						end
-					in
-					begin match type_qualifier with
-					| Some type_qualifier ->
-						if storage_class <> `none then (
-							error def_p "storage-class was found in type-qualifier alias macro."
-						);
-						let item = `named (def_p, name, `defined_type_qualifier type_qualifier, attributes) in
-						let source = item :: source in
-						derived_types, source
-					| None ->
-						let item = `named (def_p, name, `defined_specifiers storage_class, attributes) in
-						let source = item :: source in
-						derived_types, source
 					end
 				| None ->
 					let derived_types, n2, source, (storage_class, base_type, attributes) = handle_declaration_specifiers error predefined_types derived_types namespace source `default (def_p, spec) in

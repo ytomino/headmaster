@@ -52,6 +52,12 @@ type storage_class = [
 	| `auto
 	| `register];;
 
+(* type specifier *)
+
+type type_specifier = [
+	| `imaginary
+	| `complex];;
+
 (* type qualifier *)
 
 type type_qualifier = [
@@ -281,7 +287,9 @@ module Semantics (Literals: LiteralsType) = struct
 		| `function_forward of [`static | `builtin] * function_type
 		| `function_definition of [`static | `extern_inline | `none] * function_type * statement list
 		| `defined_operator of operator
-		| `defined_specifiers of [storage_class | `none] (* and attributes *)
+		| `defined_attributes
+		| `defined_storage_class of storage_class
+		| `defined_type_specifier of type_specifier
 		| `defined_type_qualifier of type_qualifier
 		| `defined_typedef of all_type
 		| `defined_opaque_type of opaque_type_var with_name (* tag *)
