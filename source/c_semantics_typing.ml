@@ -25,7 +25,8 @@ type language_typedef =
 
 module Typing
 	(Literals: LiteralsType)
-	(Semantics: SemanticsType (Literals).S) =
+	(Semantics: SemanticsType
+		with module Literals := Literals) =
 struct
 	open Literals;;
 	open Semantics;;

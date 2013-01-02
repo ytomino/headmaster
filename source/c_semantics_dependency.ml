@@ -16,7 +16,8 @@ let list_unionq (xs: 'a list) (ys: 'a list): 'a list = (
 
 module Dependency
 	(Literals: LiteralsType)
-	(Semantics: SemanticsType (Literals).S) =
+	(Semantics: SemanticsType
+		with module Literals := Literals) =
 struct
 	open Semantics;;
 	

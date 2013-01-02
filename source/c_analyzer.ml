@@ -31,8 +31,10 @@ let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
 
 module Analyzer
 	(Literals: LiteralsType)
-	(Syntax: SyntaxType (Literals).S)
-	(Semantics: SemanticsType (Literals).S) =
+	(Syntax: SyntaxType
+		with module Literals := Literals)
+	(Semantics: SemanticsType
+		with module Literals := Literals) =
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
 	module Typing = Typing (Literals) (Semantics);;
@@ -3510,10 +3512,11 @@ struct
 	
 end;;
 
-module AnalyzerType
-	(Literals: LiteralsType)
-	(Syntax: SyntaxType (Literals).S)
-	(Semantics: SemanticsType (Literals).S) =
-struct
-	module type S = module type of Analyzer (Literals) (Syntax) (Semantics);;
+module type AnalyzerType = sig
+	module Literals: LiteralsType;;
+	module Syntax: SyntaxType
+		with module Literals := Literals;;
+	module Semantics: SemanticsType
+		with module Literals := Literals;;
+	include module type of Analyzer (Literals) (Syntax) (Semantics);;
 end;;

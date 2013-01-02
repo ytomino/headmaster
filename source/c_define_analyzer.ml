@@ -7,54 +7,60 @@ open Position;;
 type known_errors_of_define_analzer = [
 	| `uninterpretable_macro];;
 
-module DefineAnalyzerType
-	(Literals: LiteralsType)
-	(Syntax: SyntaxType (Literals).S)
-	(Semantics: SemanticsType (Literals).S) =
-struct
-	type 'a p = 'a Syntax.p;; (* for shorthand *)
-	module type S = sig
-		
-		type define = [
-			| `operator of operator
-			| `declaration_specifiers of Syntax.declaration_specifiers
-			| `initializer_t of Syntax.initializer_t
-			| `function_expr of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
-			| `function_stmt of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
-			| `any of string];;
-		
-		val handle_define:
-			(ranged_position -> string -> unit) ->
-			(ranged_position -> string -> [> known_errors_of_define_analzer] -> bool) ->
-			Semantics.predefined_types ->
-			Semantics.derived_types ->
-			Semantics.namespace ->
-			Semantics.source_item list ->
-			Semantics.mapping_options ->
-			string ->
-			define p ->
-			Semantics.derived_types * Semantics.source_item list;;
-		
-		val map:
-			(ranged_position -> string -> unit) ->
-			(ranged_position -> string -> [> known_errors_of_define_analzer] -> bool) ->
-			Semantics.predefined_types ->
-			Semantics.derived_types ->
-			Semantics.namespace ->
-			(Semantics.source_item list * extra_info) StringMap.t ->
-			Semantics.mapping_options ->
-			(define p) StringMap.t ->
-			Semantics.derived_types * (Semantics.source_item list * extra_info) StringMap.t;;
-		
-	end;;
+module type DefineAnalyzerType = sig
+	module Literals: LiteralsType;;
+	module Syntax: SyntaxType
+		with module Literals := Literals;;
+	module Semantics: SemanticsType
+		with module Literals := Literals;;
+	
+	type define = [
+		| `operator of operator
+		| `declaration_specifiers of Syntax.declaration_specifiers
+		| `initializer_t of Syntax.initializer_t
+		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
+		| `function_stmt of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
+		| `any of string];;
+	
+	val handle_define:
+		(ranged_position -> string -> unit) ->
+		(ranged_position -> string -> [> known_errors_of_define_analzer] -> bool) ->
+		Semantics.predefined_types ->
+		Semantics.derived_types ->
+		Semantics.namespace ->
+		Semantics.source_item list ->
+		Semantics.mapping_options ->
+		string ->
+		define Syntax.p ->
+		Semantics.derived_types * Semantics.source_item list;;
+	
+	val map:
+		(ranged_position -> string -> unit) ->
+		(ranged_position -> string -> [> known_errors_of_define_analzer] -> bool) ->
+		Semantics.predefined_types ->
+		Semantics.derived_types ->
+		Semantics.namespace ->
+		(Semantics.source_item list * extra_info) StringMap.t ->
+		Semantics.mapping_options ->
+		(define Syntax.p) StringMap.t ->
+		Semantics.derived_types * (Semantics.source_item list * extra_info) StringMap.t;;
+	
 end;;
 
 module DefineAnalyzer
 	(Literals: LiteralsType)
-	(Syntax: SyntaxType (Literals).S)
-	(Semantics: SemanticsType (Literals).S)
-	(Analyzer: AnalyzerType (Literals) (Syntax) (Semantics).S)
-	: DefineAnalyzerType (Literals) (Syntax) (Semantics).S =
+	(Syntax: SyntaxType
+		with module Literals := Literals)
+	(Semantics: SemanticsType
+		with module Literals := Literals)
+	(Analyzer: AnalyzerType
+		with module Literals := Literals
+		with module Syntax := Syntax
+		with module Semantics := Semantics)
+	: DefineAnalyzerType
+		with module Literals := Literals
+		with module Syntax := Syntax
+		with module Semantics := Semantics =
 struct
 	open Semantics;;
 	open Analyzer;;

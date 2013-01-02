@@ -10,8 +10,10 @@ end;;
 
 module Parser
 	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	(Syntax: SyntaxType (Literals).S) =
+	(LexicalElement: LexicalElementType
+		with module Literals := Literals)
+	(Syntax: SyntaxType
+		with module Literals := Literals) =
 struct
 	module FirstSet = FirstSet (Literals) (Syntax);;
 	open Literals;;
@@ -3520,10 +3522,11 @@ struct
 	
 end;;
 
-module ParserType
-	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	(Syntax: SyntaxType (Literals).S) =
-struct
-	module type S = module type of Parser (Literals) (LexicalElement) (Syntax);;
+module type ParserType = sig
+	module Literals: LiteralsType;;
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals;;
+	module Syntax: SyntaxType
+		with module Literals := Literals;;
+	include module type of Parser (Literals) (LexicalElement) (Syntax);;
 end;;

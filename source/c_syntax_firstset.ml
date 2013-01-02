@@ -3,7 +3,8 @@ open C_syntax;;
 
 module FirstSet
 	(Literals: LiteralsType)
-	(Syntax: SyntaxType (Literals).S) =
+	(Syntax: SyntaxType
+		with module Literals := Literals) =
 struct
 	open Literals;;
 	open Syntax;;

@@ -1,9 +1,22 @@
 open C_lexical;;
 open C_literals;;
 
-module Output
+module type LexicalOutputType = sig
+	module Literals: LiteralsType;;
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals;;
+	
+	val print_element: (string -> unit) -> LexicalElement.t -> unit;;
+	
+end;;
+
+module LexicalOutput
 	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S) =
+	(LexicalElement: LexicalElementType
+		with module Literals := Literals)
+	: LexicalOutputType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement =
 struct
 	open Literals;;
 	

@@ -1,30 +1,31 @@
 open C_lexical;;
 open C_literals;;
 
-module NumericScannerType
-	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S) =
-struct
-	module type S = sig
-		
-		val scan_numeric_literal:
-			(('p * 'p) -> string -> unit) ->
-			Buffer.t ->
-			('s -> 'i -> 'p) ->
-			('s -> 'i -> 'p) ->
-			('s -> 'i -> char) ->
-			('s -> 'i -> 'i) ->
-			('s) ->
-			'i ->
-			[> `numeric_literal of string * LexicalElement.numeric_literal] * 'i;;
-		
-	end;;
+module type NumericScannerType = sig
+	module Literals: LiteralsType;;
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals;;
+	
+	val scan_numeric_literal:
+		(('p * 'p) -> string -> unit) ->
+		Buffer.t ->
+		('s -> 'i -> 'p) ->
+		('s -> 'i -> 'p) ->
+		('s -> 'i -> char) ->
+		('s -> 'i -> 'i) ->
+		('s) ->
+		'i ->
+		[> `numeric_literal of string * LexicalElement.numeric_literal] * 'i;;
+	
 end;;
 
 module NumericScanner
 	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	: NumericScannerType (Literals) (LexicalElement).S =
+	(LexicalElement: LexicalElementType
+		with module Literals := Literals)
+	: NumericScannerType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement =
 struct
 	open Literals;;
 	

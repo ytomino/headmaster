@@ -12,54 +12,57 @@ type known_errors_of_preprocessor = [
 	| `redefine_extended_word
 	| `push_defined_macro];;
 
-module PreprocessorType
-	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S) =
-struct
-	module type S = sig
-		
-		type include_from = [`user | `system];;
-		
-		type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
-		and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
-		and out_t = (ranged_position, LexicalElement.t, define_map) LazyList.t
-		and out_prim = (ranged_position, LexicalElement.t, define_map) LazyList.prim
-		and define_map = define_item StringMap.t
-		and define_item = private {
-			df_name: string;
-			df_position: ranged_position;
-			df_has_arguments: bool;
-			df_args: (ranged_position * string) list;
-			df_varargs: bool;
-			df_contents: in_t};;
-		
-		type macro_argument_map = macro_argument_item StringMap.t
-		and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
-		and concatable_element = [reserved_word
-			| `ident of string
-			| `numeric_literal of string * LexicalElement.numeric_literal];;
-		
-		type state_t = [`top_level | `in_ifdef of int | `in_macro_expr];;
-		
-		val preprocess:
-			(ranged_position -> string -> unit) ->
-			(ranged_position -> string -> [> known_errors_of_preprocessor] -> bool) ->
-			language ->
-			(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
-			state_t ->
-			define_map ->
-			macro_argument_map ->
-			in_t ->
-			out_prim;;
-		
-	end;;
+module type PreprocessorType = sig
+	module Literals: LiteralsType;;
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals;;
+	
+	type include_from = [`user | `system];;
+	
+	type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
+	and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
+	and out_t = (ranged_position, LexicalElement.t, define_map) LazyList.t
+	and out_prim = (ranged_position, LexicalElement.t, define_map) LazyList.prim
+	and define_map = define_item StringMap.t
+	and define_item = private {
+		df_name: string;
+		df_position: ranged_position;
+		df_has_arguments: bool;
+		df_args: (ranged_position * string) list;
+		df_varargs: bool;
+		df_contents: in_t};;
+	
+	type macro_argument_map = macro_argument_item StringMap.t
+	and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
+	and concatable_element = [reserved_word
+		| `ident of string
+		| `numeric_literal of string * LexicalElement.numeric_literal];;
+	
+	type state_t = [`top_level | `in_ifdef of int | `in_macro_expr];;
+	
+	val preprocess:
+		(ranged_position -> string -> unit) ->
+		(ranged_position -> string -> [> known_errors_of_preprocessor] -> bool) ->
+		language ->
+		(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
+		state_t ->
+		define_map ->
+		macro_argument_map ->
+		in_t ->
+		out_prim;;
+	
 end;;
 
 module Preprocessor
 	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	(NumericScanner: NumericScannerType (Literals) (LexicalElement).S)
-	: PreprocessorType (Literals) (LexicalElement).S =
+	(LexicalElement: LexicalElementType
+		with module Literals := Literals)
+	(NumericScanner: NumericScannerType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement)
+	: PreprocessorType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement =
 struct
 	open Literals;;
 	

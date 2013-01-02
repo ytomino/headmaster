@@ -463,6 +463,7 @@ module Syntax (Literals: LiteralsType) = struct
 	
 end;;
 
-module SyntaxType (Literals: LiteralsType) = struct
-	module type S = module type of Syntax (Literals);;
+module type SyntaxType = sig
+	module Literals: LiteralsType;;
+	include module type of Syntax (Literals);;
 end;;

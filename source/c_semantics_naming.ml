@@ -6,7 +6,8 @@ module StringSet = Set.Make (String);;
 
 module Naming
 	(Literals: LiteralsType)
-	(Semantics: SemanticsType (Literals).S) =
+	(Semantics: SemanticsType
+		with module Literals := Literals) =
 struct
 	open Semantics;;
 	

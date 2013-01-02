@@ -3,7 +3,8 @@ open C_syntax;;
 
 module Traversing
 	(Literals: LiteralsType)
-	(Syntax: SyntaxType (Literals).S) =
+	(Syntax: SyntaxType
+		with module Literals := Literals) =
 struct
 	open Syntax;;
 	

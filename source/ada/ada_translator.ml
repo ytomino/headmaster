@@ -23,7 +23,8 @@ let omit_long_word max_length s = (
 
 module AdaTranslator
 	(Literals: LiteralsType)
-	(Semantics: SemanticsType (Literals).S) =
+	(Semantics: SemanticsType
+		with module Literals := Literals) =
 struct
 	module Dependency = Dependency (Literals) (Semantics);;
 	module Finding = Finding (Literals) (Semantics);;

@@ -3,33 +3,37 @@ open C_lexical_scanner;;
 open C_literals;;
 open Position;;
 
-module ScannerType
-	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S) =
-struct
-	module type S = sig
-		module NumericScanner: NumericScannerType (Literals) (LexicalElement).S;;
-		
-		type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
-		type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
-		
-		val make_nil: ranged_position -> prim;;
-		
-		val scan:
-			(ranged_position -> string -> unit) ->
-			(unit -> unit) ->
-			language ->
-			TextFile.t ->
-			(ranged_position -> prim) ->
-			prim;;
-		
-	end;;
+module type ScannerType = sig
+	module Literals: LiteralsType;;
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals;;
+	
+	module NumericScanner: NumericScannerType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement;;
+	
+	type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
+	type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
+	
+	val make_nil: ranged_position -> prim;;
+	
+	val scan:
+		(ranged_position -> string -> unit) ->
+		(unit -> unit) ->
+		language ->
+		TextFile.t ->
+		(ranged_position -> prim) ->
+		prim;;
+	
 end;;
 
 module Scanner
 	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	: ScannerType (Literals) (LexicalElement).S =
+	(LexicalElement: LexicalElementType
+		with module Literals := Literals)
+	: ScannerType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement =
 struct
 	open Literals;;
 	module NumericScanner = NumericScanner (Literals) (LexicalElement);;

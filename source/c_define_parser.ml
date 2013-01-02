@@ -26,51 +26,61 @@ let list_combination
 type known_errors_of_define_parser = [known_errors_of_preprocessor
 	| `unparsible_macro];;
 
-module DefineParserType
-	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	(Preprocessor: PreprocessorType (Literals) (LexicalElement).S)
-	(Syntax: SyntaxType (Literals).S)
-	(Parser: ParserType (Literals) (LexicalElement) (Syntax).S) =
-struct
-	type 'a p = 'a Syntax.p;; (* for shorthand *)
-	module type S = sig
-		
-		type define = [
-			| `operator of operator
-			| `declaration_specifiers of Syntax.declaration_specifiers
-			| `initializer_t of Syntax.initializer_t
-			| `function_expr of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
-			| `function_stmt of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
-			| `any of string];;
-		
-		val parse_define:
-			(ranged_position -> string -> unit) ->
-			(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
-			language ->
-			Parser.typedef_set ->
-			Preprocessor.define_map ->
-			Preprocessor.define_item ->
-			define p;;
-		
-		val map:
-			(ranged_position -> string -> unit) ->
-			(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
-			language ->
-			Parser.typedef_set ->
-			Preprocessor.define_map ->
-			define p StringMap.t;;
-		
-	end;;
+module type DefineParserType = sig
+	module Literals: LiteralsType;;
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals;;
+	module Preprocessor: PreprocessorType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement;;
+	module Syntax: SyntaxType
+		with module Literals := Literals;;
+	
+	type define = [
+		| `operator of operator
+		| `declaration_specifiers of Syntax.declaration_specifiers
+		| `initializer_t of Syntax.initializer_t
+		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
+		| `function_stmt of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
+		| `any of string];;
+	
+	val parse_define:
+		(ranged_position -> string -> unit) ->
+		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
+		language ->
+		TypedefSet.t ->
+		Preprocessor.define_map ->
+		Preprocessor.define_item ->
+		define Syntax.p;;
+	
+	val map:
+		(ranged_position -> string -> unit) ->
+		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
+		language ->
+		TypedefSet.t ->
+		Preprocessor.define_map ->
+		define Syntax.p StringMap.t;;
+	
 end;;
 
 module DefineParser
 	(Literals: LiteralsType)
-	(LexicalElement: LexicalElementType (Literals).S)
-	(Preprocessor: PreprocessorType (Literals) (LexicalElement).S)
-	(Syntax: SyntaxType (Literals).S)
-	(Parser: ParserType (Literals) (LexicalElement) (Syntax).S)
-	: DefineParserType (Literals) (LexicalElement) (Preprocessor) (Syntax) (Parser).S =
+	(LexicalElement: LexicalElementType
+		with module Literals := Literals)
+	(Preprocessor: PreprocessorType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement)
+	(Syntax: SyntaxType
+		with module Literals := Literals)
+	(Parser: ParserType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement
+		with module Syntax := Syntax)
+	: DefineParserType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement
+		with module Preprocessor := Preprocessor
+		with module Syntax := Syntax =
 struct
 	
 	(* error messages *)
@@ -150,7 +160,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
 		(lang: language)
-		(typedefs: Parser.typedef_set)
+		(typedefs: TypedefSet.t)
 		(macros: Preprocessor.define_map)
 		(macro: Preprocessor.define_item)
 		: define p =
@@ -283,7 +293,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
 		(lang: language)
-		(typedefs: Parser.typedef_set)
+		(typedefs: TypedefSet.t)
 		(items: Preprocessor.define_map)
 		: define p StringMap.t =
 	(

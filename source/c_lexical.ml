@@ -517,6 +517,7 @@ module LexicalElement (Literals: LiteralsType) = struct
 	
 end;;
 
-module LexicalElementType (Literals: LiteralsType) = struct
-	module type S = module type of LexicalElement (Literals);;
+module type LexicalElementType = sig
+	module Literals: LiteralsType;;
+	include module type of LexicalElement (Literals);;
 end;;

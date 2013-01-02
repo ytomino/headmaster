@@ -1004,6 +1004,7 @@ module Semantics (Literals: LiteralsType) = struct
 	
 end;;
 
-module SemanticsType (Literals: LiteralsType) = struct
-	module type S = module type of Semantics (Literals);;
+module type SemanticsType = sig
+	module Literals: LiteralsType;;
+	include module type of Semantics (Literals);;
 end;;

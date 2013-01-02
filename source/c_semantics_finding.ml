@@ -3,7 +3,8 @@ open C_semantics;;
 
 module Finding
 	(Literals: LiteralsType)
-	(Semantics: SemanticsType (Literals).S) =
+	(Semantics: SemanticsType
+		with module Literals := Literals) =
 struct
 	open Semantics;;
 	
