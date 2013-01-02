@@ -917,3 +917,14 @@ let pp_pragma_volatile
 	fprintf ff "pragma Volatile (%s);" name;
 	pp_close_box ff ()
 );;
+
+let pp_pragma_weak_external
+	(ff: formatter)
+	(name: string)
+	: unit =
+(
+	pp_print_space ff ();
+	pp_open_box ff indent;
+	fprintf ff "pragma Weak_External (%s);" name;
+	pp_close_box ff ()
+);;

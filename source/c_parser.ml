@@ -808,6 +808,8 @@ struct
 				`some (ps, `visibility (n, l_paren, arg, r_paren)), xs
 			| "__warn_unused_result__" ->
 				`some (p4, `warn_unused_result), xs
+			| "__weak__" ->
+				`some (p4, `weak), xs
 			| "weak_import" ->
 				`some (p4, `weak_import), xs
 			| _ ->

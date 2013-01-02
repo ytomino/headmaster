@@ -2821,7 +2821,10 @@ struct
 						name
 					end
 				in
-				pp_pragma_import ff attrs.Semantics.at_conventions ada_name c_name
+				pp_pragma_import ff attrs.Semantics.at_conventions ada_name c_name;
+				if attrs.Semantics.at_weak_link = `weak then (
+					pp_pragma_weak_external ff ada_name
+				)
 			)
 		| `named (ps, name, `variable (t, init), _) ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in

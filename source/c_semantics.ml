@@ -144,7 +144,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_unavailable: bool;
 		at_used: [`none | `used | `unused];
 		at_warn_unused_result : bool;
-		at_weak_import: bool};;
+		at_weak_link: [`none | `weak | `weak_import]};;
 	
 	let no_attributes = {
 		at_aligned = `default;
@@ -175,7 +175,7 @@ module Semantics (Literals: LiteralsType) = struct
 		at_unavailable = false;
 		at_used = `none;
 		at_warn_unused_result = false;
-		at_weak_import = false};;
+		at_weak_link = `none};;
 	
 	(* items *)
 	

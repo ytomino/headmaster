@@ -107,6 +107,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `used
 		| `visibility of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
 		| `warn_unused_result
+		| `weak
 		| `weak_import]
 	(* inline assembler *)
 	and inline_assembler = [`__asm | `__asm__] p * [`VOLATILE | `__volatile__] opt * [`l_paren] e * [`chars_literal of string] e * ia_out opt * [`r_paren] e * [`semicolon] e

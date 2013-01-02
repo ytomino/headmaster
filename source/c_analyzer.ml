@@ -1034,8 +1034,10 @@ struct
 			attributes (* ignore __attribute__((visibility(...))) *)
 		| `warn_unused_result ->
 			{attributes with at_warn_unused_result = true}
+		| `weak ->
+			{attributes with at_weak_link = `weak}
 		| `weak_import ->
-			{attributes with at_weak_import = true}
+			{attributes with at_weak_link = `weak_import}
 		end
 	) and handle_expression
 		(error: ranged_position -> string -> unit)
