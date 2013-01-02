@@ -1,4 +1,5 @@
 open C_analyzer;;
+open C_define_analyzer;;
 open C_define_parser;;
 open C_filename;;
 open C_lexical;;
@@ -65,6 +66,7 @@ module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
 module P = Parser (Literals) (LE) (AST);;
 module DP = DefineParser (Literals) (LE) (PP) (AST) (P);;
 module A = Analyzer (Literals) (AST) (SEM);;
+module DA = DefineAnalyzer (Literals) (AST) (SEM) (A);;
 
 let remove_include_dir = make_remove_include_dir env;;
 let is_known_error = make_is_known_error env.en_target remove_include_dir;;
@@ -107,4 +109,10 @@ let (predefined_types: SEM.predefined_types),
 	(derived_types: SEM.derived_types),
 	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(mapping_options: SEM.mapping_options) = A.analyze error is_known_error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu;;
+
+let (derived_types: SEM.derived_types),
+	(sources: (SEM.source_item list * extra_info) StringMap.t) = DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
+
+let (derived_types: SEM.derived_types),
+	(sources: (SEM.source_item list * extra_info) StringMap.t) = A.rev derived_types sources;;

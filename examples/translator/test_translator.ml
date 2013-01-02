@@ -1,5 +1,6 @@
 open Ada_translator;;
 open C_analyzer;;
+open C_define_analyzer;;
 open C_define_parser;;
 open C_filename;;
 open C_lexical;;
@@ -67,6 +68,7 @@ module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
 module P = Parser (Literals) (LE) (AST);;
 module DP = DefineParser (Literals) (LE) (PP) (AST) (P);;
 module A = Analyzer (Literals) (AST) (SEM);;
+module DA = DefineAnalyzer (Literals) (AST) (SEM) (A);;
 module T = AdaTranslator (Literals) (SEM);;
 
 let remove_include_dir = make_remove_include_dir env;;
@@ -100,7 +102,9 @@ let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil);;
 let lib_tokens': PP.out_t = lazy (PP.preprocess
 	error is_known_error `c read_include_file `top_level predefined StringMap.empty lib_tokens);;
 
-let (tu, typedefs, lazy (`nil (_, defined_tokens)): AST.translation_unit * P.typedef_set * (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error `c lib_tokens';;
+let (tu: AST.translation_unit),
+	(typedefs: P.typedef_set),
+	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error `c lib_tokens';;
 
 let defines: DP.define AST.p StringMap.t = DP.map error is_known_error `c typedefs defined_tokens;;
 
@@ -108,7 +112,13 @@ let (predefined_types: SEM.predefined_types),
 	(derived_types: SEM.derived_types),
 	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * extra_info) StringMap.t),
-	(mapping_options: SEM.mapping_options) = A.analyze error is_known_error `c env.en_sizeof env.en_typedef env.en_builtin tu defines;;
+	(mapping_options: SEM.mapping_options) = A.analyze error `c env.en_sizeof env.en_typedef env.en_builtin tu;;
+
+let (derived_types: SEM.derived_types),
+	(sources: (SEM.source_item list * extra_info) StringMap.t) = DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
+
+let (derived_types: SEM.derived_types),
+	(sources: (SEM.source_item list * extra_info) StringMap.t) = A.rev derived_types sources;;
 
 let opaque_mapping = A.opaque_mapping namespace;;
 
