@@ -139,7 +139,7 @@ then (
 let has_error = ref false;;
 
 let error (ps: ranged_position) (m: string): unit = (
-	output_position stderr (fst ps);
+	output_position stderr compact_filename (fst ps);
 	output_string stderr ": ";
 	output_string stderr m;
 	output_char stderr '\n';

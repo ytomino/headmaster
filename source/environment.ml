@@ -139,3 +139,33 @@ let make_remove_include_dir (env: environment) (filename: string): string = (
 		Filename.basename filename (* specified in command line *)
 	end
 );;
+
+let compact_filename (filename: string): string = (
+	let concat dir base = (
+		if dir = Filename.current_dir_name then base else
+		if base = "" then dir else
+		Filename.concat dir base
+	) in
+	let rec up level path = (
+		if level = 0 then path else
+		let result =
+			let result = Filename.dirname path in
+			if result = Filename.current_dir_name then concat path Filename.parent_dir_name else
+			result
+		in
+		up (level - 1) result
+	) in
+	let rec loop level parent_path child_path = (
+		if parent_path = Filename.current_dir_name then concat (up level parent_path) child_path else
+		if parent_path = Filename.parent_dir_name then concat (up (level + 1) parent_path) child_path else
+		let basename = Filename.basename parent_path in
+		if basename = parent_path then concat (up level parent_path) child_path else
+		let dirname = Filename.dirname parent_path in
+		if basename = Filename.current_dir_name then loop level dirname child_path else
+		if basename = Filename.parent_dir_name then loop (level + 1) dirname child_path else
+		if level > 0 then loop (level - 1) dirname child_path else
+		loop 0 dirname (concat basename child_path)
+	) in
+	if filename = "" then "." else
+	loop 0 filename ""
+);;

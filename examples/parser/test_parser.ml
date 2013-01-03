@@ -35,7 +35,7 @@ parse_args 1;;
 
 let error (ps: ranged_position) (m: string): unit = (
 	let ((f, _, l, c), _) = ps in
-	Printf.printf "%s:%d:%d: %s\n" f l c m
+	Printf.printf "%s:%d:%d: %s\n" (compact_filename f) l c m
 );;
 
 let env: environment = gcc_env !gcc_command `c;;
