@@ -41,6 +41,13 @@ struct
 	open Literals;;
 	open Semantics;;
 	
+	(* error messages *)
+	
+	let is_undeclared (s: string): string =
+		s ^ " is undeclared.";;
+	let is_not_a_struct_or_union (s: string): string =
+		s ^ " is not a struct or union.";
+	
 	(* in *)
 	
 	type 'a p = 'a Syntax.p;;
@@ -800,7 +807,7 @@ struct
 											derived_types, info, alignment_stack, mapping_options
 										end
 									with Not_found ->
-										error (fst mapping) ("\"" ^ name ^ "\" was not found.");
+										error (fst mapping) ("overloading \"" ^ name ^ "\" is undeclared.");
 										derived_types, info, alignment_stack, mapping_options
 									end
 								| _ ->
@@ -1099,7 +1106,7 @@ struct
 						derived_types, source, None
 					end
 				| _ ->
-					error (fst x) "this expression is not a struct or union type.";
+					error (fst x) (is_not_a_struct_or_union "this expression");
 					derived_types, source, None
 				end
 			| _ ->
@@ -1292,7 +1299,7 @@ struct
 					let t, derived_types = Typing.find_array_type None base_type derived_types in
 					derived_types, source, Some (`__func__, t)
 				) else (
-					error (fst x) (name ^ " was undefined.");
+					error (fst x) (is_undeclared name);
 					derived_types, source, None
 				)
 			end
@@ -2093,7 +2100,7 @@ struct
 							named
 						end
 					with Not_found ->
-						error (fst x) (name ^ " was not declared.");
+						error (fst x) (is_undeclared name);
 						named
 					end
 				end
