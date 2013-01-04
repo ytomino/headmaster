@@ -284,6 +284,13 @@ struct
 				let value, xs = calc_term shortcircuit xs in
 				let value' = leinteger_of_bool (not (bool_of_leinteger value)) in
 				value', xs
+			| lazy (`cons (_, `plus, xs)) ->
+				let value, xs = calc_term shortcircuit xs in
+				value, xs
+			| lazy (`cons (_, `minus, xs)) ->
+				let value, xs = calc_term shortcircuit xs in
+				let value' = Integer.neg value in
+				value', xs
 			| lazy (`cons (_, `numeric_literal (_, `int_literal (_, value)), xs)) ->
 				value, xs
 			| lazy (`cons (_, `char_literal value, xs)) ->
