@@ -204,6 +204,20 @@ struct
 		end
 	);;
 	
+	let separated_full_to_forward_opaque
+		(item: Semantics.non_opaque_type)
+		(opaque_mapping: Semantics.opaque_mapping)
+		: Semantics.opaque_type option =
+	(
+		let opaque = Semantics.full_to_opaque item opaque_mapping in
+		let `named (f_ps, _, _, _) = item in
+		let `named (o_ps, _, _, _) = opaque in
+		let (f_filename, _, _, _), _ = o_ps in
+		let (o_filename, _, _, _), _ = f_ps in
+		if f_filename = o_filename then None else
+		Some opaque
+	);;
+	
 	let using_anonymous_access_for_pointed_type (pointed_t: Semantics.all_type): Semantics.all_type option = (
 		begin match Semantics.resolve_typedef pointed_t with
 		| `void | `function_type _ ->
@@ -315,7 +329,17 @@ struct
 			| #Semantics.derived_type as rt ->
 				begin match using_anonymous_access rt with
 				| Some t ->
-					Dependency.of_item (t :> Semantics.all_item)
+					begin match Semantics.resolve_typedef t with
+					| `named (_, _, #Semantics.opaque_type_var, _) as opaque ->
+						begin match separated_forward_opaque_to_full opaque opaque_mapping with
+						| Some full ->
+							Dependency.of_item (full :> Semantics.all_item)
+						| None ->
+							Dependency.of_item (t :> Semantics.all_item)
+						end
+					| _ ->
+						Dependency.of_item (t :> Semantics.all_item)
+					end
 				| None ->
 					Dependency.of_item (t :> Semantics.all_item)
 				end
@@ -356,40 +380,35 @@ struct
 				end
 			| (item: Semantics.all_item) ->
 				List.fold_left (fun r d ->
-					let resolved_d =
-						begin match d with
-						| `named (_, _, `typedef _, _) as d ->
-							(Semantics.resolve_typedef d :> Semantics.all_item)
-						| _ ->
-							(d :> Semantics.all_item)
-						end
-					in
-					begin match resolved_d with
-					| `named (_, _, #Semantics.opaque_type_var, _) as opaque
+					begin match d with
+					| `named (opaque_ps, _, #Semantics.opaque_type_var, _) as opaque
 						when separated_forward_opaque_to_full opaque opaque_mapping <> None
 					->
-						begin match Semantics.opaque_to_full opaque opaque_mapping with
-						| Some d ->
-							let `named (ps, _, _, _) = d in
-							let package_name = Naming.module_of ps name_mapping in
-							if package_name = current then (
-								(* reference (pointer to) opaqure from body *)
-								let opaque_ps =
-									match resolved_d with
-									| `named (opaque_ps, _, _, _) -> opaque_ps
-									| _ -> assert false (* does not come here *)
-								in
-								let package_name = Naming.module_of opaque_ps name_mapping in
-								let package_name = "C." ^ package_name in
-								add_to_with_caluse_map package_name (`none, `none, `none) r
-							) else (
-								(* reference body from opaque or other headers *)
-								let package_name = "C." ^ package_name in
-								add_to_with_caluse_map package_name (`limited_with, `none, `none) r
-							)
-						| None ->
-							assert false (* does not come here *)
-						end
+						let full =
+							match Semantics.opaque_to_full opaque opaque_mapping with
+							| Some full -> full
+							| None -> assert false (* does not come here *)
+						in
+						let `named (full_ps, _, _, _) = full in
+						let package_name = Naming.module_of full_ps name_mapping in
+						if package_name = current then (
+							(* reference (pointer to) opaqure from full *)
+							let package_name = Naming.module_of opaque_ps name_mapping in
+							let package_name = "C." ^ package_name in
+							add_to_with_caluse_map package_name (`none, `none, `none) r
+						) else (
+							(* reference full from opaque or other headers *)
+							let package_name = "C." ^ package_name in
+							add_to_with_caluse_map package_name (`limited_with, `none, `none) r
+						)
+					| `named (full_ps, _, #Semantics.non_opaque_type_var, _) as full
+						when separated_full_to_forward_opaque full opaque_mapping <> None
+					->
+						let package_name = Naming.module_of full_ps name_mapping in
+						if package_name = current then r else
+						(* reference full from opaque headers or other headers via opaque type *)
+						let package_name = "C." ^ package_name in
+						add_to_with_caluse_map package_name (`limited_with, `none, `none) r
 					| _ ->
 						let `named (ps, _, _, _) = d in
 						let package_name = Naming.module_of ps name_mapping in
