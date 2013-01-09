@@ -289,7 +289,9 @@ struct
 					begin match x with
 					| `__builtin_va_list
 					| `pointer `void
-					| `pointer (`const `void) ->
+					| `pointer (`volatile `void)
+					| `pointer (`const `void)
+					| `pointer (`const (`volatile `void)) ->
 						(* va_list / void * are mapped to System.Address *)
 						let package_name = "System" in
 						add_to_with_caluse_map package_name (`none, `none, `none) r
@@ -915,7 +917,9 @@ struct
 					let conv, _, _, _ = prototype in
 					pp_pragma_convention ff conv name
 				| `void
-				| `const `void ->
+				| `volatile `void
+				| `const `void
+				| `const (`volatile `void) ->
 					pp_subtype ff name pp_print_string "System.Address"
 				| _ ->
 					begin match t with
@@ -977,6 +981,8 @@ struct
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hiding:None ~where:`name) item in
 					pp_pointer_type ff ~mappings name ~restrict:true t
+				| `volatile `void ->
+					fprintf ff "@ --  type void_volatile is new void;"
 				| `volatile base_type ->
 					let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
@@ -1624,6 +1630,8 @@ struct
 			begin match Semantics.resolve_typedef source_item with
 			| `void ->
 				fprintf ff "@ --  %s renames void (macro)" name
+			| `volatile `void ->
+				fprintf ff "@ --  %s renames void volatile (macro)" name
 			| `function_type _ ->
 				fprintf ff "@ --  %s renames ... (function type)" name
 			| _ ->
