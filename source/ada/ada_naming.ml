@@ -293,6 +293,45 @@ let ada_package_name (remove_include_dir: string -> string) (s: string): string 
 	end
 );;
 
+(* from a viewpoint of C.sys.ucontext, C.sys.signals hides C.signals *)
+let hidden_packages (with_packages: (string * 'a) list) ~(current: string): StringSet.t = (
+	let rec c_loop current_parent current_relative result = (
+		let cp, cn = take_package_name current_relative in
+		if cn = current_relative then result else
+		let current_parent' =
+			if String.length current_parent = 0 then cp else current_parent ^ "." ^ cp
+		in
+		let current_parent'_length = String.length current_parent' in
+		let result =
+			List.fold_left (fun result (with_name, _) ->
+				let rec w_loop w_parent w_relative result = (
+					let wp, wn = take_package_name w_relative in
+					if wn = w_relative then result else
+					let w_parent' =
+						if String.length w_parent = 0 then wp else w_parent ^ "." ^ wp
+					in
+					let result =
+						if String.length w_parent' >= current_parent'_length
+							&& String.sub w_parent' 0 current_parent'_length = current_parent'
+							&& List.mem_assoc ("C." ^ wn) with_packages
+						then (
+							StringSet.add wn result
+						) else (
+							result
+						)
+					in
+					w_loop w_parent' wn result
+				) in
+				let wp, wn = take_package_name with_name in
+				if wp <> "C" then result else
+				w_loop "" wn result
+			) result with_packages
+		in
+		c_loop current_parent' cn result
+	) in
+	c_loop "" current StringSet.empty
+);;
+
 (* entity name *)
 
 let ada_name_by_short ~(prefix: string) ~(postfix: string) (s: string): string = (
