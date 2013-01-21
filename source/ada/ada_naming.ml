@@ -73,6 +73,8 @@ let special_name_mapping = make_mapmap [
 		"rl_vi_bWord", "rl_vi_bWord_uppercase"; (* readline / conflicted with rl_vi_bword *)
 		"rl_vi_eWord", "rl_vi_eWord_uppercase"; (* readline / conflicted with rl_vi_eword *)
 		"rl_vi_fWord", "rl_vi_fWord_uppercase"]; (* readline / conflicted with rl_vi_fword *)
+	"signal", [
+		"sv_onstack", "sigvec_sv_onstack"]; (* linux / conflicted with SV_ONSTACK *)
 	"sys.signal", [
 		"sv_onstack", "sigvec_sv_onstack"]; (* darwin9 / conflicted with SV_ONSTACK *)
 	"stdlib", [
@@ -101,6 +103,7 @@ let special_name_mapping = make_mapmap [
 		"zlib_version", "get_zlib_version"]; (* zlib / conflicted with ZLIB_VERSION *)
 	"", [ (* predefined *)
 		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
+		"linux", "defined_linux"; (* linux / conflicted with include dir <linux/...> *)
 		"__MACH__", "defined_MACH"; (* darwin9 / conflicted with include dir <mach/...> *)
 		"__PIC__", "PIC"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
 		"WINNT", "defined_WINNT"]];; (* mingw-w64 / conflicted with winnt.h *)

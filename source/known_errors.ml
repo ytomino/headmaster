@@ -34,7 +34,7 @@ type known_error = [
 	| `push_defined_macro
 	(* for define parser *)
 	| `unparsible_macro
-	(* for analyzer *)
+	(* for define analyzer *)
 	| `uninterpretable_macro];;
 
 let known_error_table: (string * (string * (known_error * string list) list) list) list = [
@@ -504,6 +504,12 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__DBL_DENORM_MIN__"]]]; (* freebsd7 / underflow *)
 	"*-pc-linux*", [
+		"asm-generic/ioctls.h", [
+			`unparsible_macro, [
+				"TCGETS2"; (* struct termios2 is undefined *)
+				"TCSETS2"; (* struct termios2 is undefined *)
+				"TCSETSF2"; (* struct termios2 is undefined *)
+				"TCSETSW2"]]; (* struct termios2 is undefined *)
 		"assert.h", [
 			`unparsible_macro, [
 				"__ASSERT_FUNCTION"; (* __PRETTY_FUNCTION__ outside of a function *)
@@ -511,11 +517,21 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"bits/cmathcalls.h", [
 			`unparsible_macro, [
 				"_Mdouble_complex_"]]; (* parameterized type specifier *)
+		"bits/in.h", [
+			`unparsible_macro, [
+				"SCM_SRCRT"]]; (* IPV6_RXSRCRT is undefined *)
 		"bits/mathdef.h", [
 			`undefined_macro, [
 				"__FP_FAST_FMA";
 				"__FP_FAST_FMAF";
 				"__FP_FAST_FMAL"]];
+		"bits/sched.h", [
+			`unparsible_macro, [
+				"__CPU_OP_S"]; (* parameterized operator *)
+			`uninterpretable_macro, [
+				"__CPU_CLR_S"; (* accessing element of untyped parameter *)
+				"__CPU_ISSET_S"; (* accessing element of untyped parameter *)
+				"__CPU_SET_S"]]; (* accessing element of untyped parameter *)
 		"bits/select.h", [
 			`uninterpretable_macro, [
 				"__FD_CLR"; (* accessing element of untyped parameter *)
@@ -526,6 +542,18 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"si_int"; (* (siginfo_t)._sifields._rt.si_sigval is not struct *)
 				"si_ptr"]]; (* (siginfo_t)._sifields._rt.si_sigval is not struct *)
+		"bits/socket.h", [
+			`uninterpretable_macro, [
+				"CMSG_DATA"; (* accessing element of untyped parameter *)
+				"CMSG_FIRSTHDR"]]; (* accessing element of untyped parameter *)
+		"bits/stat.h", [
+			`uninterpretable_macro, [
+				"__S_TYPEISMQ"; (* accessing element of untyped parameter *)
+				"__S_TYPEISSEM"; (* accessing element of untyped parameter *)
+				"__S_TYPEISSHM"]]; (* accessing element of untyped parameter *)
+		"bits/termios.h", [
+			`unparsible_macro, [
+				"_IOT_termios"]]; (* _IOT is undefined *)
 		"bits/typesizes.h", [
 			`unparsible_macro, [
 				"__TIMER_T_TYPE"]]; (* declaration specifier and pointer *)
@@ -548,6 +576,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__isspace_l"; (* accessing element of untyped parameter *)
 				"__isupper_l"; (* accessing element of untyped parameter *)
 				"__isxdigit_l"]]; (* accessing element of untyped parameter *)
+		"dirent.h", [
+			`uninterpretable_macro, [
+				"_D_ALLOC_NAMLEN"; (* accessing element of untyped parameter *)
+				"_D_EXACT_NAMLEN"]]; (* accessing element of untyped parameter *)
 		"features.h", [
 			`redefine_compiler_macro, [
 				"__STDC_ISO_10646__"]];
@@ -580,10 +612,20 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__MATHCALLX"; (* parameterized declaration *)
 				"__MATHDECLX"]]; (* parameterized declaration *)
+		"netdb.h", [
+			`unparsible_macro, [
+				"h_addr"]]; (* alias of element and dereferencing *)
 		"predefs.h", [
 			`redefine_compiler_macro, [
 				"__STDC_IEC_559__";
 				"__STDC_IEC_559_COMPLEX__"]];
+		"pthread.h", [
+			`unparsible_macro, [
+				"pthread_cleanup_pop"; (* partial statement *)
+				"pthread_cleanup_push"]]; (* partial statement *)
+		"sched.h", [
+			`unparsible_macro, [
+				"sched_priority"]]; (* __sched_priority is undefined *)
 		"stdc-predef.h", [
 			`redefine_compiler_macro, [
 				"__STDC_ISO_10646__";
@@ -630,7 +672,27 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"FD_CLR"; (* accessing element of untyped parameter *)
 				"FD_ISSET"; (* accessing element of untyped parameter *)
 				"FD_SET"; (* accessing element of untyped parameter *)
-				"FD_ZERO"]]]; (* accessing element of untyped parameter *)
+				"FD_ZERO"]]; (* accessing element of untyped parameter *)
+		"sys/socket.h", [
+			`unparsible_macro, [
+				"__CONST_SOCKADDR_ARG"; (* declaration specifier and pointer *)
+				"__SOCKADDR_ARG"]]; (* declaration specifier and pointer *)
+		"sys/stat.h", [
+			`uninterpretable_macro, [
+				"S_TYPEISMQ"; (* accessing element of untyped parameter *)
+				"S_TYPEISSEM"; (* accessing element of untyped parameter *)
+				"S_TYPEISSHM"]]; (* accessing element of untyped parameter *)
+		"sys/time.h", [
+			`unparsible_macro, [
+				"timercmp"]; (* parameterized operator *)
+			`uninterpretable_macro, [
+				"timeradd"; (* accessing element of untyped parameter *)
+				"timerclear"; (* accessing element of untyped parameter *)
+				"timerisset"; (* accessing element of untyped parameter *)
+				"timersub"]]; (* accessing element of untyped parameter *)
+		"sys/wait.h", [
+			`unparsible_macro, [
+				"WCOREDUMP"]]]; (* using __WAIT_INT *)
 	"*-w64-mingw*", [
 		"commdlg.h", [
 			`unparsible_macro, [

@@ -8,6 +8,9 @@
 #include <sys/types.h> /* user_addr_t for malloc/malloc.h */
 #include <malloc/malloc.h>
 #endif
+#if defined (__linux__)
+#include <limits.h> /* LONG_MAX for bits/posix1_lim.h */
+#endif
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
