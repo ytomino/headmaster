@@ -3464,8 +3464,8 @@ struct
 		(sizeof: sizeof)
 		(typedef: language_typedef)
 		(builtin: (string *
-			[< predefined_type | `pointer of [< predefined_type | `const of [< predefined_type]]] list *
-			[< predefined_type | `pointer of [< predefined_type | `const of [< predefined_type]]]) list)
+			[< predefined_type | `pointer of [< predefined_type | `const of [< predefined_type]] | `size_t] list *
+			[< predefined_type | `pointer of [< predefined_type | `const of [< predefined_type]] | `size_t]) list)
 		(translation_unit: Syntax.translation_unit)
 		: predefined_types * derived_types * namespace * (source_item list * extra_info) StringMap.t * mapping_options =
 	(
@@ -3481,6 +3481,8 @@ struct
 						let target_t = find_predefined_type target_t predefined_types in
 						let const_type, derived_types = Typing.find_const_type target_t derived_types in
 						Typing.find_pointer_type const_type derived_types
+					| `size_t ->
+						find_size_t predefined_types, derived_types
 					| #predefined_type as t ->
 						find_predefined_type t predefined_types, derived_types
 					end

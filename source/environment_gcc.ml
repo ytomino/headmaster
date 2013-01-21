@@ -254,10 +254,10 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		!long_double_mantissa
 	in
 	let builtin = [
-		"__builtin_alloca", [`unsigned_long], `pointer `char;
+		"__builtin_alloca", [`size_t], `pointer `char;
 		"__builtin_bswap32", [`unsigned_int], `unsigned_int;
 		"__builtin_bswap64", [`unsigned_long_long], `unsigned_long_long;
-		"__builtin_bzero", [`pointer `char; `unsigned_long], `void;
+		"__builtin_bzero", [`pointer `char; `size_t], `void;
 		"__builtin_fabsf", [`float], `float;
 		"__builtin_fabs", [`double], `double;
 		"__builtin_fabsl", [`long_double], `long_double;
@@ -269,18 +269,20 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_inf", [], `double;
 		"__builtin_infl", [], `long_double;
 		"__builtin_llabs", [`signed_long_long], `signed_long_long;
-		"__builtin___memcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
-		"__builtin___memmove_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
-		"__builtin___memset_chk", [`pointer `char; `signed_int; `unsigned_long; `unsigned_long], `pointer `char;
+		"__builtin_memcmp", [`pointer `char; `pointer `char; `size_t], `signed_int;
+		"__builtin_memset", [`pointer `char; `signed_int; `size_t], `pointer `char;
+		"__builtin___memcpy_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char;
+		"__builtin___memmove_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char;
+		"__builtin___memset_chk", [`pointer `char; `signed_int; `size_t; `size_t], `pointer `char;
 		"__builtin_nanf", [`pointer (`const `char)], `float;
 		"__builtin_nan", [`pointer (`const `char)], `double;
 		"__builtin_nanl", [`pointer (`const `char)], `long_double;
 		"__builtin_return_address", [`unsigned_int], `pointer `char;
-		"__builtin___stpcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long], `pointer `char;
-		"__builtin___strcat_chk", [`pointer `char; `pointer (`const `char); `unsigned_long], `pointer `char;
-		"__builtin___strcpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long], `pointer `char;
-		"__builtin___strncat_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char;
-		"__builtin___strncpy_chk", [`pointer `char; `pointer (`const `char); `unsigned_long; `unsigned_long], `pointer `char];
+		"__builtin___stpcpy_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
+		"__builtin___strcat_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
+		"__builtin___strcpy_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
+		"__builtin___strncat_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char;
+		"__builtin___strncpy_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char];
 	in
 	let result = {
 		en_target = target;

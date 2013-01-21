@@ -23,7 +23,8 @@ type type_for_builtin = [
 	| `long_double
 	| `bool
 	| `void
-	| `pointer of [`void | `char | `const of [`void | `char]]];;
+	| `pointer of [`void | `char | `const of [`void | `char]]
+	| `size_t];;
 
 type environment = {
 	en_target: string;
