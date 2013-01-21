@@ -1,7 +1,7 @@
 open C_lexical;;
+open C_lexical_firstset;;
 open C_literals;;
 open C_syntax;;
-open C_syntax_firstset;;
 open Position;;
 
 module TypedefSet = struct
@@ -15,7 +15,7 @@ module Parser
 	(Syntax: SyntaxType
 		with module Literals := Literals) =
 struct
-	module FirstSet = FirstSet (Literals) (Syntax);;
+	module FirstSet = FirstSet (Literals);;
 	open Literals;;
 	open Syntax;;
 	open PositionOperators;;
@@ -151,7 +151,7 @@ struct
 		: identifier e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (id_p, (#identifier as id_e), xs)) ->
+		| lazy (`cons (id_p, (#FirstSet.identifier as id_e), xs)) ->
 			`some (id_p, id_e), xs
 		| _ ->
 			error (LazyList.hd_a xs) "identifier was expected.";
@@ -406,10 +406,10 @@ struct
 						| lazy (`cons (poison_p, `ident "poison", xs)) ->
 							let poison = poison_p, `POISON in
 							begin match xs with
-							| lazy (`cons (id_p, (`ident _ as id_e), xs)) ->
+							| lazy (`cons (id_p, (#FirstSet.identifier as id_e), xs)) ->
 								let rec loop (rs: poison_identifier_list p) (xs: 'a in_t) = (
 									begin match xs with
-									| lazy (`cons (id_p, (`ident _ as id_e), xs)) ->
+									| lazy (`cons (id_p, (#FirstSet.identifier as id_e), xs)) ->
 										let id = id_p, id_e in
 										let `some (ps, ()) = (`some rs) & (`some id) in
 										loop (ps, `cons (rs, id)) xs
@@ -825,11 +825,11 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * FirstSet.firstset_of_asm * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.asm * 'a in_t] lazy_t)
 		: inline_assembler p * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (asm_p, (#FirstSet.firstset_of_asm as asm_e), xs)) ->
+		| lazy (`cons (asm_p, (#FirstSet.asm as asm_e), xs)) ->
 			let asm = asm_p, asm_e in
 			let volatile, xs =
 				begin match xs with
@@ -989,7 +989,7 @@ struct
 		: expression p * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (id_p, (`ident _ as id_e), xs)) ->
+		| lazy (`cons (id_p, (#FirstSet.identifier as id_e), xs)) ->
 			(id_p, id_e), xs
 		| lazy (`cons (nl_p, `numeric_literal (_, nl), xs)) ->
 			(nl_p, (nl :> expression)), xs
@@ -1045,7 +1045,7 @@ struct
 		) in
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
-			lazy (`cons (a, (#FirstSet.firstset_of_type_specifier as it), xr))))
+			lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr))))
 		->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_initializer (lp_p, lp_e) xs
@@ -1244,7 +1244,7 @@ struct
 			let right, xs = parse_unary_expression_or_error error lang typedefs xs in
 			let `some (ps, ()) = (`some op) &^ right in
 			(ps, `decrement (op, right)), xs
-		| lazy (`cons (unary_p, (#unary_operator as unary_e), xs)) ->
+		| lazy (`cons (unary_p, (#FirstSet.unary_operator as unary_e), xs)) ->
 			let op = unary_p, unary_e in
 			(* many compilers accept cast-expression, ex. (~ (unsigned) 0) *)
 			let right, xs = parse_cast_expression_or_error error lang typedefs xs in
@@ -1260,7 +1260,7 @@ struct
 			) in
 			begin match xs with
 			| lazy (`cons (lp_p, (`l_paren as lp_e),
-				lazy (`cons (a, (#FirstSet.firstset_of_type_name as it), xr))))
+				lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr))))
 			->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_sizeof_type sizeof (lp_p, lp_e) xs
@@ -1334,7 +1334,7 @@ struct
 		) in
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
-			lazy (`cons (a, (#FirstSet.firstset_of_type_name as it), xr))))
+			lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr))))
 		->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_cast (lp_p, lp_e) xs
@@ -1791,7 +1791,7 @@ struct
 		(* informal... in RM, unary-expression = assinment-expression when `assign case *)
 		let left, xs = parse_conditional_expression error lang typedefs xs in
 		begin match xs with
-		| lazy (`cons (op_p, (#assignment_operator as op_e), xs)) ->
+		| lazy (`cons (op_p, (#FirstSet.assignment_operator as op_e), xs)) ->
 			let op = op_p, op_e in
 			let right, xs = parse_assignment_expression_or_error error lang typedefs xs in
 			let `some (ps, ()) = (`some left) & (`some op) &^ right in
@@ -1909,7 +1909,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: declaration p * typedef_set * 'a in_t =
 	(
 		let spec, xs = parse_declaration_specifiers error lang typedefs xs in
@@ -1926,7 +1926,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: declaration_specifiers p * 'a in_t =
 	(
 		let handle_type_specifier xs = (
@@ -1936,23 +1936,23 @@ struct
 			(ps, `type_specifier (spec, next)), xs
 		) in
 		begin match xs with
-		| lazy (`cons (spec_p, (#storage_class_specifier as spec_e), xs)) ->
+		| lazy (`cons (spec_p, (#FirstSet.storage_class_specifier as spec_e), xs)) ->
 			let spec = (spec_p, spec_e) in
 			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
 			(ps, `storage_class_specifier (spec, next)), xs
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
 		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
-		| lazy (`cons (q_p, (#type_qualifier as q_e), xs)) ->
+		| lazy (`cons (q_p, (#FirstSet.type_qualifier as q_e), xs)) ->
 			let q = (q_p, q_e) in
 			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some q) &^ next in
 			(ps, `type_qualifier (q, next)), xs
-		| lazy (`cons (spec_p, (#function_specifier as spec_e), xs)) ->
+		| lazy (`cons (spec_p, (#FirstSet.function_specifier as spec_e), xs)) ->
 			let spec = (spec_p, spec_e) in
 			let next, xs = parse_declaration_specifiers_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
@@ -1982,7 +1982,7 @@ struct
 		: declaration_specifiers opt * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_declaration_specifiers ~has_type error lang typedefs xs in
 			`some r, xs
@@ -2059,13 +2059,13 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_type_specifier | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_type_specifier' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: type_specifier p * 'a in_t =
 	(
 		begin match xs with
 		| lazy (`cons (spec_p, (#FirstSet.simple_type_specifier as spec_e), xs)) ->
 			(spec_p, spec_e), xs
-		| lazy (`cons (a, (#struct_or_union as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.struct_or_union as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let (ps, sous), xs = parse_struct_or_union_specifier error lang typedefs xs in
 			(ps, `struct_or_union_specifier sous), xs
@@ -2082,7 +2082,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * struct_or_union * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.struct_or_union * 'a in_t] lazy_t)
 		: struct_or_union_specifier p * 'a in_t =
 	(
 		let handle_body h attrs1 n l_c xs = (
@@ -2093,7 +2093,7 @@ struct
 			(ps, `with_body (h, attrs1, n, l_c, decls, r_curly, attrs2)), xs
 		) in
 		begin match xs with
-		| lazy (`cons (su_p, (#struct_or_union as su_e), xs)) ->
+		| lazy (`cons (su_p, (#FirstSet.struct_or_union as su_e), xs)) ->
 			let h = (su_p, su_e) in
 			let attrs1, xs = parse_attribute_list_option error lang typedefs xs in
 			begin match xs with
@@ -2122,7 +2122,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_struct_declaration | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_struct_declaration' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: struct_declaration_list p * 'a in_t =
 	(
 		let rec loop (rs: struct_declaration_list p) (xs: 'a in_t): struct_declaration_list p * 'a in_t = (
@@ -2132,7 +2132,7 @@ struct
 				loop (ps, `cons (rs, param)) xs
 			) in
 			begin match xs with
-			| lazy (`cons (a, (#FirstSet.firstset_of_struct_declaration as it), xr)) ->
+			| lazy (`cons (a, (#FirstSet.firstset_of_struct_declaration' as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_cons xs
 			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
@@ -2152,7 +2152,7 @@ struct
 		: struct_declaration_list e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_struct_declaration as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_struct_declaration' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_struct_declaration_list error lang typedefs xs in
 			`some r, xs
@@ -2168,7 +2168,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_struct_declaration | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_struct_declaration' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: struct_declaration p * 'a in_t =
 	(
 		let merge_specifier_qualifier_list sou q = (
@@ -2181,7 +2181,7 @@ struct
 		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
 			let ex = `some (ex_p, ex_e) in
 			begin match xs with
-			| lazy (`cons (a, (#struct_or_union as it), xr)) ->
+			| lazy (`cons (a, (#FirstSet.struct_or_union as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				let sou, xs = parse_struct_or_union_specifier error lang typedefs xs in
 				begin match xs with
@@ -2204,7 +2204,7 @@ struct
 				let `some (ps, ()) = ex &^ q &^ d &^ semicolon in
 				(ps, `named (ex, q, d, semicolon)), xs
 			end
-		| lazy (`cons (a, (#struct_or_union as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.struct_or_union as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let sou, xs = parse_struct_or_union_specifier error lang typedefs xs in
 			begin match xs with
@@ -2220,7 +2220,7 @@ struct
 				let `some (ps, ()) = q &^ d &^ semicolon in
 				(ps, `named (`none, q, d, semicolon)), xs
 			end
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | #type_qualifier | #identifier as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_specifier_qualifier_list' | #FirstSet.typedef_name as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let q, xs = parse_specifier_qualifier_list error lang typedefs xs in
 			let q = `some q in
@@ -2234,7 +2234,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_type_specifier | type_qualifier | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_specifier_qualifier_list' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: specifier_qualifier_list p * 'a in_t =
 	(
 		let handle_type_specifier xs = (
@@ -2244,13 +2244,13 @@ struct
 			(ps, `type_specifier (spec, next)), xs
 		) in
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
 		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
-		| lazy (`cons (q_p, (#type_qualifier as q_e), xs)) ->
+		| lazy (`cons (q_p, (#FirstSet.type_qualifier as q_e), xs)) ->
 			let q = q_p, q_e in
 			let next, xs = parse_specifier_qualifier_list_option ~has_type error lang typedefs xs in
 			let `some (ps, ()) = (`some q) &^ next in
@@ -2267,7 +2267,7 @@ struct
 		: specifier_qualifier_list opt * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | #type_qualifier as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_specifier_qualifier_list' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_specifier_qualifier_list ~has_type error lang typedefs xs in
 			`some r, xs
@@ -2286,7 +2286,7 @@ struct
 		: specifier_qualifier_list e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | #type_qualifier as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_specifier_qualifier_list' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_specifier_qualifier_list error lang typedefs xs in
 			`some r, xs
@@ -2306,7 +2306,7 @@ struct
 		: struct_declarator_list e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`colon | #FirstSet.firstset_of_declarator as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_struct_declarator as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let rec loop rs xs = (
 				begin match xs with
@@ -2331,7 +2331,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [`colon | FirstSet.firstset_of_declarator] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.firstset_of_struct_declarator * 'a in_t] lazy_t)
 		: struct_declarator p * 'a in_t =
 	(
 		begin match xs with
@@ -2362,7 +2362,7 @@ struct
 		: struct_declarator e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`colon | #FirstSet.firstset_of_declarator as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_struct_declarator as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_struct_declarator error lang typedefs xs in
 			`some r, xs
@@ -2419,7 +2419,7 @@ struct
 		: enumerator_list e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`ident _ as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.identifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let rec loop rs xs = (
 				begin match xs with
@@ -2442,7 +2442,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * identifier * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.identifier * 'a in_t] lazy_t)
 		: enumerator p * 'a in_t =
 	(
 		begin match xs with
@@ -2466,7 +2466,7 @@ struct
 		: enumerator e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`ident _ as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.identifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_enumerator error lang typedefs xs in
 			`some r, xs
@@ -2566,10 +2566,10 @@ struct
 					loop (ps, `function_type (item, l_paren, params, r_paren)) xs
 				) in
 				begin match xs with
-				| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+				| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 					let xs = lazy (`cons (a, it, xr)) in
 					handle_function_type xs
-				| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
+				| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
 					let xs = lazy (`cons (a, it, xr)) in
 					handle_function_type xs
 				| _ ->
@@ -2589,7 +2589,7 @@ struct
 			end
 		) in
 		begin match xs with
-		| lazy (`cons (id_p, (`ident _ as id_e), xs)) ->
+		| lazy (`cons (id_p, (#FirstSet.identifier as id_e), xs)) ->
 			loop (id_p, id_e) xs
 		| lazy (`cons (id_p, (`chars_literal ident), xs)) ->
 			assert use_string;
@@ -2654,10 +2654,10 @@ struct
 		: type_qualifier_list opt * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (q_p, (#type_qualifier as q_e), xs)) ->
+		| lazy (`cons (q_p, (#FirstSet.type_qualifier as q_e), xs)) ->
 			let rec loop (rs: type_qualifier_list p) (xs: 'a in_t) = (
 				begin match xs with
-				| lazy (`cons (q_p, (#type_qualifier as q_e), xs)) ->
+				| lazy (`cons (q_p, (#FirstSet.type_qualifier as q_e), xs)) ->
 					let q = q_p, q_e in
 					let `some (ps, ()) = (`some rs) & (`some q) in
 					loop (ps, `cons (rs, q)) xs
@@ -2673,7 +2673,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: parameter_type_list p * 'a in_t =
 	(
 		let params, xs = parse_parameter_list error lang typedefs xs in
@@ -2691,7 +2691,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: parameter_list p * 'a in_t =
 	(
 		let rec loop (rs: parameter_list p) (xs: 'a in_t): parameter_list p * 'a in_t = (
@@ -2713,7 +2713,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: parameter_declaration p * 'a in_t =
 	(
 		let has_error = ref false in
@@ -2737,11 +2737,11 @@ struct
 		: parameter_declaration e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_parameter_declaration error lang typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
+		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_parameter_declaration error lang typedefs xs in
 			`some r, xs
@@ -2753,7 +2753,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(_: language)
 		(_: typedef_set)
-		(xs: [`cons of ranged_position * [`ident of string] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.identifier * 'a in_t] lazy_t)
 		: identifier_list p * 'a in_t =
 	(
 		let rec loop (rs: identifier_list p) (xs: 'a in_t) = (
@@ -2761,7 +2761,7 @@ struct
 			| lazy (`cons (comma_p, (`comma as comma_e), xs)) ->
 				let comma = (comma_p, comma_e) in
 				begin match xs with
-				| lazy (`cons (ident_p, (`ident _ as ident_e), xs)) ->
+				| lazy (`cons (ident_p, (#FirstSet.identifier as ident_e), xs)) ->
 					let ident = `some (ident_p, ident_e) in
 					let `some (ps, ()) = (`some rs) & ident in
 					loop (ps, `cons (rs, comma, ident)) xs
@@ -2774,7 +2774,7 @@ struct
 				rs, xs
 			end
 		) in
-		let lazy (`cons (ident_p, (`ident _ as ident_e), xs)) = xs in
+		let lazy (`cons (ident_p, (#FirstSet.identifier as ident_e), xs)) = xs in
 		loop (ident_p, `nil ident_e) xs
 	) and parse_identifier_list_option
 		(error: ranged_position -> string -> unit)
@@ -2784,7 +2784,7 @@ struct
 		: identifier_list opt * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`ident _ as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.identifier as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let list, xs = parse_identifier_list error lang typedefs xs in
 			`some list, xs
@@ -2795,7 +2795,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_type_name | identifier] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_type_name' | FirstSet.typedef_name] * 'a in_t] lazy_t)
 		: type_name p * 'a in_t =
 	(
 		let spec, xs = parse_specifier_qualifier_list error lang typedefs xs in
@@ -2810,7 +2810,7 @@ struct
 		: type_name e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_name as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_type_name error lang typedefs xs in
 			`some r, xs
@@ -2909,7 +2909,7 @@ struct
 						(ps, `function_type (item, l_paren, `some params, r_paren)), xs
 					) in
 					begin match xs with
-					| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
+					| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 						let xs = lazy (`cons (a, it, xr)) in
 						handle_function_type xs
 					| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
@@ -2942,7 +2942,7 @@ struct
 			end
 		) in
 		begin match xs with
-		| lazy (`cons (_, `l_paren, lazy (`cons (_, #FirstSet.firstset_of_type_specifier, _)))) ->
+		| lazy (`cons (_, `l_paren, lazy (`cons (_, #FirstSet.firstset_of_type_specifier', _)))) ->
 			loop `none xs
 		| lazy (`cons (_, `l_paren, lazy (`cons (_, `ident s, _)))) when TypedefSet.mem s typedefs ->
 			loop `none xs
@@ -3107,11 +3107,11 @@ struct
 		: statement p * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_asm as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.asm as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let (asm_p, asm_e), xs = parse_inline_assembler ~semicolon_need error lang typedefs xs in
 			(asm_p, `asm asm_e), xs
-		| lazy (`cons (id_p, (#identifier as id_e),
+		| lazy (`cons (id_p, (#FirstSet.identifier as id_e),
 			lazy (`cons (colon_p, (`colon as colon_e), xs))))
 		->
 			let id = id_p, id_e in
@@ -3247,7 +3247,7 @@ struct
 			let for_t = for_p, for_e in
 			let l_paren, xs = parse_l_paren_or_error error xs in
 			begin match xs with
-			| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
+			| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_with_declaration for_t l_paren xs
 			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
@@ -3373,7 +3373,7 @@ struct
 			(ps, (`declaration decl)), typedefs, xs
 		) in
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_declaration xs
 		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
@@ -3401,7 +3401,7 @@ struct
 			begin match xs with
 			| lazy (`nil a) ->
 				rs, typedefs, (lazy (`nil a))
-			| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers | `sharp_PRAGMA as it), xr)) ->
+			| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' | `sharp_PRAGMA as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_external_declaration xs
 			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
@@ -3420,7 +3420,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(lang: language)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers | identifier | `sharp_PRAGMA] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [FirstSet.firstset_of_declaration_specifiers' | FirstSet.typedef_name | `sharp_PRAGMA] * 'a in_t] lazy_t)
 		: external_declaration p * typedef_set * 'a in_t =
 	(
 		begin match xs with
@@ -3428,15 +3428,14 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let (pragma_p, pragma_e), xs = parse_pragma error lang typedefs xs in
 			(pragma_p, `pragma pragma_e), typedefs, xs
-		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers | #identifier as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' | #FirstSet.typedef_name as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let specifiers, xs = parse_declaration_specifiers error lang typedefs xs in
 			let declarators, xs = parse_init_declarator_list_option error lang typedefs xs in
 			begin match xs with
 			| lazy (`cons (_, `l_curly, _))
-			| lazy (`cons (_, #FirstSet.firstset_of_type_specifier, _))
-			| lazy (`cons (_, `ident _, _))
-			| lazy (`cons (_, (`__asm | `__asm__), _)) ->
+			| lazy (`cons (_, (#FirstSet.firstset_of_type_specifier' | #FirstSet.typedef_name), _)) (* declaration-list *)
+			| lazy (`cons (_, #FirstSet.asm, _)) ->
 				let declarator =
 					begin match declarators with
 					| `some (decl_p, `nil (`no_init declarator)) ->
@@ -3447,7 +3446,7 @@ struct
 					end
 				in
 				begin match xs with
-				| lazy (`cons (asm_p, ((`__asm | `__asm__) as asm_e), xs)) ->
+				| lazy (`cons (asm_p, (#FirstSet.asm as asm_e), xs)) ->
 					let asm = asm_p, asm_e in
 					let l_paren, xs = parse_l_paren_or_error error xs in
 					let alias_name, xs = parse_chars_literal_or_error error lang typedefs xs in
@@ -3502,11 +3501,11 @@ struct
 		: declaration_list opt * typedef_set * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | `ident _ as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' | #FirstSet.typedef_name as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let rec loop rs typedefs xs = (
 				begin match xs with
-				| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier | `ident _ as it), xr)) ->
+				| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' | #FirstSet.typedef_name as it), xr)) ->
 					let xs = lazy (`cons (a, it, xr)) in
 					let second, typedefs, xs = parse_declaration error lang typedefs xs in
 					let `some (ps, ()) = (`some rs) & (`some second) in
