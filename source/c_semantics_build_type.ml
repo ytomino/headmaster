@@ -23,10 +23,139 @@ type language_typedef =
 	[`typedef_size_t of unsigned_int_prec] *
 	[`typedef_wchar_t of int_prec];;
 
+module type TypingType = sig
+	module Literals: LiteralsType;;
+	module Semantics: SemanticsType
+		with module Literals := Literals;;
+	
+	(* type compatibility *)
+	
+	type compatibility = [`just | `compatible | `error];;
+	
+	val type_ABI_compatibility:
+		dest:Semantics.all_type ->
+		source:Semantics.all_type ->
+		compatibility;;
+	val prototype_ABI_compatibility:
+		dest:Semantics.prototype ->
+		source:Semantics.prototype ->
+		compatibility;;
+	
+	(* predefined types *)
+	
+	val ready_predefined_types:
+		language ->
+		sizeof ->
+		language_typedef ->
+		Semantics.predefined_types;;
+	
+	(* derived types *)
+	
+	val find_const_type:
+		Semantics.all_type ->
+		Semantics.derived_types ->
+		[> Semantics.const_type] * Semantics.derived_types;;
+	val find_volatile_type:
+		Semantics.all_type ->
+		Semantics.derived_types ->
+		[> Semantics.volatile_type | `const of [> Semantics.volatile_type]] * Semantics.derived_types;;
+	val find_pointer_type:
+		Semantics.all_type ->
+		Semantics.derived_types ->
+		[> Semantics.pointer_type] * Semantics.derived_types;;
+	val find_block_pointer_type:
+		Semantics.function_type ->
+		Semantics.derived_types ->
+		[> `block_pointer of Semantics.function_type] * Semantics.derived_types;;
+	val find_array_type:
+		Literals.Integer.t option ->
+		Semantics.all_type ->
+		Semantics.derived_types ->
+		[> Semantics.array_type | `volatile of [> Semantics.array_type]
+			| `const of [> Semantics.array_type | `volatile of [> Semantics.array_type]]] * Semantics.derived_types;;
+	val find_restrict_type:
+		Semantics.pointer_type ->
+		Semantics.derived_types ->
+		[> Semantics.restrict_type] * Semantics.derived_types;;
+	
+	(* anonymous types *)
+	
+	val find_function_type:
+		Semantics.prototype ->
+		Semantics.source_item list ->
+		Semantics.function_type * Semantics.source_item list;;
+	
+	(* named types *)
+	
+	val find_enum:
+		(ranged_position * [`ident of string]) ->
+		Semantics.namespace ->
+		Semantics.source_item list ->
+		[> [> Semantics.opaquable_enum_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list;;
+	
+	val find_struct:
+		(ranged_position * [`ident of string]) ->
+		Semantics.namespace ->
+		Semantics.source_item list ->
+		[> [> Semantics.opaquable_struct_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list;;
+	
+	val find_union:
+		(ranged_position * [`ident of string]) ->
+		Semantics.namespace ->
+		Semantics.source_item list ->
+		[> [> Semantics.opaquable_union_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list;;
+	
+	val find_enum_by_element:
+		Semantics.enum_item ->
+		Semantics.predefined_types ->
+		Semantics.namespace ->
+		Semantics.all_type;;
+	
+	(* sizeof / alignof *)
+	
+	val sizeof_predefined_type:
+		[< predefined_type] ->
+		Semantics.predefined_types ->
+		int;;
+	val sizeof:
+		Semantics.all_type ->
+		Semantics.predefined_types ->
+		int option;;
+	
+	val alignof_predefined_type:
+		[< predefined_type] ->
+		Semantics.predefined_types ->
+		int;;
+	val alignof:
+		Semantics.all_type ->
+		Semantics.predefined_types ->
+		int option;;
+	val alignof_struct:
+		Semantics.struct_item list ->
+		Semantics.predefined_types ->
+		int option;;
+	
+	(* bit-field *)
+	
+	type bitfield_or_not = [`empty | `is_bitfield | `is_not_bitfield | `mixed];;
+	
+	val is_bitfield:
+		Semantics.struct_item list ->
+		bitfield_or_not;;
+	val fill_bitfield:
+		Semantics.predefined_types ->
+		Semantics.struct_item list ->
+		Semantics.struct_item list * [`error of Semantics.struct_item | `none];;
+	
+end;;
+
 module Typing
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	: TypingType
+		with module Literals := Literals
+		with module Semantics := Semantics =
 struct
 	open Literals;;
 	open Semantics;;
@@ -107,38 +236,6 @@ struct
 		) else (
 			min_compatibility r2 result
 		)
-	);;
-	
-	(* for making function_type *)
-	let prototype_eq (left: prototype) (right: prototype): bool = (
-		let d_conv, d_args, d_varargs, d_result = left in
-		let s_conv, s_args, s_varargs, s_result = right in
-		(* calling convention *)
-		if d_conv <> s_conv then false else
-		(* arguments *)
-		let result =
-			let rec loop (ds: variable list) (ss: variable list): bool = (
-				begin match ds, ss with
-				| d :: dr, s :: sr ->
-					let `named (_, d_n, `variable (d_t, _), d_attr) = d in
-					let `named (_, s_n, `variable (s_t, _), s_attr) = s in
-					if d_n <> "" || s_n <> "" then false else (* named parameter is not eq, always *)
-					if d_t != s_t then false else
-					if d_attr <> s_attr then false else
-					loop dr sr
-				| [], [] ->
-					true
-				| _ :: _, [] | [], _ :: _ ->
-					false
-				end
-			) in
-			loop d_args s_args
-		in
-		if not result then false else
-		(* varargs *)
-		if d_varargs <> s_varargs then false else
-		(* result *)
-		d_result == s_result
 	);;
 	
 	(* predefined types *)
@@ -441,6 +538,39 @@ struct
 		end
 	);;
 	
+	(* anonymous types *)
+	
+	let prototype_eq (left: prototype) (right: prototype): bool = (
+		let d_conv, d_args, d_varargs, d_result = left in
+		let s_conv, s_args, s_varargs, s_result = right in
+		(* calling convention *)
+		if d_conv <> s_conv then false else
+		(* arguments *)
+		let result =
+			let rec loop (ds: variable list) (ss: variable list): bool = (
+				begin match ds, ss with
+				| d :: dr, s :: sr ->
+					let `named (_, d_n, `variable (d_t, _), d_attr) = d in
+					let `named (_, s_n, `variable (s_t, _), s_attr) = s in
+					if d_n <> "" || s_n <> "" then false else (* named parameter is not eq, always *)
+					if d_t != s_t then false else
+					if d_attr <> s_attr then false else
+					loop dr sr
+				| [], [] ->
+					true
+				| _ :: _, [] | [], _ :: _ ->
+					false
+				end
+			) in
+			loop d_args s_args
+		in
+		if not result then false else
+		(* varargs *)
+		if d_varargs <> s_varargs then false else
+		(* result *)
+		d_result == s_result
+	);;
+	
 	let find_function_type (prototype: prototype) (source: source_item list)
 		: function_type * source_item list =
 	(
@@ -543,6 +673,24 @@ struct
 			let namespace = {namespace with ns_opaque_union = StringMap.add id_e (item :> opaque_union_type) namespace.ns_opaque_union} in
 			let source = (item :> source_item) :: source in
 			item, namespace, source
+	);;
+	
+	(* enum element *)
+	
+	let find_enum_by_element
+		(element: enum_item)
+		(predefined_types: predefined_types)
+		(namespace: namespace)
+		: all_type =
+	(
+		begin try
+			let `named (_, element_name, `enum_element _, _) = element in
+			let result = StringMap.find element_name namespace.ns_enum_of_element in
+			(result :> all_type)
+		with Not_found ->
+			(* when building emum type, ns_enum_of_element has not been set yet *)
+			find_predefined_type `signed_int predefined_types
+		end
 	);;
 	
 	(* sizeof / alignof *)
@@ -760,7 +908,7 @@ struct
 		loop 1 items
 	);;
 	
-	(* for analyzer *)
+	(* bit-field *)
 	
 	type bitfield_or_not = [`empty | `is_bitfield | `is_not_bitfield | `mixed];;
 	
@@ -790,11 +938,9 @@ struct
 	);;
 	
 	let fill_bitfield
-		(error: ranged_position -> string -> unit)
 		(predefined_types: predefined_types)
-		(ps: ranged_position)
 		(xs: struct_item list)
-		: struct_item list =
+		: struct_item list * [`error of struct_item | `none] =
 	(
 		let rec loop xs total_bytes bits = (
 			begin match xs with
@@ -808,15 +954,16 @@ struct
 							let total_bytes = total_bytes + item_align in
 							let x = item_name, item_type, Some (total_bytes * 8, item_bits, true), item_attrs in
 							let bits = item_bits in
-							x :: loop xr total_bytes bits
+							let rr, error_report = loop xr total_bytes bits in
+							x :: rr, error_report
 						) else (
 							let x = item_name, item_type, Some (total_bytes * 8 + bits, item_bits, true), item_attrs in
 							let bits = bits + item_bits in
-							x :: loop xr total_bytes bits
+							let rr, error_report = loop xr total_bytes bits in
+							x :: rr, error_report
 						)
 					| None ->
-						error ps (item_name ^ " is not able to be aligned.");
-						[]
+						[], `error x
 					end
 				| item_name, item_type, None, item_attrs ->
 					begin match sizeof item_type predefined_types with
@@ -827,18 +974,17 @@ struct
 							let total_bytes = (total_bytes + item_align - 1) / item_align * item_align in
 							let x = item_name, item_type, Some (total_bytes * 8, item_size * 8, false), item_attrs in
 							let total_bytes = total_bytes + item_size in
-							x :: loop xr total_bytes 0
+							let rr, error_report = loop xr total_bytes 0 in
+							x :: rr, error_report
 						| None ->
-							error ps (item_name ^ " is not able to be aligned.");
-							[]
+							[], `error x
 						end
 					| None ->
-						error ps (item_name ^ " is not able to be sized.");
-						[]
+						[], `error x
 					end
 				end
 			| [] ->
-				[]
+				[], `none
 			end
 		) in
 		loop xs 0 0

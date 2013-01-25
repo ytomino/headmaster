@@ -43,28 +43,6 @@ type operator = [
 	| `vertical
 	| `xor_assign];;
 
-(* storage class *)
-
-type storage_class = [
-	| `typedef
-	| `extern
-	| `static
-	| `auto
-	| `register];;
-
-(* type specifier *)
-
-type type_specifier = [
-	| `imaginary
-	| `complex];;
-
-(* type qualifier *)
-
-type type_qualifier = [
-	| `const
-	| `restrict
-	| `volatile];;
-
 (* (6.5.16) assignment-operator *)
 
 type assignment_operator = [
@@ -79,21 +57,6 @@ type assignment_operator = [
 	| `and_assign
 	| `xor_assign
 	| `or_assign];;
-
-(* calling conventions *)
-
-type calling_convention = [`cdecl | `stdcall | `fastcall | `thiscall];;
-type varargs_opt = [`varargs | `none];;
-
-(* source info *)
-
-type extra_info = {
-	ei_fenv: bool; (* #pragma GCC fenv *)
-	ei_system_header: bool};; (* #pragma GCC system_header *)
-
-let no_extra_info = {
-	ei_fenv = false;
-	ei_system_header = false};;
 
 module StringMap = struct
 	include Map.Make (String);;
@@ -110,6 +73,11 @@ end;;
 
 module Semantics (Literals: LiteralsType) = struct
 	open Literals;;
+	
+	(* calling conventions *)
+	
+	type calling_convention = [`cdecl | `stdcall | `fastcall | `thiscall];;
+	type varargs_opt = [`varargs | `none];;
 	
 	(* attributes *)
 	
@@ -178,6 +146,13 @@ module Semantics (Literals: LiteralsType) = struct
 		at_weak_link = `none};;
 	
 	(* items *)
+	
+	type storage_class = [
+		| `typedef
+		| `extern
+		| `static
+		| `auto
+		| `register];;
 	
 	type literal_value = [
 		| `int_literal of int_prec * Integer.t
@@ -289,8 +264,8 @@ module Semantics (Literals: LiteralsType) = struct
 		| `defined_operator of operator
 		| `defined_attributes
 		| `defined_storage_class of storage_class
-		| `defined_type_specifier of type_specifier
-		| `defined_type_qualifier of type_qualifier
+		| `defined_type_specifier of [`imaginary | `complex]
+		| `defined_type_qualifier of [`const | `restrict | `volatile]
 		| `defined_typedef of all_type
 		| `defined_opaque_type of opaque_type_var with_name (* tag *)
 		| `defined_element_access of struct_or_union_type * struct_item list
@@ -950,6 +925,16 @@ module Semantics (Literals: LiteralsType) = struct
 		ignore (exists_in_statement stmt_f2 expr_f2 stmt);
 		!result
 	);;
+	
+	(* source info *)
+	
+	type extra_info = {
+		ei_fenv: bool; (* #pragma GCC fenv *)
+		ei_system_header: bool};; (* #pragma GCC system_header *)
+	
+	let no_extra_info = {
+		ei_fenv = false;
+		ei_system_header = false};;
 	
 	(* mapping options *)
 	

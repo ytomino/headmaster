@@ -40,10 +40,10 @@ module type DefineAnalyzerType = sig
 		Semantics.predefined_types ->
 		Semantics.derived_types ->
 		Semantics.namespace ->
-		(Semantics.source_item list * extra_info) StringMap.t ->
+		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
 		Semantics.mapping_options ->
 		(define Syntax.p) StringMap.t ->
-		Semantics.derived_types * (Semantics.source_item list * extra_info) StringMap.t;;
+		Semantics.derived_types * (Semantics.source_item list * Semantics.extra_info) StringMap.t;;
 	
 end;;
 

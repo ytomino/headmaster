@@ -1,7 +1,8 @@
 open C_filename;;
 open C_literals;;
 open C_semantics;;
-open C_semantics_typing;;
+open C_semantics_build_expr;;
+open C_semantics_build_type;;
 open C_syntax;;
 open C_syntax_traversing;;
 open Position;;
@@ -38,6 +39,7 @@ module Analyzer
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
 	module Typing = Typing (Literals) (Semantics);;
+	module Expressing = Expressing (Literals) (Semantics) (Typing);;
 	open Literals;;
 	open Semantics;;
 	
@@ -46,7 +48,9 @@ struct
 	let is_undeclared (s: string): string =
 		s ^ " is undeclared.";;
 	let is_not_a_struct_or_union (s: string): string =
-		s ^ " is not a struct or union.";
+		s ^ " is not a struct or union.";;
+	let unalignable_struct_item (s: string): string =
+		"the type of " ^ s ^ " can not be aligned.";;
 	
 	(* in *)
 	
@@ -77,24 +81,23 @@ struct
 		ns_opaque_union = StringMap.empty;
 		ns_union = StringMap.empty};;
 	
-	let to_opaque_mapping
-		(opaques: 'a StringMap.t)
-		(fulls: 'b StringMap.t)
-		: ('a * 'b) StringMap.t =
-	(
-		let add_to_opaque_mapping
-			(opaques: 'a StringMap.t)
-			(tag: string)
-			(full: 'b)
-			(r: ('a * 'b) StringMap.t)
-			: ('a * 'b) StringMap.t =
-		(
-			StringMap.add tag (StringMap.find tag opaques, full) r
-		) in
-		StringMap.fold (add_to_opaque_mapping opaques) fulls StringMap.empty
-	);;
-	
 	let opaque_mapping (namespace: namespace): opaque_mapping = (
+		let to_opaque_mapping (type a) (type b)
+			(opaques: a StringMap.t)
+			(fulls: b StringMap.t)
+			: (a * b) StringMap.t =
+		(
+			let add_to_opaque_mapping
+				(opaques: a StringMap.t)
+				(tag: string)
+				(full: b)
+				(r: (a * b) StringMap.t)
+				: (a * b) StringMap.t =
+			(
+				StringMap.add tag (StringMap.find tag opaques, full) r
+			) in
+			StringMap.fold (add_to_opaque_mapping opaques) fulls StringMap.empty
+		) in
 		to_opaque_mapping namespace.ns_opaque_enum namespace.ns_enum,
 		to_opaque_mapping namespace.ns_opaque_struct namespace.ns_struct,
 		to_opaque_mapping namespace.ns_opaque_union namespace.ns_union
@@ -401,216 +404,6 @@ struct
 			)
 		in
 		derived_types, t
-	);;
-	
-	(* expression *)
-	
-	(* implicit conversion *)
-	let conv_expr (t: all_type) (expr: expression): expression = (
-		begin match resolve_typedef ~stop_on_language_typedef:true t with
-		| #predefined_numeric_type as t1 ->
-			begin match resolve_typedef ~stop_on_language_typedef:true (snd expr) with
-			| #predefined_numeric_type as t2 when t1 != t2 ->
-				`implicit_conv expr, t
-			| `named (_, _, `typedef _, _) ->
-				`implicit_conv expr, t  (* language typedef -> predefined type *)
-			| _ ->
-				expr
-			end
-		| `named (_, _, `typedef _, _) as t1 ->
-			if resolve_typedef ~stop_on_language_typedef:true (snd expr) != t1 then (
-				`implicit_conv expr, t (* predefined type -> language typedef *)
-			) else (
-				expr
-			)
-		| `pointer `void | `pointer (`const `void) ->
-			begin match expr with
-			| _, `pointer t2 when t2 != t ->
-				`implicit_conv expr, t (*  any type * -> void * *)
-			| _ ->
-				expr
-			end
-		| `pointer x ->
-			begin match expr with
-			| `chars_literal _, `array (_, `char) when (match x with `const `char -> true | _ -> false) ->
-				`implicit_conv expr, t (* char array literal -> char const * *)
-			| `cast (`int_literal (_, n), _ as z), t2
-			| `explicit_conv (`int_literal (_, n), _ as z), t2
-			| `implicit_conv (`int_literal (_, n), _ as z), t2
-				when (match resolve_typedef t2 with `pointer `void -> true | _ -> false)
-					&& Integer.compare n Integer.zero = 0
-			->
-				`implicit_conv z, t (* (void * )NULL -> (any type * )NULL *)
-			| _, `pointer `void
-			| _, `pointer (`const `void) ->
-				`implicit_conv expr, t (* void * -> any type * *)
-			| _ ->
-				expr
-			end
-		| _ ->
-			expr
-		end
-	);;
-	
-	let zero_expression
-		(error: ranged_position -> string -> unit)
-		(ps: ranged_position)
-		(t: not_qualified_type)
-		: expression =
-	(
-		begin match t with
-		| `char ->
-			`char_literal '\x00', (t :> all_type)
-		| _ ->
-			error ps "unimplemented!";
-			assert false
-		end
-	);;
-	
-	let integer_cast
-		(predefined_types: predefined_types)
-		(t: int_prec)
-		(x: Integer.t): expression =
-	(
-		let bit_size = Typing.sizeof_predefined_type t predefined_types * 8 in
-		let bits = Integer.sub (Integer.shift_left Integer.one bit_size) Integer.one in
-		let x2 = Integer.logand x bits in
-		begin match t with
-		| `signed_char | `signed_short | `signed_int | `signed_long | `signed_long_long ->
-			let x3 =
-				if Integer.compare x Integer.zero >= 0 then x2 else
-				Integer.logor x2 (Integer.shift_left (Integer.of_int ~-1) bit_size)
-			in
-			`int_literal (t, x3), (t :> all_type)
-		| `unsigned_char | `unsigned_short | `unsigned_int | `unsigned_long | `unsigned_long_long ->
-			`int_literal (t, x2), (t :> all_type)
-		end
-	);;
-	
-	let int_prec (prec1: int_prec) (prec2: int_prec): int_prec = (
-		begin match prec1, prec2 with
-		| `unsigned_long_long, _ | _, `unsigned_long_long -> `unsigned_long_long
-		| `signed_long_long, _ | _, `signed_long_long -> `signed_long_long
-		| `unsigned_long, _ | _, `unsigned_long -> `unsigned_long
-		| `signed_long, _ | _, `signed_long -> `signed_long
-		| `unsigned_int, _ | _, `unsigned_int -> `unsigned_int
-		| _ -> `signed_int
-		end
-	);;
-	
-	let float_prec (prec1: float_prec) (prec2: float_prec): [> float_prec] = (
-		begin match prec1, prec2 with
-		| `long_double, _ | _, `long_double -> `long_double
-		| `double, _ | _, `double -> `double
-		| `float, `float -> `float
-		end
-	);;
-	
-	let real_prec (prec1: real_prec) (prec2: real_prec): real_prec = (
-		begin match prec1, prec2 with
-		| `decimal128, _ | _, `decimal128 -> `decimal128
-		| `decimal64, _ | _, `decimal64 -> `decimal64
-		| `decimal32, _ | _, `decimal32 -> `decimal32
-		| (#float_prec as prec1), (#float_prec as prec2) -> float_prec prec1 prec2
-		end
-	);;
-	
-	let rec result_type_of
-		(op: [`add | `sub | `multiplicative | `bit | `conditional])
-		(t1: all_type)
-		(t2: all_type)
-		(predefined_types: predefined_types)
-		(derived_types: derived_types)
-		: all_type option * derived_types =
-	(
-		begin match resolve_typedef t1, resolve_typedef t2 with
-		| `bool, `bool ->
-			Some t1, derived_types
-		| (#int_prec as int_t), `bool
-		| `bool, (#int_prec as int_t) ->
-			Some int_t, derived_types
-		| (#int_prec as prec1), (#int_prec as prec2) ->
-			begin match op with
-			| `bit | `conditional when prec1 = prec2 ->
-				Some prec1, derived_types
-			| _ ->
-				Some (find_predefined_type (int_prec prec1 prec2) predefined_types), derived_types
-			end
-		| (#real_prec as real_t), #int_prec
-		| #int_prec, (#real_prec as real_t) ->
-			Some real_t, derived_types
-		| (#real_prec as prec1), (#real_prec as prec2) ->
-			Some (find_predefined_type (real_prec prec1 prec2) predefined_types), derived_types
-		| (`imaginary prec1), (`imaginary prec2) when op <> `multiplicative ->
-			Some (find_predefined_type (`imaginary (float_prec prec1 prec2)) predefined_types), derived_types
-		| (#float_prec as prec1), (`imaginary prec2 | `complex prec2)
-		| (`imaginary prec1 | `complex prec1), (#float_prec as prec2)
-		| (`imaginary prec1 | `complex prec1), (`imaginary prec2 | `complex prec2) ->
-			Some (find_predefined_type (`complex (float_prec prec1 prec2)) predefined_types), derived_types
-		| (`pointer _ as ptr_t), #int_prec
-		| (`restrict (`pointer _) as ptr_t), #int_prec when op = `add || op = `sub ->
-			Some ptr_t, derived_types
-		| #int_prec, (`pointer _ as ptr_t)
-		| #int_prec, (`restrict (`pointer _) as ptr_t) when op = `add ->
-			Some ptr_t, derived_types
-		| `array (_, elm_t), #int_prec when op = `add || op = `sub ->
-			let ptr_t, derived_types = Typing.find_pointer_type (elm_t :> all_type) derived_types in
-			Some ptr_t, derived_types
-		| #int_prec, `array (_, elm_t) when op = `add ->
-			let ptr_t, derived_types = Typing.find_pointer_type (elm_t :> all_type) derived_types in
-			Some ptr_t, derived_types
-		| `pointer _, `pointer _ when op = `sub ->
-			Some (find_ptrdiff_t predefined_types), derived_types
-		| `pointer ptr_t1, `pointer ptr_t2 when ptr_t1 == ptr_t2 && op = `conditional ->
-			Some ptr_t1, derived_types
-		| `volatile t1, _ ->
-			result_type_of op (t1 :> all_type) t2 predefined_types derived_types
-		| _, `volatile t2 ->
-			result_type_of op t1 (t2 :> all_type) predefined_types derived_types
-		| `const t1, _ ->
-			result_type_of op (t1 :> all_type) t2 predefined_types derived_types
-		| _, `const t2 ->
-			result_type_of op t1 (t2 :> all_type) predefined_types derived_types
-		| (`void as void_t), _
-		| _, (`void as void_t) when op = `conditional ->
-			Some void_t, derived_types
-		| (`named (_, _, `generic_type, _) as g_t), _
-		| _, (`named (_, _, `generic_type, _) as g_t) ->
-			Some g_t, derived_types
-		| _ ->
-			None, derived_types
-		end
-	);;
-	
-	let rec real_type_of (t: all_type) (predefined_types: predefined_types): all_type option = (
-		begin match t with
-		| #int_prec | #real_prec | `char | `bool as t ->
-			Some t
-		| `imaginary prec | `complex prec ->
-			Some (find_predefined_type prec predefined_types)
-		| `volatile t ->
-			real_type_of (t :> all_type) predefined_types
-		| `const t ->
-			real_type_of (t :> all_type) predefined_types
-		| _ ->
-			None
-		end
-	);;
-	
-	let find_enum_by_element
-		(element: enum_item)
-		(namespace: namespace)
-		(predefined_types: predefined_types)
-		: all_type =
-	(
-		begin try
-			let `named (_, element_name, `enum_element _, _) = element in
-			let result = StringMap.find element_name namespace.ns_enum_of_element in
-			(result :> all_type)
-		with Not_found ->
-			(* when building emum type, ns_enum_of_element has not been set yet *)
-			find_predefined_type `signed_int predefined_types
-		end
 	);;
 	
 	(* analyzing *)
@@ -1194,15 +987,15 @@ struct
 						| `bit | `conditional when prec1 = prec2 ->
 							prec1
 						| _ ->
-							int_prec prec1 prec2
+							Expressing.int_prec prec1 prec2
 						end
 					in
 					let result = int_f left right in
 					derived_types, Some (`int_literal (prec, result), find_predefined_type prec predefined_types)
 				| _ ->
-					begin match result_type_of op (snd left) (snd right) predefined_types derived_types with
+					begin match Expressing.result_type_of op (snd left) (snd right) predefined_types derived_types with
 					| Some result_type, derived_types ->
-						begin match f (conv_expr result_type left) (conv_expr result_type right) with
+						begin match f (Expressing.implicit_conv result_type left) (Expressing.implicit_conv result_type right) with
 						| Some x ->
 							derived_types, Some (x, result_type)
 						| None ->
@@ -1272,7 +1065,7 @@ struct
 			begin try
 				begin match StringMap.find name namespace.ns_namespace with
 				| `named (_, _, `enum_element _, _) as item ->
-					let t = find_enum_by_element item namespace predefined_types in
+					let t = Typing.find_enum_by_element item predefined_types namespace in
 					derived_types, source, Some (`enumerator item, t)
 				| `named (_, _, `function_forward (_, t), _) as item ->
 					derived_types, source, Some (`ref_function item, (t :> all_type))
@@ -1347,7 +1140,7 @@ struct
 				begin match left, right with
 				| Some left, Some right ->
 					(* treat a[i] as *(a + i) *)
-					begin match result_type_of `add (snd left) (snd right) predefined_types derived_types with
+					begin match Expressing.result_type_of `add (snd left) (snd right) predefined_types derived_types with
 					| Some added_type, derived_types ->
 						begin match dereference added_type with
 						| Some t ->
@@ -1400,7 +1193,7 @@ struct
 							let args =
 								List.fold_left2 (fun rs farg rarg ->
 									let `named (_, _, `variable (farg_t, _), _) = farg in
-									(conv_expr farg_t rarg) :: rs
+									(Expressing.implicit_conv farg_t rarg) :: rs
 								) [] args_of_prototype args
 							in
 							let args = List.rev args in
@@ -1550,13 +1343,13 @@ struct
 				let derived_types, source, right = handle_expression error predefined_types derived_types namespace source `rvalue right in
 				begin match right with
 				| Some right ->
-					derived_types, source, Some (conv_expr `bool right)
+					derived_types, source, Some (Expressing.implicit_conv `bool right)
 				| None ->
 					derived_types, source, None
 				end
 			| _ ->
 				let int_not x = (Integer.compare x Integer.zero = 0) in
-				handle_unary_bool (fun right -> Some (`not (conv_expr `bool right))) int_not right
+				handle_unary_bool (fun right -> Some (`not (Expressing.implicit_conv `bool right))) int_not right
 			end
 		| `sizeof_expr (_, expr) ->
 			begin match expr with
@@ -1580,7 +1373,7 @@ struct
 			) request right
 		| `real (_, right) ->
 			handle_unary (fun derived_types right ->
-				begin match real_type_of (snd right) predefined_types with
+				begin match Expressing.real_type_of (snd right) predefined_types with
 				| Some t ->
 					derived_types, Some (`real right, t)
 				| None ->
@@ -1591,7 +1384,7 @@ struct
 		| `imag (_, right) ->
 			handle_unary (fun derived_types right ->
 				(* __imag__ right return imaginary part of right with base floating type (not _Imaginary type) *)
-				begin match real_type_of (snd right) predefined_types with
+				begin match Expressing.real_type_of (snd right) predefined_types with
 				| Some t ->
 					derived_types, Some (`imag right, t)
 				| None ->
@@ -1617,14 +1410,14 @@ struct
 							(* folding (int)(T)(int)expr to (int)expr *)
 							begin match integer_of_expression expr with
 							| Some (_, expr) ->
-								derived_types, source, Some (integer_cast predefined_types int_t expr)
+								derived_types, source, Some (Expressing.int_conv predefined_types int_t expr)
 							| _ ->
 								derived_types, source, Some (`explicit_conv expr, t)
 							end
 						| _ ->
 							begin match integer_of_expression expr with
 							| Some (_, expr) ->
-								derived_types, source, Some (integer_cast predefined_types int_t expr)
+								derived_types, source, Some (Expressing.int_conv predefined_types int_t expr)
 							| _ ->
 								derived_types, source, Some (`cast expr, t)
 							end
@@ -1723,15 +1516,15 @@ struct
 				| Some cond, Some true_case, Some false_case ->
 					begin match (integer_of_expression cond), (integer_of_expression true_case), (integer_of_expression false_case) with
 					| Some (_, cond), Some (prec1, true_case), Some (prec2, false_case) ->
-						let prec = int_prec prec1 prec2 in
+						let prec = Expressing.int_prec prec1 prec2 in
 						let result = if Integer.compare cond Integer.zero <> 0 then true_case else false_case in
 						derived_types, source, Some (`int_literal (prec, result), find_predefined_type prec predefined_types)
 					| _ ->
-						begin match result_type_of `conditional (snd true_case) (snd false_case) predefined_types derived_types with
+						begin match Expressing.result_type_of `conditional (snd true_case) (snd false_case) predefined_types derived_types with
 						| Some t, derived_types ->
-							let cond = conv_expr `bool cond in
-							let true_case = conv_expr t true_case in
-							let false_case = conv_expr t false_case in
+							let cond = Expressing.implicit_conv `bool cond in
+							let true_case = Expressing.implicit_conv t true_case in
+							let false_case = Expressing.implicit_conv t false_case in
 							derived_types, source, Some (`cond (cond, true_case, false_case), t)
 						| None, derived_types ->
 							error (fst x) "type mismatch for cases of conditional-operator";
@@ -1752,7 +1545,7 @@ struct
 				begin match left, right with
 				| Some left, Some right ->
 					let left_t = snd left in
-					let right = conv_expr left_t right in
+					let right = Expressing.implicit_conv left_t right in
 					derived_types, source, Some (`assign (left, snd op, right), left_t)
 				| _ ->
 					derived_types, source, None
@@ -2170,7 +1963,13 @@ struct
 				let items =
 					begin match Typing.is_bitfield items with
 					| `is_bitfield | `mixed ->
-						Typing.fill_bitfield error predefined_types (fst decls) items (* normal members and bit-fields are mixed *)
+						(* normal members and bit-fields are mixed *)
+						let items, error_report = Typing.fill_bitfield predefined_types items in
+						begin match error_report with
+						| `error (item_name, _, _, _) -> error (fst decls) (unalignable_struct_item item_name)
+						| `none -> ()
+						end;
+						items
 					| `is_not_bitfield | `empty ->
 						items
 					end
@@ -2895,7 +2694,7 @@ struct
 			let result = handle_expression error predefined_types derived_types namespace source `rvalue (fst x, expr) in
 			begin match result with
 			| derived_types, sources, Some expr ->
-				derived_types, sources, Some (conv_expr required_type expr)
+				derived_types, sources, Some (Expressing.implicit_conv required_type expr)
 			| _ ->
 				result
 			end
@@ -2996,7 +2795,14 @@ struct
 				);
 				None
 			| `array (size, t) ->
-				if size > 0 then Some (zero_expression error (fst x) t) else None
+				if size <= 0 then None else
+				begin match Expressing.zero t with
+				| Some _ as zero ->
+					zero
+				| None ->
+					error (fst x) "unimplemented.";
+					assert false
+				end
 			end
 		in
 		derived_types, source, Some (`compound (List.rev list, zero), required_type)
@@ -3160,7 +2966,7 @@ struct
 				let derived_types, source, true_case = handle_statement_or_error ~control derived_types source true_case in
 				begin match expr with
 				| Some expr ->
-					let expr = conv_expr `bool expr in
+					let expr = Expressing.implicit_conv `bool expr in
 					derived_types, source, Some (`if_statement (expr, true_case, []))
 				| None ->
 					derived_types, source, None
@@ -3176,7 +2982,7 @@ struct
 				let derived_types, source, false_case = handle_statement_or_error ~control derived_types source false_case in
 				begin match expr with
 				| Some expr ->
-					let expr = conv_expr `bool expr in
+					let expr = Expressing.implicit_conv `bool expr in
 					derived_types, source, Some (`if_statement (expr, true_case, false_case))
 				| None ->
 					derived_types, source, None
@@ -3269,7 +3075,7 @@ struct
 				begin match expr with
 				| `some expr ->
 					let derived_types, source, expr = handle_expression error predefined_types derived_types namespace source `rvalue expr in
-					let expr = bind_option (conv_expr return_type) expr in
+					let expr = bind_option (Expressing.implicit_conv return_type) expr in
 					derived_types, source, Some (`return (expr, return_type))
 				| `none ->
 					derived_types, source, Some (`return (None, return_type))

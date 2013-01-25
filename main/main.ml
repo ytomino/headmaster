@@ -227,14 +227,14 @@ let defines: DP.define AST.p StringMap.t = DP.map error is_known_error options.l
 let (predefined_types: SEM.predefined_types),
 	(derived_types: SEM.derived_types),
 	(namespace: SEM.namespace),
-	(sources: (SEM.source_item list * extra_info) StringMap.t),
+	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t),
 	(mapping_options: SEM.mapping_options) = A.analyze error options.lang env.en_sizeof env.en_typedef env.en_builtin tu;;
 
 let (derived_types: SEM.derived_types),
-	(sources: (SEM.source_item list * extra_info) StringMap.t) = DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
+	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) = DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
 
 let (derived_types: SEM.derived_types),
-	(sources: (SEM.source_item list * extra_info) StringMap.t) = A.rev derived_types sources;;
+	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) = A.rev derived_types sources;;
 
 let opaque_mapping = A.opaque_mapping namespace;;
 
