@@ -446,6 +446,7 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	let rec resolve_typedef
 		?(stop_on_language_typedef: bool = false)
+		?(stop_on_anonymous: bool = false)
 		(t: all_type)
 		: all_type =
 	(
@@ -454,6 +455,13 @@ module Semantics (Literals: LiteralsType) = struct
 			when (
 				not stop_on_language_typedef
 				|| let (filename, _, _, _), _ = ps in not (is_special_filename filename))
+				&& (
+				not stop_on_anonymous
+				||
+					match t with
+					| `anonymous _ | `function_type _
+					| `pointer (`anonymous _ | `function_type _) -> false
+					| _ -> true)
 		->
 			resolve_typedef ~stop_on_language_typedef t
 		| _ ->

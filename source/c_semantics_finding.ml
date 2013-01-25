@@ -305,8 +305,10 @@ struct
 			| `cast ((_, t1) as expr), t2
 			| `explicit_conv ((_, t1) as expr), t2
 			| `implicit_conv ((_, t1) as expr), t2 ->
-				let t1 = resolve_typedef t1 in
-				let t2 = resolve_typedef t2 in
+				let t1a = resolve_typedef t1 ~stop_on_anonymous:true in
+				let t2a = resolve_typedef t2 ~stop_on_anonymous:true in
+				let t1 = resolve_typedef t1a in
+				let t2 = resolve_typedef t2a in
 				begin match t1, t2 with
 				| #int_prec, `pointer `void when is_static_expression expr ->
 					rs (* use System'To_Address *)
@@ -316,7 +318,7 @@ struct
 				| (`pointer _), _
 					when not (is_generic_type t1) && not (is_generic_type t2)
 				->
-					add t1 t2 rs
+					add t1a t2a rs
 				| _ ->
 					rs
 				end
