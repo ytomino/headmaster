@@ -11,6 +11,20 @@ Example::
 
 	#pragma for Ada "errno.h" include "sys/errno.h"
 
+pragma for-monolithic_include
+-----------------------------
+
+Similar to ``for-include``, but ``FILE1`` assimilates ``FILE2`` completely.
+This pragma is the last resort to resolve some kind of circular dependency.
+
+Syntax::
+
+	#pragma for TARGET-LANG "FILE1" monolithic_include "FILE2"
+
+Example::
+
+	#pragma for Ada "errno.h" monolithic_include "sys/errno.h"
+
 pragma for-overload
 -------------------
 

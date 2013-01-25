@@ -551,6 +551,11 @@ struct
 								let file2, xs = parse_chars_literal_or_error error lang typedefs xs in
 								let `some (ps, ()) = (`some file1) & (`some inc) &^ file2 in
 								`some (ps, `includes (file1, `some inc, file2)), xs
+							| lazy (`cons (inc_p, `ident "monolithic_include", xs)) ->
+								let inc = inc_p, `MONOLITHIC_INCLUDE in
+								let file2, xs = parse_chars_literal_or_error error lang typedefs xs in
+								let `some (ps, ()) = (`some file1) & (`some inc) &^ file2 in
+								`some (ps, `monolithic_include (file1, `some inc, file2)), xs
 							| _ ->
 								error (LazyList.hd_a xs) "\"include\" was expected.";
 								let ps = fst file1 in

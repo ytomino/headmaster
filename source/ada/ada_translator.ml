@@ -54,7 +54,7 @@ struct
 	let filename_mapping = Naming.filename_mapping ada_package_name;;
 	
 	let dir_packages
-		(filename_mapping: string StringMap.t)
+		(filename_mapping: (string * string) StringMap.t)
 		: string list =
 	(
 		let add_parent package rs = (
@@ -74,7 +74,7 @@ struct
 			in
 			if rs == xs then rs else loop rs
 		) in
-		loop (StringMap.fold (fun _ -> add_parent) filename_mapping [])
+		loop (StringMap.fold (fun _ (_, package_name) -> add_parent package_name) filename_mapping [])
 	);;
 	
 	let items_per_package = Naming.items_per_module;;
@@ -105,7 +105,7 @@ struct
 		: string =
 	(
 		let (filename, _, _, _), _ = ps in
-		let _, nspp = StringMap.find filename name_mapping in
+		let _, _, nspp = StringMap.find filename name_mapping in
 		Naming.find kind name nspp
 	);;
 	
@@ -153,7 +153,7 @@ struct
 	(
 		let (filename, _, _, _), _ = ps in
 		begin try
-			let package_name, nspp = StringMap.find filename name_mapping in
+			let _, package_name, nspp = StringMap.find filename name_mapping in
 			let item_name = Naming.find kind name nspp in
 			add_package_name current ~hidden_packages ~hiding package_name item_name
 		with Not_found ->
@@ -177,7 +177,7 @@ struct
 			begin match Semantics.resolve_typedef t with
 			| `pointer (#Semantics.anonymous_type as item) ->
 				let (filename, _, _, _), _ = ps in
-				let package_name, _ = StringMap.find filename name_mapping in
+				let _, package_name, _ = StringMap.find filename name_mapping in
 				if package_name <> current then (
 					let hash = hash_name item in
 					(item, (package_name, hash)) :: anonymous_mapping
@@ -660,7 +660,7 @@ struct
 			end
 		in
 		let (filename, _, _, _), _ = ps in
-		let package_name, _ =
+		let _, package_name, _ =
 			let name_mapping, _ = mappings in
 			try StringMap.find filename name_mapping with
 			| Not_found -> failwith "pp_anonymous_type_name"
@@ -2617,9 +2617,9 @@ struct
 								(* should make mapping function in c_semantics_naming.ml... *)
 								let ada_name = ada_name_by_substitute ~prefix:"L_" ~postfix:"" name in
 								let (filename, _, _, _), _ = ps in
-								let package_name, map = StringMap.find filename name_mapping in
+								let rel_filename, package_name, map = StringMap.find filename name_mapping in
 								let map = Naming.add `namespace name ada_name map in
-								StringMap.add filename (package_name, map) name_mapping
+								StringMap.add filename (rel_filename, package_name, map) name_mapping
 							with Not_found -> assert false
 						in
 						(* un-modified variable to constant *)
@@ -2635,6 +2635,8 @@ struct
 						(* output *)
 						let mappings = Semantics.no_language_mapping, opaque_mapping, name_mapping, anonymous_mapping in
 						pp_named ff ~mappings ~enum_of_element:StringMap.empty ~current item;
+						name_mapping, anonymous_mapping
+					| `include_point _ ->
 						name_mapping, anonymous_mapping
 					end
 				) (name_mapping, []) items
@@ -3182,9 +3184,9 @@ struct
 							(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) arg_t
 							ada_name;
 						let (filename, _, _, _), _ = ps in
-						let package_name, map = StringMap.find filename name_mapping in
+						let rel_filename, package_name, map = StringMap.find filename name_mapping in
 						let map = Naming.add `namespace arg_name mutable_name map in
-						StringMap.add filename (package_name, map) name_mapping
+						StringMap.add filename (rel_filename, package_name, map) name_mapping
 					) name_mapping modified_arguments
 				in
 				(* end of local declarations *)
@@ -3263,6 +3265,16 @@ struct
 		| _ ->
 			assert false (* does not come here *)
 		end
+	);;
+	
+	let pp_include_point
+		(ff: formatter)
+		(name_mapping: name_mapping)
+		(header_filename: string)
+		: unit =
+	(
+		let rel_filename, _, _ = StringMap.find header_filename name_mapping in
+		fprintf ff "@ --  #include <%s>" rel_filename
 	);;
 	
 	let pp_dir_package_spec
@@ -3419,7 +3431,7 @@ struct
 							begin match t with
 							| `named (ps, _, _, _) ->
 								let (filename, _, _, _), _ = ps in
-								let package_name, _ = StringMap.find filename name_mapping in
+								let _, package_name, _ = StringMap.find filename name_mapping in
 								if package_name <> current then (
 									pp_derived_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, []) ~current
 										None (sized_array :> Semantics.derived_type)
@@ -3466,6 +3478,9 @@ struct
 							| `named _ as item ->
 								pp_named ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping) ~enum_of_element
 									~current ~hidden_packages item;
+								anonymous_mapping
+							| `include_point included ->
+								pp_include_point ff name_mapping included;
 								anonymous_mapping
 							end
 						in

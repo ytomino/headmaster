@@ -137,9 +137,11 @@ print_string "---- filename mapping ----\n";;
 
 let filename_mapping = T.filename_mapping remove_include_dir ada_mapping sources;;
 
-StringMap.iter (fun k v ->
+StringMap.iter (fun k (rk, v) ->
 	print_string k;
-	print_string " -> ";
+	print_string " (";
+	print_string rk;
+	print_string ") -> ";
 	print_string v;
 	print_newline ()
 ) filename_mapping;;
@@ -164,7 +166,7 @@ List.iter (fun x ->
 
 print_string "---- packages ----\n";;
 
-let items_per_package = T.items_per_package remove_include_dir ada_mapping filename_mapping sources;;
+let items_per_package = T.items_per_package ada_mapping filename_mapping sources;;
 let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package;;
 
 StringMap.iter (fun package items ->

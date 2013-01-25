@@ -186,13 +186,13 @@ struct
 	
 	let fold_tu
 		(f: 'b -> external_declaration p -> 'b)
-		(in_f: string -> 'a -> 'b)
+		(in_f: string list -> string -> 'a -> 'b)
 		(out_f: string -> 'b -> 'a)
 		(a: 'a)
 		(xs: translation_unit)
 		: 'a =
 	(
-		let rec make_list xs rs = (
+		let rec make_list xs rs: external_declaration p list = (
 			begin match xs with
 			| `nil ->
 				rs
@@ -200,31 +200,47 @@ struct
 				make_list xr (x :: rs)
 			end
 		) in
-		let rec folding f in_f out_f v (xs: external_declaration p list) = (
+		let included (filename: string) (ys: external_declaration p list): string list = (
+			let rec loop ys result = (
+				begin match ys with
+				| y :: yr ->
+					let ((previous_filename, _, _, _), _), _ = y in
+					if previous_filename = filename then result else
+					let result =
+						if List.mem previous_filename result then result else
+						previous_filename :: result
+					in
+					loop yr result
+				| [] ->
+					[]
+				end
+			) in
+			loop ys []
+		) in
+		let rec folding f in_f out_f v xs ys = (
 			begin match xs with
 			| x :: xr ->
 				let ((current_filename, _, _, _), _), _ = x in
-				let v = in_f current_filename v in
-				folding_in current_filename f in_f out_f (f v x) xr
+				let v = in_f [] current_filename v in
+				folding_in current_filename f in_f out_f (f v x) xr (x :: ys)
 			| [] ->
 				v
 			end
-		) and folding_in previous_filename f in_f out_f v (xs: external_declaration p list) = (
+		) and folding_in previous_filename f in_f out_f v xs ys = (
 			begin match xs with
 			| x :: xr ->
 				let ((current_filename, _, _, _), _), _ = x in
-				if current_filename = previous_filename then (
-					folding_in current_filename f in_f out_f (f v x) xr
-				) else (
-					let v = out_f previous_filename v in
-					let v = in_f current_filename v in
-					folding_in current_filename f in_f out_f (f v x) xr
-				)
+				let v =
+					if current_filename = previous_filename then v else
+					let included = included current_filename ys in
+					in_f included current_filename (out_f previous_filename v)
+				in
+				folding_in current_filename f in_f out_f (f v x) xr (x :: ys)
 			| [] ->
 				out_f previous_filename v
 			end
 		) in
-		folding f in_f out_f a (make_list xs [])
+		folding f in_f out_f a (make_list xs []) []
 	);;
 	
 end;;

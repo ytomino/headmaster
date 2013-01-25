@@ -269,9 +269,8 @@ let strip_package_name (name: string): string = (
 	end
 );;
 
-let ada_package_name (remove_include_dir: string -> string) (s: string): string = (
-	if is_special_filename s then "" else
-	let h = remove_include_dir s in
+let ada_package_name (h: string): string = (
+	if is_special_filename h then "" else
 	begin try
 		StringMap.find h special_package_name_mapping
 	with Not_found ->

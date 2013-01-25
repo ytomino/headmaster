@@ -60,7 +60,8 @@ module Syntax (Literals: LiteralsType) = struct
 	and language_mapping = [
 		| `type_mapping of [`TYPE] p * type_name e * [`assign] e * [`chars_literal of string] e
 		| `overload of [`OVERLOAD] p * specifier_qualifier_list e * declarator e
-		| `includes of [`chars_literal of string] p * [`INCLUDE] e * [`chars_literal of string] e]
+		| `includes of [`chars_literal of string] p * [`INCLUDE] e * [`chars_literal of string] e
+		| `monolithic_include of [`chars_literal of string] p * [`MONOLITHIC_INCLUDE] e * [`chars_literal of string] e]
 	(* attribute *)
 	and attribute_list = [
 		| `nil of attribute

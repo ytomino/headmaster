@@ -625,6 +625,18 @@ struct
 						| `error ->
 							derived_types, info, alignment_stack, mapping_options
 						end
+					| `monolithic_include ((_, `chars_literal file1), _, file2) ->
+						begin match file2 with
+						| `some (_, `chars_literal file2) ->
+							let mapping_options = {mapping_options with mo_language_mappings =
+								StringMap.modify (fun x ->
+									{x with lm_monolithic_include = (file1, file2) :: x.lm_monolithic_include}
+								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
+							in
+							derived_types, info, alignment_stack, mapping_options
+						| `error ->
+							derived_types, info, alignment_stack, mapping_options
+						end
 					end
 				| _ ->
 					derived_types, info, alignment_stack, mapping_options
@@ -3159,9 +3171,10 @@ struct
 		(x: Syntax.translation_unit)
 		: derived_types * namespace * (source_item list * extra_info) StringMap.t * alignment list * mapping_options =
 	(
-		let in_f (current_filename: string) (derived_types, namespace, sources, alignment_stack, mapping_options) = (
-			let current_source, current_info =
-				StringMap.find_or ~default:empty_source current_filename sources
+		let in_f (included: string list) (current_filename: string) (derived_types, namespace, sources, alignment_stack, mapping_options) = (
+			let current_source, current_info = StringMap.find_or ~default:empty_source current_filename sources in
+			let current_source =
+				List.fold_left (fun current_source h -> `include_point h :: current_source) current_source included
 			in
 			derived_types, namespace, sources, alignment_stack, mapping_options, current_source, current_info
 		) in

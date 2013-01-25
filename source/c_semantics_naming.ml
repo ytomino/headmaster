@@ -12,17 +12,16 @@ struct
 	open Semantics;;
 	
 	let find_by_relative_path
-		(remove_include_dir: string -> string)
 		(relative_filename: string)
-		(filename_mapping: string StringMap.t)
-		: string * string = (* header-filename, module-name *)
+		(filename_mapping: (string * string) StringMap.t)
+		: string * string * string = (* header-filename, header-filename(relative), module-name *)
 	(
-		let module Local = struct exception Break of (string * string) end in
+		let module Local = struct exception Break of (string * string * string) end in
 		begin try
-			let (_: string StringMap.t) =
-				StringMap.filter (fun k v ->
-					if remove_include_dir k = relative_filename then (
-						raise (Local.Break (k, v))
+			let (_: (string * string) StringMap.t) =
+				StringMap.filter (fun k (rk, v) ->
+					if rk = relative_filename then (
+						raise (Local.Break (k, rk, v))
 					) else (
 						false
 					)
@@ -35,33 +34,46 @@ struct
 	);;
 	
 	let filename_mapping
-		(module_name_of_h: (string -> string) -> string -> string)
+		(module_name_of_h: string -> string)
 		(remove_include_dir: string -> string)
 		(language_mapping: language_mapping)
 		(sources: (source_item list * extra_info) StringMap.t)
-		: string StringMap.t = (* header-filename -> module-name *)
+		: (string * string) StringMap.t = (* header-filename -> header-filename(relative) * module-name *)
 	(
 		let result =
 			StringMap.fold (fun k _ r ->
-				let module_name = module_name_of_h remove_include_dir k in
-				StringMap.add k module_name r
+				let rk = remove_include_dir k in
+				let h =
+					let rec find_loop xs = (
+						begin match xs with
+						| (h1, h2) :: xr ->
+							if h2 = rk then h1 else
+							find_loop xr
+						| [] ->
+							rk
+						end
+					) in
+					find_loop language_mapping.lm_monolithic_include
+				in
+				let module_name = module_name_of_h h in
+				StringMap.add k (rk, module_name) r
 			) sources StringMap.empty
 		in
+		(* for #pragma for-include making aliases into blank header *)
 		List.fold_left (fun r (k, _) ->
 			begin try
-				let (_, _: string * string) = find_by_relative_path remove_include_dir k result in
+				let (_, _, _: string * string * string) = find_by_relative_path k result in
 				r
 			with Not_found ->
-				let module_name = module_name_of_h (fun x -> x) k in
-				StringMap.add k module_name r
+				let module_name = module_name_of_h k in
+				StringMap.add k (k, module_name) r
 			end
 		) result language_mapping.lm_include
 	);;
 	
 	let items_per_module
-		(remove_include_dir: string -> string)
 		(language_mapping: language_mapping)
-		(filename_mapping: string StringMap.t)
+		(filename_mapping: (string * string) StringMap.t)
 		(sources: (source_item list * extra_info) StringMap.t)
 		: source_item list StringMap.t =
 	(
@@ -72,8 +84,8 @@ struct
 			let result =
 				List.fold_left (fun (items_pp: source_item list StringMap.t) (file1, file2) ->
 					begin try
-						let h, module1 = find_by_relative_path remove_include_dir file1 filename_mapping in
-						let _, module2 = find_by_relative_path remove_include_dir file2 filename_mapping in
+						let h, _, module1 = find_by_relative_path file1 filename_mapping in
+						let _, _, module2 = find_by_relative_path file2 filename_mapping in
 						let source_items: source_item list = StringMap.find module2 items_pp in
 						let dest_items: source_item list =
 							begin try
@@ -105,7 +117,7 @@ struct
 										in
 										alias :: added_dest_items
 									)
-								| #anonymous_type ->
+								| #anonymous_type | `include_point _ ->
 									added_dest_items
 								end
 							) source_items dest_items
@@ -123,19 +135,58 @@ struct
 			if result != items_per_module then include_loop result else
 			result
 		) in
-		include_loop (
+		(* separate items per filename *)
+		let result_per_filename =
 			StringMap.fold (fun k (items, _) r ->
 				if items = [] then r else
-				let module_name = StringMap.find k filename_mapping in
-				begin try
-					let xs = StringMap.find module_name r in
+				let rel_filename, module_name = StringMap.find k filename_mapping in
+				begin try (* same filenames are possible by #pragma include_next *)
+					let _, xs = StringMap.find rel_filename r in
 					let xs = List.append items xs in
-					StringMap.add module_name xs r
+					StringMap.add rel_filename (module_name, xs) r
 				with Not_found ->
-					StringMap.add module_name items r
+					StringMap.add rel_filename (module_name, items) r
 				end
 			) sources StringMap.empty
-		)
+		in
+		(* #pragma for-monolithic_include inserting items to `include_point _ *)
+		let result_per_filename =
+			List.fold_left (fun result_per_filename (includer, included) ->
+				begin try
+					let module_name, includer_items = StringMap.find includer result_per_filename in
+					let _, included_items = StringMap.find included result_per_filename in
+					let rec insert_loop xs ys = (
+						begin match xs with
+						| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = included ->
+							let merged_items = List.rev_append ys (x :: List.append included_items xr) in
+							StringMap.add includer (module_name, merged_items) (StringMap.remove included result_per_filename)
+						| x :: xr ->
+							insert_loop xr (x :: ys)
+						| [] ->
+							result_per_filename (* not found, no inserting *)
+						end
+					) in
+					insert_loop includer_items []
+				with Not_found ->
+					result_per_filename
+				end
+			) result_per_filename language_mapping.lm_monolithic_include
+		in
+		(* re-map per module-name *)
+		let result_per_module =
+			StringMap.fold (fun _ (module_name, items) result_per_module ->
+				assert (items <> []);
+				begin try
+					let xs = StringMap.find module_name result_per_module in
+					let xs = List.append items xs in
+					StringMap.add module_name xs result_per_module
+				with Not_found ->
+					StringMap.add module_name items result_per_module
+				end
+			) result_per_filename StringMap.empty
+		in
+		(* #pragma for-include making aliases *)
+		include_loop result_per_module
 	);;
 	
 	type name_mapping_per_module =
@@ -233,7 +284,7 @@ struct
 		let pair =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
-				| #anonymous_type
+				| #anonymous_type | `include_point _
 				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _) ->
 					pair
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->
@@ -258,7 +309,7 @@ struct
 		let result, _ =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
-				| #anonymous_type
+				| #anonymous_type | `include_point _
 				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _) ->
 					pair
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->
@@ -294,7 +345,8 @@ struct
 		result
 	);;
 	
-	type name_mapping = (string * name_mapping_per_module) StringMap.t;;
+	type name_mapping = (string * string * name_mapping_per_module) StringMap.t;;
+	(* header-filename(relative) * module-name * for-items *)
 	
 	let module_of
 		(ps: ranged_position)
@@ -302,7 +354,7 @@ struct
 		: string =
 	(
 		let (filename, _, _, _), _ = ps in
-		let module_name, _ = StringMap.find filename name_mapping in
+		let _, module_name, _ = StringMap.find filename name_mapping in
 		module_name
 	);;
 	
@@ -313,7 +365,7 @@ struct
 		: bool =
 	(
 		let (filename, _, _, _), _ = ps in
-		let _, map = StringMap.find filename name_mapping in
+		let _, _, map = StringMap.find filename name_mapping in
 		is_hidden_per_module item map
 	);;
 	
@@ -322,7 +374,7 @@ struct
 		~(short_f: string -> string)
 		~(foldcase: string -> string)
 		(special_name_mapping: string StringMap.t StringMap.t)
-		(filename_mapping: string StringMap.t)
+		(filename_mapping: (string * string) StringMap.t)
 		(opaque_mapping: opaque_mapping)
 		(items_per_module: source_item list StringMap.t)
 		: name_mapping =
@@ -340,7 +392,7 @@ struct
 			) items_per_module
 		in
 		StringMap.mapi (fun k _ ->
-			let module_name = StringMap.find k filename_mapping in
+			let rel_filename, module_name = StringMap.find k filename_mapping in
 			let name_mapping_per_module =
 				begin try
 					StringMap.find module_name name_mapping_per_module
@@ -348,7 +400,7 @@ struct
 					empty_name_mapping_per_module
 				end
 			in
-			module_name, name_mapping_per_module
+			rel_filename, module_name, name_mapping_per_module
 		) filename_mapping
 	);;
 	
@@ -373,9 +425,9 @@ struct
 				) else (
 					let a_name = short_f name in
 					let (filename, _, _, _), _ = ps in
-					let mn, nmpm = StringMap.find filename name_mapping in
+					let rel_filename, mn, nmpm = StringMap.find filename name_mapping in
 					let nmpm = add `namespace name a_name nmpm in
-					let name_mapping = StringMap.add filename (mn, nmpm) name_mapping in
+					let name_mapping = StringMap.add filename (rel_filename, mn, nmpm) name_mapping in
 					loop (index + 1) xr name_mapping ((a_name, x) :: rs)
 				)
 			end

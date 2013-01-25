@@ -152,6 +152,8 @@ struct
 			item :: of_alias item
 		| `named (_, _, `generic_value _, _) ->
 			[]
+		| `include_point _ ->
+			[]
 		end
 	);;
 	

@@ -270,7 +270,7 @@ begin match options.to_lang with
 		end;
 		close_out f;
 	) dirs;
-	let items_per_package = T.items_per_package remove_include_dir ada_mapping filename_mapping sources in
+	let items_per_package = T.items_per_package ada_mapping filename_mapping sources in
 	let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package in
 	StringMap.iter (fun package items ->
 		let ads_filename = Filename.concat options.dest_dir (T.spec_filename package) in
