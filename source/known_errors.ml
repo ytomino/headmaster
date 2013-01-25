@@ -608,6 +608,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"_IO_peekc_unlocked"; (* accessing element of untyped parameter *)
 				"_IO_PENDING_OUTPUT_COUNT"; (* accessing element of untyped parameter *)
 				"_IO_putc_unlocked"]]; (* accessing element of untyped parameter *)
+		"malloc.h", [
+			`unparsible_macro, [
+				"__MALLOC_P"; (* parameter list *)
+				"__malloc_ptr_t"]]; (* declaration specifier and pointer *)
 		"math.h", [
 			`unparsible_macro, [
 				"__MATHCALLX"; (* parameterized declaration *)
@@ -622,10 +626,25 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"pthread.h", [
 			`unparsible_macro, [
 				"pthread_cleanup_pop"; (* partial statement *)
-				"pthread_cleanup_push"]]; (* partial statement *)
+				"pthread_cleanup_pop_restore_np"; (* partial statement *)
+				"pthread_cleanup_push"; (* partial statement *)
+				"pthread_cleanup_push_defer_np"]]; (* partial statement *)
 		"sched.h", [
 			`unparsible_macro, [
-				"sched_priority"]]; (* __sched_priority is undefined *)
+				"sched_priority"]; (* __sched_priority is undefined *)
+			`uninterpretable_macro, [
+				"CPU_AND"; (* accessing element of untyped parameter *)
+				"CPU_AND_S"; (* accessing element of untyped parameter *)
+				"CPU_CLR"; (* accessing element of untyped parameter *)
+				"CPU_CLR_S"; (* accessing element of untyped parameter *)
+				"CPU_ISSET"; (* accessing element of untyped parameter *)
+				"CPU_ISSET_S"; (* accessing element of untyped parameter *)
+				"CPU_OR"; (* accessing element of untyped parameter *)
+				"CPU_OR_S"; (* accessing element of untyped parameter *)
+				"CPU_SET"; (* accessing element of untyped parameter *)
+				"CPU_SET_S"; (* accessing element of untyped parameter *)
+				"CPU_XOR"; (* accessing element of untyped parameter *)
+				"CPU_XOR_S"]]; (* accessing element of untyped parameter *)
 		"stdc-predef.h", [
 			`redefine_compiler_macro, [
 				"__STDC_ISO_10646__";
@@ -676,6 +695,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"sys/socket.h", [
 			`unparsible_macro, [
 				"__CONST_SOCKADDR_ARG"; (* declaration specifier and pointer *)
+				"__SOCKADDR_ALLTYPES"; (* struct-declaration-list *)
 				"__SOCKADDR_ARG"]]; (* declaration specifier and pointer *)
 		"sys/stat.h", [
 			`uninterpretable_macro, [
@@ -689,7 +709,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"timeradd"; (* accessing element of untyped parameter *)
 				"timerclear"; (* accessing element of untyped parameter *)
 				"timerisset"; (* accessing element of untyped parameter *)
-				"timersub"]]; (* accessing element of untyped parameter *)
+				"timersub"; (* accessing element of untyped parameter *)
+				"TIMESPEC_TO_TIMEVAL"; (* accessing element of untyped parameter *)
+				"TIMEVAL_TO_TIMESPEC"]]; (* accessing element of untyped parameter *)
 		"sys/wait.h", [
 			`unparsible_macro, [
 				"WCOREDUMP"]]]; (* using __WAIT_INT *)

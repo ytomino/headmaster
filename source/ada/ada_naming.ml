@@ -295,13 +295,22 @@ let ada_package_name (h: string): string = (
 	end
 );;
 
-(* from a viewpoint of C.sys.ucontext, C.sys.signals hides C.signals *)
 let hidden_packages (with_packages: (string * 'a) list) ~(current: string): StringSet.t = (
 	let rec c_loop current_parent current_relative result = (
-		let cp, cn = take_package_name current_relative in
-		if cn = current_relative then result else
+		let moving, current_relative' =
+			let cp, cn = take_package_name current_relative in
+			if cn = current_relative then current_relative, "" else cp, cn
+		in
+		let result =
+			if List.mem_assoc ("C." ^ moving) with_packages then (
+				StringSet.add moving result (* from a viewpoint of C.sys.signal, C.signal is hidden *)
+			) else (
+				result
+			)
+		in
+		if current_relative' = "" then result else
 		let current_parent' =
-			if String.length current_parent = 0 then cp else current_parent ^ "." ^ cp
+			if String.length current_parent = 0 then moving else current_parent ^ "." ^ moving
 		in
 		let current_parent'_length = String.length current_parent' in
 		let result =
@@ -317,7 +326,7 @@ let hidden_packages (with_packages: (string * 'a) list) ~(current: string): Stri
 							&& String.sub w_parent' 0 current_parent'_length = current_parent'
 							&& List.mem_assoc ("C." ^ wn) with_packages
 						then (
-							StringSet.add wn result
+							StringSet.add wn result (* from a viewpoint of C.sys.ucontext, C.sys.signal hides C.signal *)
 						) else (
 							result
 						)
@@ -329,7 +338,7 @@ let hidden_packages (with_packages: (string * 'a) list) ~(current: string): Stri
 				w_loop "" wn result
 			) result with_packages
 		in
-		c_loop current_parent' cn result
+		c_loop current_parent' current_relative' result
 	) in
 	c_loop "" current StringSet.empty
 );;

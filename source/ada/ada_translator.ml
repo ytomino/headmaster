@@ -361,6 +361,11 @@ struct
 			| `function_definition (_, (#Semantics.function_type as ft), _) ->
 				let `function_type prototype = ft in
 				Dependency.of_prototype ~of_argument prototype
+			| `defined_element_access (_, route) ->
+				let result_type = Semantics.tail_type_of_element_access route in
+				Dependency.of_item (result_type :> Semantics.all_item)
+			| `defined_expression (_, e_type) ->
+				Dependency.of_item (e_type :> Semantics.all_item)
 			| _ ->
 				[]
 			end
@@ -723,6 +728,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		~(name: string option)
 		(prototype: Semantics.prototype)
 		: name_mapping =
@@ -739,7 +745,7 @@ struct
 						if num >= 2 then fprintf ff ";@ " else pp_print_break ff 0 0;
 						let `named (_, _, `variable (arg_t, _), _) = arg in
 						fprintf ff "%s : " arg_name;
-						pp_type_name ff ~mappings ~current ~hiding ~where:`argument arg_t;
+						pp_type_name ff ~mappings ~current ~hidden_packages ~hiding ~where:`argument arg_t;
 						num + 1
 					) 1 args
 				in
@@ -762,7 +768,7 @@ struct
 			end;
 			pp_args ff args;
 			fprintf ff "@ return ";
-			pp_type_name ff ~mappings ~current ~where:`name ret
+			pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name ret
 		end;
 		name_mapping
 	);;
@@ -923,7 +929,7 @@ struct
 				| `function_type prototype
 				| `named (_, _, `typedef (`function_type prototype), _) ->
 					ignore (pp_type ff name pp_access_definition `none
-						(pp_prototype ~mappings ~current ~name:None) prototype);
+						(pp_prototype ~mappings ~current ?hidden_packages:None ~name:None) prototype);
 					let conv, _, _, _ = prototype in
 					pp_pragma_convention ff conv name
 				| `void
@@ -1534,177 +1540,6 @@ struct
 			| `named (_, _, `generic_type, _) ->
 				assert false (* does not come here *)
 			end
-		end
-	);;
-	
-	let pp_alias
-		(ff: formatter)
-		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
-		~(enum_of_element: Semantics.full_enum_type StringMap.t)
-		~(current: string)
-		(name: string)
-		(source_item: Semantics.named_item)
-		: unit =
-	(
-		let pp_subprogram_alias source_name prototype = (
-			pp_print_space ff ();
-			pp_open_box ff indent;
-			let _, args, _, _ = prototype in
-			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let anonymous_mapping = add_arguments_to_anonymous_mapping ~name_mapping ~current args anonymous_mapping in
-			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
-			fprintf ff "@ renames %s;" source_name;
-			pp_close_box ff ()
-		) in
-		let pp_subprogram_overload_alias source_name (source_item: Semantics.function_item) = (
-			begin try
-				let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				let overload = List.assq source_item language_mapping.Semantics.lm_overload in
-				List.iter (fun prototype ->
-					pp_print_space ff ();
-					pp_open_box ff indent;
-					ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
-					fprintf ff "@ renames %s;" source_name;
-					pp_close_box ff ()
-				) overload
-			with Not_found ->
-				()
-			end
-		) in
-		let source_name =
-			let `named (source_ps, source_name, _, _) = source_item in
-			let kind =
-				begin match source_item with
-				| `named (_, _, `opaque_enum, _) -> `opaque_enum
-				| `named (_, _, `opaque_struct, _) -> `opaque_struct
-				| `named (_, _, `opaque_union, _) -> `opaque_union
-				| _ -> `namespace
-				end
-			in
-			let _, _, name_mapping, _ = mappings in
-			ada_name_of current source_ps source_name kind name_mapping
-		in
-		begin match source_item with
-		| `named (source_ps, source_name, `enum_element _, _) ->
-			pp_print_space ff ();
-			pp_open_box ff indent;
-			let t = StringMap.find source_name enum_of_element in
-			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			fprintf ff "function %s return %a@ renames %s;"
-				name
-				(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) (t :> Semantics.all_type)
-				(ada_name_of current source_ps source_name `namespace name_mapping);
-			pp_close_box ff ()
-		| `named (_, _, #Semantics.named_type_var, _) as source_item ->
-			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			pp_subtype ff name
-				(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) source_item
-		| `named (_, _, `extern _, _) as source_item ->
-			begin match source_item with
-			| `named (_, _, `extern ((`function_type prototype), _), _) as source_item ->
-				pp_subprogram_alias source_name prototype;
-				pp_subprogram_overload_alias source_name source_item
-			| `named (_, _, `extern (t, _), _) ->
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				fprintf ff "%s : %a@ renames %s;"
-					name
-					(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`rename) t
-					source_name;
-				pp_close_box ff ()
-			end
-		| `named (_, _, `variable _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
-		| `named (_, _, `function_forward (_, (`function_type _)), _) ->
-			fprintf ff "@ --  function %s renames ..." name
-		| `named (_, _, `function_definition (_, (`function_type prototype), _), _) as source_item ->
-			pp_subprogram_alias source_name prototype;
-			pp_subprogram_overload_alias source_name source_item
-		| `named (_, _, `defined_operator _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
-		| `named (_, _, `defined_attributes, _) ->
-			fprintf ff "@ --  %s renames __attribute__((...)) (macro)" name
-		| `named (_, _, `defined_storage_class _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
-		| `named (_, _, `defined_type_specifier _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
-		| `named (_, _, `defined_type_qualifier _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
-		| `named (_, _, `defined_typedef source_item, _) ->
-			begin match Semantics.resolve_typedef source_item with
-			| `void ->
-				fprintf ff "@ --  %s renames void (macro)" name
-			| `volatile `void ->
-				fprintf ff "@ --  %s renames void volatile (macro)" name
-			| `function_type _ ->
-				fprintf ff "@ --  %s renames ... (function type)" name
-			| _ ->
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				pp_subtype ff name
-					(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) source_item
-			end
-		| `named (_, _, `defined_opaque_type source_item, _) ->
-			let tag, kind =
-				match source_item with
-				| `named (_, tag, `opaque_enum, _) -> tag, "enum"
-				| `named (_, tag, `opaque_struct, _) -> tag, "struct"
-				| `named (_, tag, `opaque_union, _) -> tag, "union"
-			in
-			fprintf ff "@ --  %s renames %s %s" name kind tag
-		| `named (source_ps, _, `defined_element_access (t, route), _) ->
-			let prototype = prototype_for_element_access source_ps t route in
-			pp_subprogram_alias source_name prototype
-		| `named (_, _, `defined_expression expr, _) ->
-			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			if Semantics.is_static_expression expr then (
-				begin match expr with
-				| `int_literal _, _
-				| `float_literal _, _ ->
-					pp_universal_constant_object ff name
-						(fun ff () -> pp_print_string ff source_name)
-				| _, t ->
-					pp_print_space ff ();
-					pp_open_box ff indent;
-					fprintf ff "%s : %a@ renames %s;" name
-						(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) t
-						source_name;
-					pp_close_box ff ()
-				end
-			) else (
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
-				ignore (pp_prototype ff ~mappings  ~current ~name:(Some name) prototype);
-				fprintf ff " renames %s;" source_name;
-				pp_close_box ff ()
-			)
-		| `named (_, _, `defined_generic_expression _, _) ->
-			let source_name = omit_long_word (46 - String.length name) source_name in
-			fprintf ff "@ --  %s renames %s (function macro)" name source_name
-		| `named (_, _, `defined_generic_statement _, _) ->
-			let source_name = omit_long_word (46 - String.length name) source_name in
-			fprintf ff "@ --  %s renames %s (function macro)" name source_name
-		| `named (_, _, `defined_any message, _) ->
-			let source_name = omit_long_word (60 - String.length name - String.length message) source_name in
-			fprintf ff "@ --  %s renames %s (%s)" name source_name message
-		| `named (_, _, `defined_alias _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
-		| `named (_, _, `generic_value _, _) ->
-			assert false (* does not come here *)
 		end
 	);;
 	
@@ -2816,6 +2651,203 @@ struct
 			) in
 			loop stmts
 		)
+	) and pp_alias
+		(ff: formatter)
+		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
+		~(enum_of_element: Semantics.full_enum_type StringMap.t)
+		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
+		(name: string)
+		(source_item: Semantics.named_item)
+		: unit =
+	(
+		let pp_subprogram_alias source_name prototype = (
+			pp_print_space ff ();
+			let _, args, _, ret = prototype in
+			begin match ret with
+			| `pointer (`function_type _) -> (* anonymous function pointer *)
+				let source_name = omit_long_word (46 - String.length name) source_name in
+				fprintf ff "--  %s renames %s (anonymous type)" name source_name
+			| _ ->
+				pp_open_box ff indent;
+				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+				let anonymous_mapping = add_arguments_to_anonymous_mapping ~name_mapping ~current args anonymous_mapping in
+				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+				ignore (pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some name) prototype);
+				fprintf ff "@ renames %s;" source_name;
+				pp_close_box ff ()
+			end
+		) in
+		let pp_subprogram_overload_alias source_name (source_item: Semantics.function_item) = (
+			begin try
+				let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+				let overload = List.assq source_item language_mapping.Semantics.lm_overload in
+				List.iter (fun prototype ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
+					fprintf ff "@ renames %s;" source_name;
+					pp_close_box ff ()
+				) overload
+			with Not_found ->
+				()
+			end
+		) in
+		let source_name =
+			let `named (source_ps, source_name, _, _) = source_item in
+			let kind =
+				begin match source_item with
+				| `named (_, _, `opaque_enum, _) -> `opaque_enum
+				| `named (_, _, `opaque_struct, _) -> `opaque_struct
+				| `named (_, _, `opaque_union, _) -> `opaque_union
+				| _ -> `namespace
+				end
+			in
+			let _, _, name_mapping, _ = mappings in
+			ada_name_of current ~hidden_packages source_ps source_name kind name_mapping
+		in
+		begin match source_item with
+		| `named (source_ps, source_name, `enum_element _, _) ->
+			pp_print_space ff ();
+			pp_open_box ff indent;
+			let t = StringMap.find source_name enum_of_element in
+			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+			fprintf ff "function %s return %a@ renames %s;"
+				name
+				(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) (t :> Semantics.all_type)
+				(ada_name_of current source_ps source_name `namespace name_mapping);
+			pp_close_box ff ()
+		| `named (_, _, #Semantics.named_type_var, _) as source_item ->
+			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+			pp_subtype ff name
+				(pp_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`subtype) source_item
+		| `named (_, _, `extern _, _) as source_item ->
+			begin match source_item with
+			| `named (_, _, `extern ((`function_type prototype), _), _) as source_item ->
+				pp_subprogram_alias source_name prototype;
+				pp_subprogram_overload_alias source_name source_item
+			| `named (_, _, `extern (t, _), _) ->
+				pp_print_space ff ();
+				pp_open_box ff indent;
+				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+				fprintf ff "%s : %a@ renames %s;"
+					name
+					(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`rename) t
+					source_name;
+				pp_close_box ff ()
+			end
+		| `named (_, _, `variable _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `function_forward (_, (`function_type _)), _) ->
+			fprintf ff "@ --  function %s renames ..." name
+		| `named (_, _, `function_definition (_, (`function_type prototype), _), _) as source_item ->
+			pp_subprogram_alias source_name prototype;
+			pp_subprogram_overload_alias source_name source_item
+		| `named (_, _, `defined_operator _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `defined_attributes, _) ->
+			fprintf ff "@ --  %s renames __attribute__((...)) (macro)" name
+		| `named (_, _, `defined_storage_class _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `defined_type_specifier _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `defined_type_qualifier _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `defined_typedef source_item, _) ->
+			begin match Semantics.resolve_typedef source_item with
+			| `void ->
+				fprintf ff "@ --  %s renames void (macro)" name
+			| `volatile `void ->
+				fprintf ff "@ --  %s renames void volatile (macro)" name
+			| `function_type _ ->
+				fprintf ff "@ --  %s renames ... (function type)" name
+			| _ ->
+				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+				pp_subtype ff name
+					(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) source_item
+			end
+		| `named (_, _, `defined_opaque_type source_item, _) ->
+			let tag, kind =
+				match source_item with
+				| `named (_, tag, `opaque_enum, _) -> tag, "enum"
+				| `named (_, tag, `opaque_struct, _) -> tag, "struct"
+				| `named (_, tag, `opaque_union, _) -> tag, "union"
+			in
+			fprintf ff "@ --  %s renames %s %s" name kind tag
+		| `named (source_ps, _, `defined_element_access (t, route), _) ->
+			let prototype = prototype_for_element_access source_ps t route in
+			pp_subprogram_alias source_name prototype
+		| `named (_, _, `defined_expression expr, _) ->
+			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+			if Semantics.is_static_expression expr then (
+				begin match expr with
+				| `int_literal _, _
+				| `float_literal _, _ ->
+					pp_universal_constant_object ff name
+						(fun ff () -> pp_print_string ff source_name)
+				| `cast (_, t1 as e1), t2 when List.length (Finding.find_all_cast_in_source_item [] (source_item :> Semantics.source_item)) = 1 ->
+					(* calling Unchecked_Conversion is not static expression, use trick *)
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					fprintf ff "function %s (@,Value : " name;
+					begin
+						let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+						pp_type_name ff ~mappings ~current ~where:`rename t1 (* unconstrained, but not using anonymous access *)
+					end;
+					fprintf ff " := ";
+					begin
+						let mappings = opaque_mapping, name_mapping in
+						pp_expression ff ~mappings ~current ~outside:`lowest e1
+					end;
+					fprintf ff ")@ return ";
+					begin
+						let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+						pp_type_name ff ~mappings ~current ~hidden_packages ~where:`subtype t2
+					end;
+					fprintf ff "@ renames %s;" source_name;
+					pp_close_box ff ()
+				| _, t ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					fprintf ff "%s : %a@ renames %s;" name
+						(pp_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`subtype) t
+						source_name;
+					pp_close_box ff ()
+				end
+			) else (
+				pp_print_space ff ();
+				pp_open_box ff indent;
+				let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
+				ignore (pp_prototype ff ~mappings  ~current ~name:(Some name) prototype);
+				fprintf ff " renames %s;" source_name;
+				pp_close_box ff ()
+			)
+		| `named (_, _, `defined_generic_expression _, _) ->
+			let source_name = omit_long_word (46 - String.length name) source_name in
+			fprintf ff "@ --  %s renames %s (function macro)" name source_name
+		| `named (_, _, `defined_generic_statement _, _) ->
+			let source_name = omit_long_word (46 - String.length name) source_name in
+			fprintf ff "@ --  %s renames %s (function macro)" name source_name
+		| `named (_, _, `defined_any message, _) ->
+			let source_name = omit_long_word (60 - String.length name - String.length message) source_name in
+			fprintf ff "@ --  %s renames %s (%s)" name source_name message
+		| `named (_, _, `defined_alias _, _) ->
+			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
+			assert false
+		| `named (_, _, `generic_value _, _) ->
+			assert false (* does not come here *)
+		end
 	) and pp_named
 		(ff: formatter)
 		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
@@ -3057,7 +3089,7 @@ struct
 			if Semantics.is_static_expression expr then (
 				begin match expr with
 				| `ref_function (func: Semantics.function_item), _ ->
-					pp_alias ff ~mappings ~enum_of_element ~current name (func :> Semantics.named_item)
+					pp_alias ff ~mappings ~enum_of_element ~current ~hidden_packages name (func :> Semantics.named_item)
 				| `int_literal _, _ | `float_literal _, _ ->
 					let mappings = opaque_mapping, name_mapping in
 					pp_universal_constant_object ff name
@@ -3089,7 +3121,7 @@ struct
 					fprintf ff "%s :@ constant@ " name;
 					begin
 						let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-						pp_type_name ff ~mappings ~current ~where:`subtype t
+						pp_type_name ff ~mappings ~current ~hidden_packages ~where:`subtype t
 					end;
 					fprintf ff " :=@ ";
 					begin
@@ -3114,6 +3146,7 @@ struct
 		| `named (_, name, `defined_generic_statement _, _) ->
 			fprintf ff "@ --  %s (function macro)" name
 		| `named (_, name, `defined_any message, _) ->
+			let name = omit_long_word (69 - String.length message) name in
 			fprintf ff "@ --  %s (%s)" name message
 		| `named (ps, name, `defined_alias source_item, _) ->
 			begin match source_item with
@@ -3132,7 +3165,7 @@ struct
 				in
 				let _, _, name_mapping, _ = mappings in
 				let name = ada_name_of current ps name kind name_mapping in
-				pp_alias ff ~mappings ~enum_of_element ~current name source_item
+				pp_alias ff ~mappings ~enum_of_element ~current ~hidden_packages name source_item
 			end
 		| `named (_, _, `generic_value _, _) ->
 			assert false (* does not come here *)

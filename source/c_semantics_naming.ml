@@ -442,7 +442,6 @@ struct
 		(items: struct_item list)
 		: string StringMap.t * (string * struct_item) list =
 	(
-		let _ = long_f in (* ignore... currently, no care for confliction *)
 		let rec loop anonymous_index xs map rs = (
 			begin match xs with
 			| [] ->
@@ -455,8 +454,27 @@ struct
 					loop (anonymous_index + 1) xr map rs
 				) else (
 					let sn = short_f name in
-					let map = StringMap.add name sn map in
-					let rs = (sn, x) :: rs in
+					let map, rs =
+						begin try
+							let _, (prev_name, _, _, _) = List.find (fun (item_name, _) -> item_name = sn) rs in
+							let prev_ln = long_f prev_name in
+							let ln = long_f name in
+							let map = StringMap.add prev_name prev_ln map in
+							let map = StringMap.add name ln map in
+							let rs =
+								List.map (fun (item_name, item as z) ->
+									if item_name <> sn then z else
+									prev_ln, item
+								) rs
+							in
+							let rs = (ln, x) :: rs in
+							map, rs
+						with Not_found ->
+							let map = StringMap.add name sn map in
+							let rs = (sn, x) :: rs in
+							map, rs
+						end
+					in
 					loop anonymous_index xr map rs
 				)
 			end
