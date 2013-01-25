@@ -148,6 +148,8 @@ struct
 		"expression-like macro " ^ s ^ " is failed to interpret.";;
 	let statement_macro_is_failed_to_interpret (s: string): string =
 		"statement-like macro " ^ s ^ " is failed to interpret.";;
+	let assert_failed (s: string): string =
+		"assert is failed to analyzing macro " ^ s ^ ". (define-analyzer)";;
 	
 	(* define type *)
 	
@@ -235,228 +237,258 @@ struct
 				| Some _ -> ()
 				end
 			) in
-			begin match def_e with
-			| `operator op ->
-				let item = `named (def_p, name, `defined_operator op, no_attributes) in
-				let source = item :: source in
-				derived_types, source
-			| `declaration_specifiers spec ->
-				let rec only_no_type
-					(storage_class, type_qualifiers, type_specifiers, attributes)
-					(x: Syntax.declaration_specifiers)
-					: ([storage_class | `none] * type_qualifier_set * type_specifier_set * attributes) option =
-				(
-					let do_next result next = (
-						begin match next with
-						| `some (_, next) ->
-							only_no_type result next
-						| `none ->
-							Some result
+			begin try
+				begin match def_e with
+				| `operator op ->
+					let item = `named (def_p, name, `defined_operator op, no_attributes) in
+					let source = item :: source in
+					derived_types, source
+				| `declaration_specifiers spec ->
+					let rec only_no_type
+						(storage_class, type_qualifiers, type_specifiers, attributes)
+						(x: Syntax.declaration_specifiers)
+						: ([storage_class | `none] * type_qualifier_set * type_specifier_set * attributes) option =
+					(
+						let do_next result next = (
+							begin match next with
+							| `some (_, next) ->
+								only_no_type result next
+							| `none ->
+								Some result
+							end
+						) in
+						begin match x with
+						| `storage_class_specifier (sc, next) ->
+							let storage_class = handle_storage_class redirect_error storage_class sc in
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+						| `type_specifier ((_, `_COMPLEX), next) ->
+							let type_specifiers = {type_specifiers with ts_complex = type_specifiers.ts_complex + 1} in
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+						| `type_specifier ((_, `_IMAGINARY), next) ->
+							let type_specifiers = {type_specifiers with ts_imaginary = type_specifiers.ts_imaginary + 1} in
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+						| `type_specifier _ ->
+							None
+						| `type_qualifier (tq, next) ->
+							let type_qualifiers = handle_type_qualifier redirect_error type_qualifiers tq in
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+						| `function_specifier (fs, next) ->
+							let attributes = handle_function_specifier redirect_error attributes fs in
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+						| `attributes (attr, next) ->
+							let attributes = handle_attribute redirect_error attributes attr in
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
+						| `extension (_, next) ->
+							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
 						end
 					) in
-					begin match x with
-					| `storage_class_specifier (sc, next) ->
-						let storage_class = handle_storage_class redirect_error storage_class sc in
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					| `type_specifier ((_, `_COMPLEX), next) ->
-						let type_specifiers = {type_specifiers with ts_complex = type_specifiers.ts_complex + 1} in
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					| `type_specifier ((_, `_IMAGINARY), next) ->
-						let type_specifiers = {type_specifiers with ts_imaginary = type_specifiers.ts_imaginary + 1} in
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					| `type_specifier _ ->
-						None
-					| `type_qualifier (tq, next) ->
-						let type_qualifiers = handle_type_qualifier redirect_error type_qualifiers tq in
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					| `function_specifier (fs, next) ->
-						let attributes = handle_function_specifier redirect_error attributes fs in
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					| `attributes (attr, next) ->
-						let attributes = handle_attribute redirect_error attributes attr in
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					| `extension (_, next) ->
-						do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
-					end
-				) in
-				begin match only_no_type (`none, no_type_qualifier_set, no_type_specifier_set, no_attributes) spec with
-				| Some (storage_class, type_qualifiers, type_specifiers, attributes) ->
-					begin match !redirected_error with
-					| Some (r_ps, r_message) ->
-						error r_ps r_message;
-						error def_p (typedef_macro_is_failed_to_interpret name);
-						let source = new_any "bad declaration-specifiers" :: source in
-						derived_types, source
-					| None ->
-						(* storage class *)
-						begin match storage_class with
-						| #storage_class as storage_class ->
-							if type_qualifiers <> no_type_qualifier_set || type_specifiers <> no_type_specifier_set then (
-								error def_p (is_an_alias_of_plural_kinds_of_declaration_specifiers name)
-							);
-							let item = `named (def_p, name, `defined_storage_class storage_class, attributes) in
-							let source = item :: source in
+					begin match only_no_type (`none, no_type_qualifier_set, no_type_specifier_set, no_attributes) spec with
+					| Some (storage_class, type_qualifiers, type_specifiers, attributes) ->
+						begin match !redirected_error with
+						| Some (r_ps, r_message) ->
+							error r_ps r_message;
+							error def_p (typedef_macro_is_failed_to_interpret name);
+							let source = new_any "bad declaration-specifiers" :: source in
 							derived_types, source
-						| `none ->
-							(* type qualifiers *)
-							let type_qualifier =
-								begin match type_qualifiers with
-								| {tq_const = true; tq_restrict = false; tq_volatile = false} ->
-									Some `const
-								| {tq_const = true; tq_restrict = _; tq_volatile = _} ->
-									error def_p (is_an_alias_of_plural_type_qualifiers name);
-									Some `const
-								| {tq_const = false; tq_restrict = true; tq_volatile = false} ->
-									Some `restrict
-								| {tq_const = false; tq_restrict = true; tq_volatile = _} ->
-									error def_p (is_an_alias_of_plural_type_qualifiers name);
-									Some `restrict
-								| {tq_const = false; tq_restrict = false; tq_volatile = true} ->
-									Some `volatile
-								| {tq_const = false; tq_restrict = false; tq_volatile = false} ->
-									None
-								end
-							in
-							begin match type_qualifier with
-							| Some type_qualifier ->
-								if type_specifiers <> no_type_specifier_set then (
+						| None ->
+							(* storage class *)
+							begin match storage_class with
+							| #storage_class as storage_class ->
+								if type_qualifiers <> no_type_qualifier_set || type_specifiers <> no_type_specifier_set then (
 									error def_p (is_an_alias_of_plural_kinds_of_declaration_specifiers name)
 								);
-								let item = `named (def_p, name, `defined_type_qualifier type_qualifier, attributes) in
+								let item = `named (def_p, name, `defined_storage_class storage_class, attributes) in
 								let source = item :: source in
 								derived_types, source
-							| None ->
-								(* type specifiers *)
-								if type_specifiers = {no_type_specifier_set with ts_complex = 1} then (
-									let item = `named (def_p, name, `defined_type_specifier `complex, attributes) in
+							| `none ->
+								(* type qualifiers *)
+								let type_qualifier =
+									begin match type_qualifiers with
+									| {tq_const = true; tq_restrict = false; tq_volatile = false} ->
+										Some `const
+									| {tq_const = true; tq_restrict = _; tq_volatile = _} ->
+										error def_p (is_an_alias_of_plural_type_qualifiers name);
+										Some `const
+									| {tq_const = false; tq_restrict = true; tq_volatile = false} ->
+										Some `restrict
+									| {tq_const = false; tq_restrict = true; tq_volatile = _} ->
+										error def_p (is_an_alias_of_plural_type_qualifiers name);
+										Some `restrict
+									| {tq_const = false; tq_restrict = false; tq_volatile = true} ->
+										Some `volatile
+									| {tq_const = false; tq_restrict = false; tq_volatile = false} ->
+										None
+									end
+								in
+								begin match type_qualifier with
+								| Some type_qualifier ->
+									if type_specifiers <> no_type_specifier_set then (
+										error def_p (is_an_alias_of_plural_kinds_of_declaration_specifiers name)
+									);
+									let item = `named (def_p, name, `defined_type_qualifier type_qualifier, attributes) in
 									let source = item :: source in
 									derived_types, source
-								) else if type_specifiers = {no_type_specifier_set with ts_imaginary = 1} then (
-									let item = `named (def_p, name, `defined_type_specifier `imaginary, attributes) in
-									let source = item :: source in
-									derived_types, source
-								) else (
-									(* attributes *)
-									let item = `named (def_p, name, `defined_attributes, attributes) in
-									let source = item :: source in
-									derived_types, source
-								)
+								| None ->
+									(* type specifiers *)
+									if type_specifiers = {no_type_specifier_set with ts_complex = 1} then (
+										let item = `named (def_p, name, `defined_type_specifier `complex, attributes) in
+										let source = item :: source in
+										derived_types, source
+									) else if type_specifiers = {no_type_specifier_set with ts_imaginary = 1} then (
+										let item = `named (def_p, name, `defined_type_specifier `imaginary, attributes) in
+										let source = item :: source in
+										derived_types, source
+									) else (
+										(* attributes *)
+										let item = `named (def_p, name, `defined_attributes, attributes) in
+										let source = item :: source in
+										derived_types, source
+									)
+								end
 							end
 						end
-					end
-				| None ->
-					let derived_types, n2, source, (storage_class, base_type, attributes) =
-						handle_declaration_specifiers redirect_error predefined_types derived_types namespace source `default (def_p, spec)
-					in
-					begin match !redirected_error with
-					| Some (r_ps, r_message) ->
-						error r_ps r_message;
-						error def_p (typedef_macro_is_failed_to_interpret name);
-						let source = new_any "bad typedef" :: source in
-						derived_types, source
 					| None ->
-						if storage_class <> `none then (
-							error def_p (is_an_alias_of_plural_kinds_of_declaration_specifiers name);
-							let source = new_any "bad typedef" :: source in
-							derived_types, source
-						) else if n2 != namespace then (
-							error def_p (typedef_macro_is_making_new_type_specifier name);
-							let source = new_any "bad typedef" :: source in
-							derived_types, source
-						) else (
-							let item = `named (def_p, name, `defined_typedef base_type, attributes) in
-							let source = item :: source in
-							derived_types, source
-						)
-					end
-				end
-			| `initializer_t init ->
-				let is_element_access (x: Syntax.initializer_t): string list = (
-					let rec loop rs (x: Syntax.expression): string list = (
-						begin match x with
-						| `ident name ->
-							name :: rs
-						| `element_access ((_, obj), _, `some (_, `ident field)) ->
-							loop (field :: rs) obj
-						| _ ->
-							[]
-						end
-					) in
-					begin match x with
-					| `expression expr -> loop [] expr
-					| `list _ -> []
-					end
-				) in
-				begin match is_element_access init with
-				| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_enum ->
-					let t = (StringMap.find leftmost namespace.ns_opaque_enum :> opaque_type) in
-					let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
-					let source = item :: source in
-					derived_types, source
-				| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_struct ->
-					let t = (StringMap.find leftmost namespace.ns_opaque_struct :> opaque_type) in
-					let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
-					let source = item :: source in
-					derived_types, source
-				| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_union ->
-					let t = (StringMap.find leftmost namespace.ns_opaque_union :> opaque_type) in
-					let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
-					let source = item :: source in
-					derived_types, source
-				| leftmost :: _ as accessing when not (StringMap.mem leftmost namespace.ns_namespace) ->
-					begin match inference_by_field error def_p accessing source with
-					| `defined_element_access _ as result ->
-						let item = `named (def_p, name, result, no_attributes) in
-						let source = item :: source in
-						derived_types, source
-					| `error ->
-						error def_p (alias_macro_is_failed_to_interpret name);
-						derived_types, source
-					end
-				| _ ->
-					let required_type =
-						begin try
-							begin match StringMap.find name mapping_options.mo_instances with
-							| t :: [] ->
-								(t :> [all_type | `uninterpretable])
-							| _ as ts ->
-								if List.length ts > 1 then (
-									error def_p (initializer_macro_is_overloaded name)
-								);
-								raise Not_found
-							end
-						with Not_found ->
-							if is_known_error def_p name `uninterpretable_macro then (
-								(`uninterpretable :> [all_type | `uninterpretable])
-							) else (
-								`named (def_p, "", `generic_type, no_attributes) (* dummy type *)
-							)
-						end
-					in
-					begin match required_type with
-					| `uninterpretable ->
-						let source = new_any "uninterpretable" :: source in
-						derived_types, source
-					| #all_type as required_type ->
-						let derived_types, source, expr =
-							handle_initializer redirect_error predefined_types derived_types namespace source required_type (def_p, init)
+						let derived_types, n2, source, (storage_class, base_type, attributes) =
+							handle_declaration_specifiers redirect_error predefined_types derived_types namespace source `default (def_p, spec)
 						in
 						begin match !redirected_error with
 						| Some (r_ps, r_message) ->
 							error r_ps r_message;
-							error def_p (initializer_macro_is_failed_to_interpret name);
-							let source = new_any "bad initializer" :: source in
+							error def_p (typedef_macro_is_failed_to_interpret name);
+							let source = new_any "bad typedef" :: source in
+							derived_types, source
+						| None ->
+							if storage_class <> `none then (
+								error def_p (is_an_alias_of_plural_kinds_of_declaration_specifiers name);
+								let source = new_any "bad typedef" :: source in
+								derived_types, source
+							) else if n2 != namespace then (
+								error def_p (typedef_macro_is_making_new_type_specifier name);
+								let source = new_any "bad typedef" :: source in
+								derived_types, source
+							) else (
+								let item = `named (def_p, name, `defined_typedef base_type, attributes) in
+								let source = item :: source in
+								derived_types, source
+							)
+						end
+					end
+				| `initializer_t init ->
+					let is_element_access (x: Syntax.initializer_t): string list = (
+						let rec loop rs (x: Syntax.expression): string list = (
+							begin match x with
+							| `ident name ->
+								name :: rs
+							| `element_access ((_, obj), _, `some (_, `ident field)) ->
+								loop (field :: rs) obj
+							| _ ->
+								[]
+							end
+						) in
+						begin match x with
+						| `expression expr -> loop [] expr
+						| `list _ -> []
+						end
+					) in
+					begin match is_element_access init with
+					| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_enum ->
+						let t = (StringMap.find leftmost namespace.ns_opaque_enum :> opaque_type) in
+						let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
+						let source = item :: source in
+						derived_types, source
+					| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_struct ->
+						let t = (StringMap.find leftmost namespace.ns_opaque_struct :> opaque_type) in
+						let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
+						let source = item :: source in
+						derived_types, source
+					| leftmost :: [] when StringMap.mem leftmost namespace.ns_opaque_union ->
+						let t = (StringMap.find leftmost namespace.ns_opaque_union :> opaque_type) in
+						let item = `named (def_p, name, `defined_opaque_type t, no_attributes) in
+						let source = item :: source in
+						derived_types, source
+					| leftmost :: _ as accessing when not (StringMap.mem leftmost namespace.ns_namespace) ->
+						begin match inference_by_field error def_p accessing source with
+						| `defined_element_access _ as result ->
+							let item = `named (def_p, name, result, no_attributes) in
+							let source = item :: source in
+							derived_types, source
+						| `error ->
+							error def_p (alias_macro_is_failed_to_interpret name);
+							derived_types, source
+						end
+					| _ ->
+						let required_type =
+							begin try
+								begin match StringMap.find name mapping_options.mo_instances with
+								| t :: [] ->
+									(t :> [all_type | `uninterpretable])
+								| _ as ts ->
+									if List.length ts > 1 then (
+										error def_p (initializer_macro_is_overloaded name)
+									);
+									raise Not_found
+								end
+							with Not_found ->
+								if is_known_error def_p name `uninterpretable_macro then (
+									(`uninterpretable :> [all_type | `uninterpretable])
+								) else (
+									`named (def_p, "", `generic_type, no_attributes) (* dummy type *)
+								)
+							end
+						in
+						begin match required_type with
+						| `uninterpretable ->
+							let source = new_any "uninterpretable" :: source in
+							derived_types, source
+						| #all_type as required_type ->
+							let derived_types, source, expr =
+								handle_initializer redirect_error predefined_types derived_types namespace source required_type (def_p, init)
+							in
+							begin match !redirected_error with
+							| Some (r_ps, r_message) ->
+								error r_ps r_message;
+								error def_p (initializer_macro_is_failed_to_interpret name);
+								let source = new_any "bad initializer" :: source in
+								derived_types, source
+							| None ->
+								let item =
+									begin match expr with
+									| Some expr ->
+										begin match expr with
+										| _, `named (_, "", `generic_type, _) -> (* failed to type inference *)
+											new_any "plase type with #pragma instance"
+										| _ ->
+											`named (def_p, name, `defined_expression expr, no_attributes)
+										end
+									| None ->
+										assert false
+									end
+								in
+								let source = item :: source in
+								derived_types, source
+							end
+						end
+					end
+				| `function_expr (args, varargs, expr) ->
+					if is_known_error def_p name `uninterpretable_macro then (
+						let source = new_any "uninterpretable" :: source in
+						derived_types, source
+					) else (
+						let local, formal_types, args = new_local args in
+						let derived_types, source, expr =
+							handle_expression redirect_error predefined_types derived_types local source `rvalue (def_p, expr)
+						in
+						begin match !redirected_error with
+						| Some (r_ps, r_message) ->
+							error r_ps r_message;
+							error def_p (expression_macro_is_failed_to_interpret name);
+							let source = new_any "bad expression" :: source in
 							derived_types, source
 						| None ->
 							let item =
 								begin match expr with
 								| Some expr ->
-									begin match expr with
-									| _, `named (_, "", `generic_type, _) -> (* failed to type inference *)
-										new_any "plase type with #pragma instance"
-									| _ ->
-										`named (def_p, name, `defined_expression expr, no_attributes)
-									end
+									`named (def_p, name, `defined_generic_expression (formal_types, args, varargs, expr), no_attributes)
 								| None ->
 									assert false
 								end
@@ -464,67 +496,52 @@ struct
 							let source = item :: source in
 							derived_types, source
 						end
-					end
+					)
+				| `function_stmt (args, varargs, stmt) ->
+					if is_known_error def_p name `uninterpretable_macro then (
+						let source = new_any "uninterpretable" :: source in
+						derived_types, source
+					) else (
+						let local, formal_types, args = new_local args in
+						let derived_types, source, stmt =
+							handle_statement redirect_error predefined_types derived_types local source `default (def_p, stmt)
+						in
+						begin match !redirected_error with
+						| Some (r_ps, r_message) ->
+							error r_ps r_message;
+							error def_p (statement_macro_is_failed_to_interpret name);
+							let source = new_any "bad statement" :: source in
+							derived_types, source
+						| None ->
+							let item =
+								begin match stmt with
+								| Some stmt ->
+									`named (def_p, name, `defined_generic_statement (formal_types, args, varargs, stmt), no_attributes)
+								| None ->
+									assert false
+								end
+							in
+							let source = item :: source in
+							derived_types, source
+						end
+					)
+				| `any message ->
+					let source = new_any message :: source in
+					derived_types, source
 				end
-			| `function_expr (args, varargs, expr) ->
-				if is_known_error def_p name `uninterpretable_macro then (
-					let source = new_any "uninterpretable" :: source in
-					derived_types, source
-				) else (
-					let local, formal_types, args = new_local args in
-					let derived_types, source, expr =
-						handle_expression redirect_error predefined_types derived_types local source `rvalue (def_p, expr)
-					in
-					begin match !redirected_error with
-					| Some (r_ps, r_message) ->
-						error r_ps r_message;
-						error def_p (expression_macro_is_failed_to_interpret name);
-						let source = new_any "bad expression" :: source in
-						derived_types, source
-					| None ->
-						let item =
-							begin match expr with
-							| Some expr ->
-								`named (def_p, name, `defined_generic_expression (formal_types, args, varargs, expr), no_attributes)
-							| None ->
-								assert false
-							end
-						in
-						let source = item :: source in
-						derived_types, source
-					end
-				)
-			| `function_stmt (args, varargs, stmt) ->
-				if is_known_error def_p name `uninterpretable_macro then (
-					let source = new_any "uninterpretable" :: source in
-					derived_types, source
-				) else (
-					let local, formal_types, args = new_local args in
-					let derived_types, source, stmt =
-						handle_statement redirect_error predefined_types derived_types local source `default (def_p, stmt)
-					in
-					begin match !redirected_error with
-					| Some (r_ps, r_message) ->
-						error r_ps r_message;
-						error def_p (statement_macro_is_failed_to_interpret name);
-						let source = new_any "bad statement" :: source in
-						derived_types, source
-					| None ->
-						let item =
-							begin match stmt with
-							| Some stmt ->
-								`named (def_p, name, `defined_generic_statement (formal_types, args, varargs, stmt), no_attributes)
-							| None ->
-								assert false
-							end
-						in
-						let source = item :: source in
-						derived_types, source
-					end
-				)
-			| `any message ->
-				let source = new_any message :: source in
-				derived_types, source
+			with Assert_failure _ as e ->
+				prerr_string (Printexc.to_string e);
+				prerr_newline ();
+				Printexc.print_backtrace stderr;
+				flush stderr;
+				begin match !redirected_error with
+				| Some (r_ps, r_message) ->
+					error r_ps r_message;
+				| None ->
+					()
+				end;
+				error (fst define) (assert_failed name);
+				raise e
 			end
 		)
 	);;

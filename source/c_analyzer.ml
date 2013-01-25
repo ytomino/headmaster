@@ -2728,10 +2728,16 @@ struct
 		let kind =
 			begin match resolved_type2 with
 			| `anonymous (_, `struct_type (_, items))
-			| `anonymous (_, `union items)
-			| `named (_, _, `struct_type (_, items), _)
-			| `named (_, _, `union items, _) ->
+			| `named (_, _, `struct_type (_, items), _) ->
 				`aggregate items
+			| `anonymous (_, `union items)
+			| `named (_, _, `union items, _) as t ->
+				begin match items with
+				| x :: _ ->
+					`aggregate (x :: [])
+				| [] ->
+					`array (-1, remove_type_qualifiers t) (* empty union *)
+				end
 			| `array (size, t) ->
 				let size =
 					begin match size with
@@ -2787,18 +2793,31 @@ struct
 				end
 			) (derived_types, source, kind, []) x
 		in
-		let zero =
+		let list, zero =
 			begin match kind with
 			| `aggregate items ->
-				if items <> [] then (
-					error (fst x) "too few elements for struct or union."
-				);
-				None
+				let rec filling_zero_loop items list = (
+					begin match items with
+					| (_, t, _, _) :: items_r ->
+						begin match Expressing.zero t with
+						| Some zero ->
+							let list = zero :: list in
+							filling_zero_loop items_r list
+						| None ->
+							error (fst x) "unimplemented.";
+							assert false
+						end
+					| [] ->
+						list
+					end
+				) in
+				let list = filling_zero_loop items list in
+				list, None
 			| `array (size, t) ->
-				if size <= 0 then None else
-				begin match Expressing.zero t with
+				if size <= 0 then list, None else
+				begin match Expressing.zero (t :> all_type) with
 				| Some _ as zero ->
-					zero
+					list, zero
 				| None ->
 					error (fst x) "unimplemented.";
 					assert false

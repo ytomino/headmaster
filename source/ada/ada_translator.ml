@@ -1964,6 +1964,25 @@ struct
 				) in
 				loop true fields exprs;
 				fprintf ff ")";
+			| `anonymous (_, `union items)
+			| `named (_, _, `union items, _) ->
+				let _, fields = name_mapping_for_struct_items items in
+				fprintf ff "(@,";
+				fprintf ff "Unchecked_Tag => 0";
+				let process fs es = (
+					begin match fs, es with
+					| [], [] ->
+						()
+					| (field_name, _) :: _, e :: _ ->
+						fprintf ff ",@ ";
+						fprintf ff "%s => " field_name;
+						pp_expression ff ~mappings ~current ~outside:`lowest e
+					| _ ->
+						assert false
+					end
+				) in
+				process fields exprs;
+				fprintf ff ")";
 			| _ ->
 				assert false (* does not come here ??? *)
 			end

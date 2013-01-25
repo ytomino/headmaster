@@ -2,6 +2,10 @@ open C_literals;;
 open C_semantics;;
 open C_semantics_build_type;;
 
+let rec list_make n e =
+	if n = 0 then [] else
+	e :: list_make (n - 1) e
+
 module type ExpressingType = sig
 	module Literals: LiteralsType;;
 	module Semantics: SemanticsType
@@ -45,7 +49,7 @@ module type ExpressingType = sig
 		Semantics.expression;;
 	
 	val zero:
-		Semantics.not_qualified_type ->
+		Semantics.all_type ->
 		Semantics.expression option;;
 	
 end;;
@@ -199,9 +203,9 @@ struct
 			) else (
 				expr
 			)
-		| `pointer `void | `pointer (`const `void) ->
+		| `pointer (`void as t1) | `pointer (`const `void as t1) ->
 			begin match expr with
-			| _, `pointer t2 when t2 != t ->
+			| _, `pointer t2 when t2 != t1 ->
 				`implicit_conv expr, t (*  any type * -> void * *)
 			| _ ->
 				expr
@@ -248,15 +252,87 @@ struct
 		end
 	);;
 	
-	let zero
-		(t: not_qualified_type)
+	let rec zero
+		(t: all_type)
 		: expression option =
 	(
 		begin match t with
+		| #int_prec as prec ->
+			Some (`int_literal (prec, Integer.zero), t)
+		| #real_prec as prec ->
+			Some (`float_literal (prec, Real.zero), t)
+		| `imaginary prec ->
+			Some (`imaginary_literal (prec, Real.zero), t)
 		| `char ->
-			Some (`char_literal '\x00', (t :> all_type))
-		| _ ->
-			None (* unimplemented *)
+			Some (`char_literal '\x00', t)
+		| `wchar ->
+			Some (`wchar_literal 0l, t)
+		| `bool | `complex _ | `anonymous (_, `enum _) | `named (_, _, `enum _, _)
+		| `pointer (_: all_type) | `__builtin_va_list | `block_pointer _ ->
+			Some (`implicit_conv (`int_literal (`signed_int, Integer.zero), `signed_int), t)
+		| `array (size, element_t) ->
+			begin match size with
+			| Some size ->
+				if Integer.compare size Integer.zero <= 0 then (
+					None
+				) else (
+					begin match zero (element_t :> all_type) with
+					| Some zero ->
+						let es = list_make (Integer.to_int size) zero in
+						Some (`compound (es, None), t)
+					| None ->
+						None
+					end
+				)
+			| None ->
+				None
+			end
+		| `restrict (t: pointer_type) ->
+			zero (t :> all_type)
+		| `anonymous (_, `struct_type (_, items)) | `named (_, _, `struct_type (_, items), _) ->
+			let rec loop items es = (
+				begin match items with
+				| (_, element_t, _, _) :: items_r ->
+					begin match zero element_t with
+					| Some zero ->
+						loop items_r (zero :: es)
+					| None ->
+						[]
+					end
+				| [] ->
+					List.rev es
+				end
+			) in
+			begin match loop items [] with
+			| [] ->
+				None
+			| es ->
+				Some (`compound (es, None), t)
+			end
+		| `anonymous (_, `union items) | `named (_, _, `union items, _) ->
+			begin match items with
+			| (_, element_t, _, _) :: _ ->
+				begin match zero element_t with
+				| Some zero ->
+					Some (`compound (zero :: [], None), t)
+				| None ->
+					None
+				end
+			| [] ->
+				None
+			end
+		| `named (_, _, `typedef t, _) ->
+			zero t
+		| `volatile t ->
+			zero (t :> all_type)
+		| `const t ->
+			zero (t :> all_type)
+		| `void | `function_type _ | `named (_, _, `generic_type, _) ->
+			None
+		| `named (_, _, `opaque_enum, _)
+		| `named (_, _, `opaque_struct, _)
+		| `named (_, _, `opaque_union, _) ->
+			None (* ??? *)
 		end
 	);;
 	
