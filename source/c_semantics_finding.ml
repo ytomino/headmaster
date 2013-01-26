@@ -134,33 +134,33 @@ struct
 		end
 	);;
 	
-	let rec expand_typedef (typedef: typedef_type) (t: all_type): all_type = (
+	let rec expand_typedef (f: typedef_type -> bool) (t: all_type): all_type = (
 		begin match t with
 		| `pointer t ->
-			`pointer (expand_typedef typedef t)
+			`pointer (expand_typedef f t)
 		| `array (n, t) ->
 			`array (n,
-				match expand_typedef typedef (t :> all_type) with
+				match expand_typedef f (t :> all_type) with
 				| #not_qualified_type as t -> t
 				| _ -> assert false)
 		| `restrict t ->
 			`restrict (
-				match expand_typedef typedef (t :> all_type) with
+				match expand_typedef f (t :> all_type) with
 				| #pointer_type as t -> t
 				| _ -> assert false)
 		| `volatile t ->
 			`volatile (
-				match expand_typedef typedef (t :> all_type) with
+				match expand_typedef f (t :> all_type) with
 				| #not_qualified_type as t -> t
 				| _ -> assert false)
 		| `const t ->
 			`const (
-				match expand_typedef typedef (t :> all_type) with
+				match expand_typedef f (t :> all_type) with
 				| #not_const_type as t -> t
 				| _ -> assert false)
-		| `named (_, _, `typedef raw_t, _) ->
-			if t == (typedef :> all_type) then raw_t else
-			expand_typedef typedef raw_t
+		| `named (_, _, `typedef raw_t, _) as t ->
+			if f t then raw_t else
+			expand_typedef f raw_t
 		| _ ->
 			assert false
 		end
@@ -187,7 +187,7 @@ struct
 							| Some typedef ->
 								let m t =
 									m (
-										match expand_typedef typedef (t :> all_type) with
+										match expand_typedef ((==) typedef) (t :> all_type) with
 										| #derived_type as t -> t
 										| _ -> assert false)
 								in

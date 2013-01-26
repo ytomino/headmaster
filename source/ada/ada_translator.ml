@@ -1032,24 +1032,38 @@ struct
 				| `const _ ->
 					() (* only "access constant" form *)
 				| _ ->
+					(* ptrdiff_t, size_t, wchar_t in typedef.h *)
+					let is_typedef_of_language_typedef (t: Semantics.typedef_type): bool = (
+						begin match t with
+						| `named (_, ("ptrdiff_t" | "size_t" | "wchar_t" as n1), `typedef (`named (_, n2, _, _)), _) when n1 = n2 ->
+							true
+						| _ ->
+							false
+						end
+					) in
 					let is_language_typedef =
-						(* ptrdiff_t, size_t, wchar_t in typedef.h *)
-						let is_typedef_of_language_typedef t = (
+						let is_typedef_of_language_typedef' (t: Semantics.all_type): bool = (
 							begin match t with
-							| `named (_, ("ptrdiff_t" | "size_t" | "wchar_t" as n1), `typedef (`named (_, n2, _, _)), _) when n1 = n2 ->
-								true
+							| `named (_, _, `typedef _, _) as t ->
+								is_typedef_of_language_typedef t
 							| _ ->
 								false
 							end
 						) in
-						Semantics.is_derived_type is_typedef_of_language_typedef item
+						Semantics.is_derived_type is_typedef_of_language_typedef' item
 					in
 					if is_language_typedef then (
-						pp_subtype ff name (fun ff name -> fprintf ff "Standard.C.%s" name) name;
+						let re_t = Finding.expand_typedef is_typedef_of_language_typedef (item :> Semantics.all_type) in
+						pp_subtype ff name (
+							begin fun ff ->
+								pp_print_string ff "Standard.C.";
+								pp_type_name ff ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name
+							end)
+							re_t
 					) else (
 						pp_subtype ff name
 							(pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name)
-							(match Finding.expand_typedef typedef (item :> Semantics.all_type) with
+							(match Finding.expand_typedef ((==) typedef) (item :> Semantics.all_type) with
 								| #Semantics.derived_type as t -> t
 								| _ -> assert false) (* does not come here *)
 					)
