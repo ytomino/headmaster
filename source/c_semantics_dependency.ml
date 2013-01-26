@@ -141,7 +141,21 @@ struct
 		| `named (_, _, `defined_element_access _, _) ->
 			[]
 		| `named (_, _, `defined_expression expr, _) ->
-			of_expr expr
+			let r = of_expr expr in
+			begin match expr with
+			| `ref_function f, _ ->
+				let p =
+					begin match f with
+					| `named (_, _, `extern ((`function_type prototype), _), _)
+					| `named (_, _, `function_forward (_, (`function_type prototype)), _)
+					| `named (_, _, `function_definition (_, (`function_type prototype), _), _) ->
+						of_prototype ~of_argument prototype
+					end
+				in
+				list_unionq p r
+			| _ ->
+				r
+			end
 		| `named (_, _, `defined_generic_expression _, _) ->
 			[]
 		| `named (_, _, `defined_generic_statement _, _) ->
