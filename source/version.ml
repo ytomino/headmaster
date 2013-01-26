@@ -1,1 +1,1 @@
-let version = "version 0.22 (experimental)";;
+let version = "version 0.23 (devel)";;
