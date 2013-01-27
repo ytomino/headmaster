@@ -1945,11 +1945,21 @@ struct
 			| (`chars_literal _, _), `array (_, `char), (`pointer `char | `pointer (`const `char)) ->
 				let hash = hash_name expr in
 				fprintf ff "const_%s (0)'Access" hash
+			| _, `pointer _, `bool ->
+				let paren = parenthesis_required ~outside ~inside:`relation in
+				if paren then pp_open_paren ff ();
+				pp_expression ff ~mappings ~current ~outside:`relation expr;
+				pp_print_space ff ();
+				pp_print_string ff "/= System.Null_Address";
+				if paren then pp_close_paren ff ()
 			| _, _, `pointer _ | _, `pointer _, _ ->
 				let opaque_mapping, name_mapping = mappings in
 				let mappings_for_typename = opaque_mapping, name_mapping, [] in
-				pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t2;
-				pp_print_string ff "'(Cast (";
+				if outside <> `primary then (
+					pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t2;
+					pp_print_string ff "'(";
+				);
+				pp_print_string ff "Cast (";
 				begin match expr with
 				| `int_literal _, _ ->
 					pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t1;
@@ -1959,7 +1969,10 @@ struct
 				| _ ->
 					pp_expression ff ~mappings ~current ~outside:`lowest expr
 				end;
-				pp_print_string ff "))";
+				pp_print_string ff ")";
+				if outside <> `primary then (
+					pp_print_string ff ")"
+				)
 			| _ ->
 				fprintf ff "@ **** unimplemented. ****\n";
 				assert false
@@ -2554,9 +2567,13 @@ struct
 						pp_end ff ()
 					end
 				| _ ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
 					let opaque_mapping, name_mapping, _ = mappings in
 					let mappings = opaque_mapping, name_mapping in
-					pp_expression ff ~mappings ~current ~outside:`lowest expr
+					pp_expression ff ~mappings ~current ~outside:`lowest expr;
+					pp_print_char ff ';';
+					pp_close_box ff ()
 				end
 			)
 		| `va_start _ ->
@@ -3403,6 +3420,7 @@ struct
 			~kind:`preelaborate
 			~pp_contents:(fun ff () ->
 				if current = "" then (
+					fprintf ff "@ use type System.Address;";
 					(* predefined types *)
 					List.iter (fun item ->
 						pp_predefined_type ff ~language_mapping item

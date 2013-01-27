@@ -194,6 +194,8 @@ struct
 				`implicit_conv expr, t
 			| `named (_, _, `typedef _, _) ->
 				`implicit_conv expr, t  (* language typedef -> predefined type *)
+			| `pointer _ ->
+				`implicit_conv expr, t (* pointer as bool *)
 			| _ ->
 				expr
 			end
