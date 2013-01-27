@@ -78,10 +78,13 @@ let special_name_mapping = make_mapmap [
 	"sys.signal", [
 		"sv_onstack", "sigvec_sv_onstack"]; (* darwin9 / conflicted with SV_ONSTACK *)
 	"stdlib", [
+		"exit", "C_exit"; (* w64-mingw32 / conflicted with _Exit *)
+		"_exit", "C_qexit"; (* w64-mingw32 / conflicted with _Exit *)
+		"_Exit", "C_qExit2"; (* w64-mingw32 / conflicted with _exit *)
 		"system", "C_system"]; (* darwin9 / hiding System package (should use Standard prefix...) *)
 	"unistd", [
-		"_exit", "C_exit"; (* darwin9 / conflicted with _Exit *)
-		"_Exit", "C_Exit2"; (* darwin9 / conflicted with _exit *)
+		"_exit", "C_qexit"; (* darwin9 / conflicted with _Exit *)
+		"_Exit", "C_qExit2"; (* darwin9 / conflicted with _exit *)
 		"execvP", "execvP2"]; (* darwin9 / conflicted with execvp *)
 	"windef", [
 		"FLOAT", "C_FLOAT"]; (* mingw-w64 / conflicted with float *)

@@ -748,6 +748,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"DEFINE_OLEGUID"]]; (* parameterized declaration *)
 		"malloc.h", [
 			`unparsible_macro, [
+				"_malloca"; (* for the case of RC_INVOKED is defined *)
 				"_STATIC_ASSERT"]]; (* parameterized declaration *)
 		"_mingw.h", [
 			`redefine_extended_word, [
