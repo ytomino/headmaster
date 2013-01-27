@@ -471,6 +471,7 @@ struct
 			false (* unimplemented *)
 		| `named (_, _, `defined_expression expr, _) ->
 			not (Semantics.is_static_expression expr)
+			&& (match expr with `ref_object _, _ -> false | _ -> true)
 		| _ ->
 			false
 		end
@@ -3163,14 +3164,19 @@ struct
 					pp_close_box ff ()
 				end
 			) else (
-				pp_print_space ff ();
-				pp_open_box ff indent;
-				let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
-				pp_print_string ff ";";
-				pp_close_box ff ();
-				pp_pragma_inline ff ~always:true name
+				begin match expr with
+				| `ref_object (obj, _), _ ->
+					pp_alias ff ~mappings ~enum_of_element ~current ~hidden_packages name (obj :> Semantics.named_item)
+				| _ ->
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
+					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+					ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
+					pp_print_string ff ";";
+					pp_close_box ff ();
+					pp_pragma_inline ff ~always:true name
+				end
 			)
 		| `named (_, name, `defined_generic_expression _, _) ->
 			fprintf ff "@ --  %s (function macro)" name
