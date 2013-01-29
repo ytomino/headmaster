@@ -83,7 +83,7 @@ module type TypingType = sig
 	val find_function_type:
 		Semantics.prototype ->
 		Semantics.source_item list ->
-		Semantics.function_type * Semantics.source_item list;;
+		[> Semantics.function_type] * Semantics.source_item list;;
 	
 	(* named types *)
 	
@@ -572,7 +572,7 @@ struct
 	);;
 	
 	let find_function_type (prototype: prototype) (source: source_item list)
-		: function_type * source_item list =
+		: [> function_type] * source_item list =
 	(
 		let rec loop xs = (
 			begin match xs with
@@ -584,7 +584,7 @@ struct
 					loop xr
 				end
 			| [] ->
-				let func_type: function_type = `function_type prototype in
+				let func_type: [> function_type] = `function_type prototype in
 				let source = (func_type :> source_item) :: source in
 				func_type, source
 			end

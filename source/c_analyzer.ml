@@ -2327,12 +2327,12 @@ struct
 		: derived_types * namespace * source_item list * (ranged_position * string * all_type * attributes) option =
 	(
 		let pointer, dd, attrs = snd x in
-		let derived_types, (t, attributes) =
+		let derived_types, source, (t, attributes) =
 			begin match pointer with
 			| `some pointer ->
-				handle_pointer error derived_types base_type attributes pointer
+				handle_pointer error derived_types source base_type attributes pointer
 			| `none ->
-				derived_types, (base_type, attributes)
+				derived_types, source, (base_type, attributes)
 			end
 		in
 		let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs in
@@ -2418,7 +2418,7 @@ struct
 			in
 			let prototype: prototype = conventions, params, varargs, base_type in
 			let func_type, source = Typing.find_function_type prototype source in
-			handle_direct_declarator error predefined_types derived_types namespace source (func_type :> all_type) attributes dd
+			handle_direct_declarator error predefined_types derived_types namespace source func_type attributes dd
 		| `old_function_type (dd, _, idl, _) ->
 			begin match idl with
 			| `some _ ->
@@ -2428,43 +2428,54 @@ struct
 				let conventions = attributes.at_conventions in
 				let prototype: prototype = conventions, [], `varargs, base_type in
 				let func_type, source = Typing.find_function_type prototype source in
-				handle_direct_declarator error predefined_types derived_types namespace source (func_type :> all_type) attributes dd
+				handle_direct_declarator error predefined_types derived_types namespace source func_type attributes dd
 			end
 		end
 	) and handle_pointer
 		(error: ranged_position -> string -> unit)
 		(derived_types: derived_types)
+		(source: source_item list)
 		(t: all_type)
 		(attributes: attributes)
 		(x: Syntax.pointer p)
-		: derived_types * (all_type * attributes) =
+		: derived_types * (source_item list) * (all_type * attributes) =
 	(
-		let apply_pointer pk t derived_types = (
+		let apply_pointer derived_types source pk t conv = (
 			begin match pk with
 			| `asterisk ->
-				Typing.find_pointer_type t derived_types
+				let t, source =
+					begin match t with
+					| `function_type (cc, params, varargs, ret) when cc <> conv ->
+						Typing.find_function_type (conv, params, varargs, ret) source
+					| _ ->
+						t, source
+					end
+				in
+				let t, derived_type = Typing.find_pointer_type t derived_types in
+				derived_type, source, t
 			| `caret ->
 				begin match t with
 				| `function_type _ as t ->
-					Typing.find_block_pointer_type t derived_types
+					let t, derived_types = Typing.find_block_pointer_type t derived_types in
+					derived_types, source, t
 				| _ ->
 					error (fst x) "block pointer could not be applied to not function type.";
-					t, derived_types
+					derived_types, source, t
 				end
 			end
 		) in
 		begin match snd x with
 		| `nil ((_, pk), qs, attrs) ->
-			let t, derived_types = apply_pointer pk t derived_types in
+			let derived_types, source, t = apply_pointer derived_types source pk t attributes.at_conventions in
 			let qualifiers = Traversing.opt Traversing.fold_tql (handle_type_qualifier error) no_type_qualifier_set qs in
 			let derived_types, t = get_type_by_qualifier_set error derived_types (fst x) t qualifiers in
 			let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs in
-			derived_types, (t, attributes)
+			derived_types, source, (t, attributes)
 		| `cons ((_, pk), qs, next) ->
-			let t, derived_types = apply_pointer pk t derived_types in
+			let derived_types, source, t = apply_pointer derived_types source pk t attributes.at_conventions in
 			let qualifiers = Traversing.opt Traversing.fold_tql (handle_type_qualifier error) no_type_qualifier_set qs in
 			let derived_types, t = get_type_by_qualifier_set error derived_types (fst x) t qualifiers in
-			handle_pointer error derived_types t attributes next
+			handle_pointer error derived_types source t attributes next
 		end
 	) and handle_parameter_type_list
 		(error: ranged_position -> string -> unit)
@@ -2595,15 +2606,15 @@ struct
 	(
 		begin match snd x with
 		| `pointer p ->
-			let derived_types, t_with_attr = handle_pointer error derived_types base_type attributes (fst x, p) in
+			let derived_types, source, t_with_attr = handle_pointer error derived_types source base_type attributes (fst x, p) in
 			derived_types, namespace, source, t_with_attr
 		| `declarator (p, dd) ->
-			let derived_types, (t, attributes) =
+			let derived_types, source, (t, attributes) =
 				begin match p with
 				| `some p ->
-					handle_pointer error derived_types base_type attributes p
+					handle_pointer error derived_types source base_type attributes p
 				| `none ->
-					derived_types, (base_type, attributes)
+					derived_types, source, (base_type, attributes)
 				end
 			in
 			handle_direct_abstract_declarator error predefined_types derived_types namespace source t attributes dd
@@ -2686,9 +2697,9 @@ struct
 			let func_type, source = Typing.find_function_type prototype source in
 			begin match dd with
 			| `some dd ->
-				handle_direct_abstract_declarator error predefined_types derived_types namespace source (func_type :> all_type) attributes dd
+				handle_direct_abstract_declarator error predefined_types derived_types namespace source func_type attributes dd
 			| `none ->
-				derived_types, namespace, source, ((func_type :> all_type), attributes)
+				derived_types, namespace, source, (func_type, attributes)
 			end
 		end
 	) and handle_initializer
