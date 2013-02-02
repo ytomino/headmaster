@@ -774,6 +774,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__MINGW_TYPEDEF_AW"; (* parameterized declaration *)
 				"__MINGW_TYPEDEF_UAW"]]; (* parameterized declaration *)
+		"ntsecapi.h", [
+			`uninterpretable_macro, [
+				"MSV1_0_NTLM3_MIN_NT_RESPONSE_LENGTH"]]; (* use RTL_SIZEOF_THROUGH_FIELD *)
 		"oleauto.h", [
 			`unparsible_macro, [
 				"WINOLEAUTAPI"; (* storage class and type *)

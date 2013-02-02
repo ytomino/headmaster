@@ -745,8 +745,12 @@ struct
 					List.fold_left (fun num (arg_name, arg) ->
 						if num >= 2 then fprintf ff ";@ " else pp_print_break ff 0 0;
 						let `named (_, _, `variable (arg_t, _), _) = arg in
-						fprintf ff "%s : " arg_name;
+						pp_open_box ff indent;
+						pp_print_string ff arg_name;
+						pp_print_string ff " :";
+						pp_print_space ff ();
 						pp_type_name ff ~mappings ~current ~hidden_packages ~hiding ~where:`argument arg_t;
+						pp_close_box ff ();
 						num + 1
 					) 1 args
 				in
