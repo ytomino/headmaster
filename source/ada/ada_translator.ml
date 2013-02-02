@@ -737,10 +737,10 @@ struct
 		let _, args, _, ret = prototype in
 		let _, name_mapping, _ = mappings in
 		let name_mapping, args = add_name_mapping_for_arguments args name_mapping in
+		let hiding = set_of_fst args in
 		let pp_args ff args = (
 			if args <> [] then (
 				pp_print_string ff " (";
-				let hiding = set_of_fst args in
 				let (_: int) =
 					List.fold_left (fun num (arg_name, arg) ->
 						if num >= 2 then fprintf ff ";@ " else pp_print_break ff 0 0;
@@ -773,7 +773,7 @@ struct
 			end;
 			pp_args ff args;
 			fprintf ff "@ return ";
-			pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name ret
+			pp_type_name ff ~mappings ~current ~hidden_packages ~hiding ~where:`name ret
 		end;
 		name_mapping
 	);;
