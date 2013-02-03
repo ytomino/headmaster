@@ -2755,6 +2755,8 @@ struct
 				(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) (t :> Semantics.all_type)
 				(ada_name_of current source_ps source_name `namespace name_mapping);
 			pp_close_box ff ()
+		| `named (_, _, (`typedef (`function_type _)) , _) ->
+			fprintf ff "@ --  subtype %s is ... (function type)" name
 		| `named (_, _, #Semantics.named_type_var, _) as source_item ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
