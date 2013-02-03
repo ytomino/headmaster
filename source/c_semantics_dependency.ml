@@ -166,6 +166,8 @@ struct
 			item :: of_alias item
 		| `named (_, _, `generic_value _, _) ->
 			[]
+		| `anonymous_alias (_, `function_type prototype) ->
+			of_prototype ~of_argument prototype
 		| `include_point _ ->
 			[]
 		end

@@ -277,10 +277,12 @@ module Semantics (Literals: LiteralsType) = struct
 		| `generic_type (* macro argument as type *)
 		| `generic_value of all_type] (* macro argument as value *)
 	and named_item = named_var with_name
+	and anonymous_alias = [`anonymous_alias of ranged_position * function_type] (* fst points source *)
 	and include_point = [`include_point of string]
 	and source_item = [ (* anonymous_type | named *)
 		| `anonymous of ranged_position * anonymous_type_var
 		| `function_type of prototype (* also, anonymous *)
+		| `anonymous_alias of ranged_position * function_type
 		| `named of ranged_position * string * named_var * attributes
 		| `include_point of string]
 	and variable_var = [`variable of all_type * expression option]
@@ -408,7 +410,7 @@ module Semantics (Literals: LiteralsType) = struct
 	type function_definition_item = function_definition with_name;;
 	type function_item = function_var with_name;;
 	
-	type all_item = [predefined_type | derived_type | anonymous_type | named_item | include_point]
+	type all_item = [predefined_type | derived_type | anonymous_type | named_item | anonymous_alias | include_point]
 	
 	type conditional_expression_var = [`cond of expression * expression * expression];;
 	type conditional_expression = conditional_expression_var * all_type;;

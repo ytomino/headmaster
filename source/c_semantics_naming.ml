@@ -85,7 +85,7 @@ struct
 				List.fold_left (fun (items_pp: source_item list StringMap.t) (file1, file2) ->
 					begin try
 						let h, _, module1 = find_by_relative_path file1 filename_mapping in
-						let _, _, module2 = find_by_relative_path file2 filename_mapping in
+						let source_h, _, module2 = find_by_relative_path file2 filename_mapping in
 						let source_items: source_item list = StringMap.find module2 items_pp in
 						let dest_items: source_item list =
 							begin try
@@ -97,7 +97,8 @@ struct
 						let added_dest_items =
 							List.fold_right (fun item (added_dest_items: source_item list) ->
 								begin match item with
-								| `named (_, _, `defined_alias _, _) ->
+								| `named (_, _, `defined_alias _, _)
+								| `anonymous_alias _ ->
 									added_dest_items (* does not chain *)
 								| `named (_, name, _, _) as item ->
 									if
@@ -114,6 +115,24 @@ struct
 											let p = h, 0, 0, 0 in
 											let ps = p, p in
 											`named (ps, name, `defined_alias item, no_attributes)
+										in
+										alias :: added_dest_items
+									)
+								| `function_type _ as item ->
+									if
+										List.exists (fun (i: source_item) ->
+											begin match i with
+											| `anonymous_alias (_, i2) ->
+												i2 == item
+											| _ ->
+												false
+											end
+										) added_dest_items
+									then added_dest_items else (
+										let alias =
+											let source_p = source_h, 0, 0, 0 in
+											let source_ps = source_p, source_p in
+											`anonymous_alias (source_ps, item)
 										in
 										alias :: added_dest_items
 									)
@@ -284,7 +303,7 @@ struct
 		let pair =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
-				| #anonymous_type | `include_point _
+				| #anonymous_type | `include_point _ | `anonymous_alias _
 				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _) ->
 					pair
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->
@@ -309,7 +328,7 @@ struct
 		let result, _ =
 			List.fold_left (fun (result, rev as pair) item ->
 				begin match item with
-				| #anonymous_type | `include_point _
+				| #anonymous_type | `include_point _ | `anonymous_alias _
 				| `named (_, _, `defined_alias (`named (_, _, (`enum _ | `struct_type _ | `union _), _)), _) ->
 					pair
 				| `named (_, _, (`enum _ | `struct_type _ | `union _), _) as esu when opaque_is_in_same esu ->

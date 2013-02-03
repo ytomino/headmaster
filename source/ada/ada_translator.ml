@@ -2503,7 +2503,7 @@ struct
 						let mappings = Semantics.no_language_mapping, opaque_mapping, name_mapping, anonymous_mapping in
 						pp_named ff ~mappings ~enum_of_element:StringMap.empty ~current item;
 						name_mapping, anonymous_mapping
-					| `include_point _ ->
+					| `include_point _ | `anonymous_alias _ ->
 						name_mapping, anonymous_mapping
 					end
 				) (name_mapping, []) items
@@ -3555,6 +3555,12 @@ struct
 							| `named _ as item ->
 								pp_named ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping) ~enum_of_element
 									~current ~hidden_packages item;
+								anonymous_mapping
+							| `anonymous_alias (source_ps, item) ->
+								let hash = hash_name item in
+								let (filename, _, _, _), _ = source_ps in
+								let _, package_name, _ = StringMap.find filename name_mapping in
+								let anonymous_mapping = ((item :> Semantics.anonymous_type), (package_name, hash)) :: anonymous_mapping in
 								anonymous_mapping
 							| `include_point included ->
 								pp_include_point ff name_mapping included;
