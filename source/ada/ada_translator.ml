@@ -3559,11 +3559,18 @@ struct
 								anonymous_mapping
 							end
 						in
-						(* derived types *)
+						(* casts and derived types *)
 						let done_list =
 							begin match item with
 							| #Semantics.anonymous_type
 							| `named (_, _, #Semantics.named_type_var, _) as t ->
+								(* output casts *)
+								List.iter (fun (x, y as pair) ->
+									if x == (t :> Semantics.all_type) || y == (t :> Semantics.all_type) then (
+										pp_unchecked_conversion ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~current pair
+									)
+								) casts;
+								(* output derived types *)
 								pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping)
 									~casts ~sized_arrays:all_sized_arrays
 									~current (t :> Semantics.all_type) derived_types done_list
