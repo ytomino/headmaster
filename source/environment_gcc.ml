@@ -279,6 +279,7 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_nanl", [`pointer (`const `char)], `long_double;
 		"__builtin_return_address", [`unsigned_int], `pointer `char;
 		"__builtin___stpcpy_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
+		"__builtin___stpncpy_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char;
 		"__builtin___strcat_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
 		"__builtin___strcpy_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
 		"__builtin___strncat_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char;

@@ -138,6 +138,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"IN6_ARE_ADDR_EQUAL"]; (* darwin9 / memcmp is undefined, #include <string.h> *)
 			`uninterpretable_macro, [
+				"IN6_IS_ADDR_6TO4"; (* darwin11 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_LINKLOCAL"; (* darwin9 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_LOOPBACK"; (* darwin9 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_MC_GLOBAL"; (* darwin9 / accessing element of untyped parameter *)
@@ -147,6 +148,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"IN6_IS_ADDR_MC_SITELOCAL"; (* darwin9 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_MULTICAST"; (* darwin9 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_SITELOCAL"; (* darwin9 / accessing element of untyped parameter *)
+				"IN6_IS_ADDR_UNIQUE_LOCAL"; (* darwin11 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_UNSPECIFIED"; (* darwin9 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_V4COMPAT"; (* darwin9 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_V4MAPPED"; (* darwin9 / accessing element of untyped parameter *)
@@ -232,6 +234,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"LIST_INSERT_HEAD";
 				"LIST_NEXT";
 				"LIST_REMOVE";
+				"LIST_SWAP"; (* darwin11 *)
 				"SLIST_EMPTY";
 				"SLIST_ENTRY";
 				"SLIST_FIRST";
@@ -245,6 +248,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"SLIST_INSERT_HEAD";
 				"SLIST_NEXT";
 				"SLIST_REMOVE";
+				"SLIST_REMOVE_AFTER"; (* darwin11 *)
 				"SLIST_REMOVE_HEAD";
 				"STAILQ_CONCAT";
 				"STAILQ_EMPTY";
@@ -261,8 +265,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"STAILQ_LAST";
 				"STAILQ_NEXT";
 				"STAILQ_REMOVE";
+				"STAILQ_REMOVE_AFTER"; (* darwin11 *)
 				"STAILQ_REMOVE_HEAD";
 				"STAILQ_REMOVE_HEAD_UNTIL";
+				"STAILQ_SWAP"; (* darwin11 *)
 				"TAILQ_CONCAT";
 				"TAILQ_EMPTY";
 				"TAILQ_ENTRY";
@@ -281,7 +287,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"TAILQ_LAST";
 				"TAILQ_NEXT";
 				"TAILQ_PREV";
-				"TAILQ_REMOVE"]];
+				"TAILQ_REMOVE";
+				"TAILQ_SWAP"]]; (* darwin11 *)
 		"sys/socket.h", [
 			`uninterpretable_macro, [
 				"CMSG_FIRSTHDR"; (* darwin9 / accessing element of untyped parameter *)
