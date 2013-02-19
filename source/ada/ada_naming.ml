@@ -62,6 +62,8 @@ let special_name_mapping = make_mapmap [
 	"png", [
 		"png_libpng_ver", "get_png_libpng_ver"; (* libpng / conflicted with PNG_LIBPNG_VER *)
 		"png_unknown_chunk_ptr", "png_unknown_chunk_funcptr"]; (* libpng / conflicted with pointer of png_unknown_chunk *)
+	"psdk_inc.qfd_types", [
+		"FD_SET", "FD_SET_uppercase"]; (* mingw-w64 / conflicted with fd_set *)
 	"qctype", [
 		"___runetype", "qqqrunetype"]; (* freebsd7 / hiding C.runetype (shold use Standard prefix...) *)
 	"readline.keymaps", [

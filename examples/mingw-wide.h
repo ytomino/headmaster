@@ -1,2 +1,3 @@
 #define UNICODE
-#include <windows.h>
+#include "mingw-ansi.h"
+#undef UNICODE

@@ -331,6 +331,12 @@ struct
 		: with_option StringMap.t =
 	(
 		let of_argument (t: Semantics.all_type): Semantics.named_item list = (
+			let t =
+				begin match t with
+				| `const t -> (t :> Semantics.all_type) (* remove const *)
+				| _ -> t
+				end
+			in
 			begin match Semantics.resolve_typedef t with
 			| #Semantics.derived_type as rt ->
 				begin match using_anonymous_access rt with
