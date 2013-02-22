@@ -1,21 +1,5 @@
 open C_literals;;
 
-type language = [`c | `cxx | `objc | `objcxx];;
-
-let cxx (lang: language): bool = (
-	begin match lang with
-	| `c | `objc -> false
-	| `cxx | `objcxx -> true
-	end
-);;
-
-let objc (lang: language): bool = (
-	begin match lang with
-	| `c | `cxx -> false
-	| `objc | `objcxx -> true
-	end
-);;
-
 let snd_of_fst_table list = (
 	let table = Hashtbl.create (List.length list) in
 	List.iter (fun (s, w) -> Hashtbl.add table s w) list;

@@ -1,6 +1,7 @@
 open C_filename;;
 open C_lexical;;
 open C_lexical_output;;
+open C_literals;;
 open C_preprocessor;;
 open C_scanner;;
 open Environment;;

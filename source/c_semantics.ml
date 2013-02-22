@@ -2,8 +2,6 @@ open C_filename;;
 open C_literals;;
 open Position;;
 
-type language = [`c | `cxx | `objc | `objcxx];;
-
 (* types *)
 
 type predefined_numeric_type = [

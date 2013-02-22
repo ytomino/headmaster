@@ -1,5 +1,25 @@
 open Value;;
 
+(* language *)
+
+type language = [`c | `cxx | `objc | `objcxx];;
+
+let cxx (lang: language): bool = (
+	begin match lang with
+	| `c | `objc -> false
+	| `cxx | `objcxx -> true
+	end
+);;
+
+let objc (lang: language): bool = (
+	begin match lang with
+	| `c | `cxx -> false
+	| `objc | `objcxx -> true
+	end
+);;
+
+(* precision *)
+
 type signed_int_prec = [
 	| `signed_char
 	| `signed_short
@@ -37,6 +57,8 @@ type bit_width_mode = [
 	| `__pointer__
 	| `__unwind_word__ (* pointer size ? *)
 	| `__word__];;
+
+(* representation *)
 
 module type LiteralsType = sig
 	module Integer: IntegerType;;

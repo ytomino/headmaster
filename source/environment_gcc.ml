@@ -1,6 +1,5 @@
+open C_literals;;
 open Environment;;
-
-type language = [`c | `cxx | `objc | `objcxx];; (* gcc supports *)
 
 let gcc_lang (lang: [< language]): string = (
 	begin match lang with
