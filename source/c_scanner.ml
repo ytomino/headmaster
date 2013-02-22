@@ -700,12 +700,8 @@ struct
 					`cons ((p1, p2), `wchars_literal s, lazy (process state index))
 				) else (
 					let p2 = TextFile.prev_position source index in
-					begin match rw_of_string lang s with
-					| #reserved_word as rw -> (* implies #extended_word *)
-						`cons ((p1, p2), (rw :> LexicalElement.t), lazy (process state index))
-					| `none ->
-						`cons ((p1, p2), `ident s, lazy (process state index))
-					end
+					let element = rw_of_string lang s in (* implies reserved_word, extended_word, identifier *)
+					`cons ((p1, p2), (element :> LexicalElement.t), lazy (process state index))
 				)
 			| '@' when objc lang ->
 				let state = nx state in

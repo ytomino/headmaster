@@ -331,30 +331,30 @@ let string_of_rw (k: reserved_word): string = (
 
 let rw_of_string_table = snd_of_fst_table reserved_word_table;;
 
-let rw_of_string (lang: language) (s: string): [reserved_word | `none] = (
+let rw_of_string (lang: language) (s: string): [reserved_word | `ident of string] = (
 	begin try
 		let k, k_lang = Hashtbl.find rw_of_string_table s in
 		begin match lang with
 		| `c ->
 			begin match k_lang with
-			| `c | `extended -> (k :> [reserved_word | `none])
-			| `cxx | `objc | `objcxx -> `none
+			| `c | `extended -> (k :> [reserved_word | `ident of string])
+			| `cxx | `objc | `objcxx -> `ident s
 			end
 		| `cxx ->
 			begin match k_lang with
-			| `c | `cxx | `extended -> (k :> [reserved_word | `none])
-			| `objc | `objcxx -> `none
+			| `c | `cxx | `extended -> (k :> [reserved_word | `ident of string])
+			| `objc | `objcxx -> `ident s
 			end
 		| `objc ->
 			begin match k_lang with
-			| `c | `objc | `extended -> (k :> [reserved_word | `none])
-			| `cxx | `objcxx -> `none
+			| `c | `objc | `extended -> (k :> [reserved_word | `ident of string])
+			| `cxx | `objcxx -> `ident s
 			end
 		| `objcxx ->
-			(k :> [reserved_word | `none])
+			(k :> [reserved_word | `ident of string])
 		end
 	with Not_found ->
-		`none
+		`ident s
 	end
 );;
 
