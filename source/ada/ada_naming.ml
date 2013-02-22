@@ -262,8 +262,15 @@ let escape_ada_reserved_word ~(prefix: string) ~(postfix: string) (s: string): s
 
 (* package name *)
 
-let take_package_name: string -> string * string =
-	Triming.take_word (fun c -> c = '.');;
+let take_package_name (s: string): string * string = (
+	begin try
+		let i = String.index s '.' in
+		let j = i + 1 in
+		String.sub s 0 i, String.sub s j (String.length s - j)
+	with Not_found ->
+		s, ""
+	end
+);;
 
 let strip_package_name (name: string): string = (
 	begin try

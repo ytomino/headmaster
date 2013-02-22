@@ -1,40 +1,43 @@
-let rec trim_left (s: string) (first: int) (last_plus_1: int): string = (
-	if first >= last_plus_1 then "" else
-	begin match s.[first] with
-	| ' ' | '\t' ->
-		trim_left s (first + 1) last_plus_1
-	| _ ->
-		String.sub s first (last_plus_1 - first)
-	end
+let rec trim_left
+	(sub: string -> int -> int -> 'a)
+	(f: char -> bool)
+	(s: string) (start: int) (next: int): 'a =
+(
+	if start < next && f s.[start] then trim_left sub f s (start + 1) next else
+	sub s start (next - start)
 );;
 
-let trim (s: string): string = (
-	let rec rloop s first last_plus_1 = (
-		if first >= last_plus_1 then "" else
-		begin match s.[last_plus_1 - 1] with
-		| ' ' | '\t' ->
-			rloop s first (last_plus_1 - 1)
-		| _ ->
-			trim_left s first last_plus_1
-		end
-	) in
-	rloop s 0 (String.length s)
+let rec trim_right
+	(sub: string -> int -> int -> 'a)
+	(f: char -> bool)
+	(s: string) (start: int) (next: int): 'a =
+(
+	let p_next = next - 1 in
+	if start < next && f s.[p_next] then trim_right sub f s start p_next else
+	sub s start (next - start)
 );;
 
-let take_word (separator: char -> bool) (s: string): string * string = (
-	let rec loop s i = (
-		let length = String.length s in
-		if i >= length then (
-			s, ""
-		) else if separator s.[i] then (
-			let hd = String.sub s 0 i in
-			let tl = trim_left s (i + 1) (String.length s) in
-			hd, tl
-		) else (
-			loop s (i + 1)
-		)
-	) in
-	loop s 0
+let trim
+	(f: char -> bool)
+	(s: string): string =
+(
+	trim_right (trim_left String.sub f) f s 0 (String.length s)
+);;
+
+let take_word
+	(is_separator: char -> bool)
+	(s: string): string * string =
+(
+	let is_not_separator c = not (is_separator c) in
+	trim_left
+		(fun s start len ->
+			let hd = String.sub s 0 start in
+			let tl = trim_left String.sub is_separator s start (start + len) in
+			hd, tl)
+		is_not_separator
+		s
+		0
+		(String.length s)
 );;
 
 let is_space (c: char): bool = (

@@ -601,7 +601,7 @@ struct
 								Buffer.reset buf;
 								let index = TextFile.succ_until_line_to_buffer is_lineescape buf source index in
 								let message = Buffer.contents buf in
-								let message = Triming.trim message in
+								let message = Triming.trim Triming.is_space message in
 								let p4 = TextFile.prev_position source index in
 								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
 									`cons ((p3, p4), `directive_parameter message, lazy (process `pp index))))
