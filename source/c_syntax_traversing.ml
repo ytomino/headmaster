@@ -14,6 +14,9 @@ module type TraversingType = sig
 	val opt: (('a -> 'b p -> 'a) -> 'a -> 'c p -> 'a) ->
 		('a -> 'b p -> 'a) -> 'a -> 'c opt -> 'a;;
 	
+	(* poison_identifier_list *)
+	val fold_pil: ('a -> Syntax.identifier p -> 'a) -> 'a -> Syntax.poison_identifier_list p -> 'a;;
+	
 	(* attribute_list *)
 	val fold_al: ('a -> Syntax.attribute p -> 'a) -> 'a -> (Syntax.attribute_list p) -> 'a;;
 	
@@ -30,10 +33,14 @@ module type TraversingType = sig
 	val fold_ael: ('a -> Syntax.assignment_expression p -> 'a) -> 'a -> Syntax.argument_expression_list p -> 'a;;
 	
 	(* init_declarator_list *)
-	val fold_idl: ('a -> Syntax.init_declarator p -> 'a) -> 'a -> Syntax.init_declarator_list p -> 'a;;
+	val fold_idrl: ('a -> Syntax.init_declarator p -> 'a) -> 'a -> Syntax.init_declarator_list p -> 'a;;
 	
 	(* struct_declaration_list *)
 	val fold_sdnl: ('a -> Syntax.struct_declaration p -> 'a) -> 'a -> (Syntax.struct_declaration_list p) -> 'a;;
+	
+	(* specifier_qualifier_list *)
+	val fold_sql: ('a -> Syntax.type_specifier p -> 'a) -> ('a -> Syntax.type_qualifier p -> 'a) ->
+		'a -> Syntax.specifier_qualifier_list p -> 'a;;
 	
 	(* struct_declarator_list *)
 	val fold_sdrl: ('a -> Syntax.struct_declarator p -> 'a) -> 'a -> (Syntax.struct_declarator_list p) -> 'a;;
@@ -47,8 +54,14 @@ module type TraversingType = sig
 	(* parameter_list *)
 	val fold_pl: ('a -> Syntax.parameter_declaration p -> 'a) -> 'a -> Syntax.parameter_list p -> 'a;;
 	
+	(* identifier_list *)
+	val fold_idl: ('a -> Syntax.identifier p -> 'a) -> 'a -> Syntax.identifier_list p -> 'a;;
+	
 	(* initializer_list *)
 	val fold_il: ('a -> Syntax.designation opt * Syntax.initializer_t e -> 'a) -> 'a -> Syntax.initializer_list p -> 'a;;
+	
+	(* designator_list *)
+	val fold_drl: ('a -> Syntax.designator p -> 'a) -> 'a -> Syntax.designator_list p -> 'a;;
 	
 	(* block_item_list *)
 	val fold_bil: ('a -> Syntax.block_item p -> 'a) -> 'a -> Syntax.block_item_list p -> 'a;;
@@ -58,6 +71,9 @@ module type TraversingType = sig
 		(string list -> string -> 'a -> 'b) -> (* in *)
 		(string -> 'b -> 'a) -> (* out *)
 		'a -> Syntax.translation_unit -> 'a;;
+	
+	(* declaration_list *)
+	val fold_dnl: ('a -> Syntax.declaration p -> 'a) -> 'a -> Syntax.declaration_list p -> 'a;;
 	
 end;;
 
@@ -83,6 +99,15 @@ struct
 			fold f a xs
 		| `none ->
 			a
+		end
+	);;
+	
+	let rec fold_pil (f: 'a -> identifier p -> 'a) (a: 'a) (xs: poison_identifier_list p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a (fst xs, x)
+		| `cons (xr, x) ->
+			f (fold_pil f a xr) x
 		end
 	);;
 	
@@ -155,12 +180,12 @@ struct
 		end
 	);;
 	
-	let rec fold_idl (f: 'a -> init_declarator p -> 'a) (a: 'a) (xs: init_declarator_list p): 'a = (
+	let rec fold_idrl (f: 'a -> init_declarator p -> 'a) (a: 'a) (xs: init_declarator_list p): 'a = (
 		begin match snd xs with
 		| `nil x ->
 			f a (fst xs, x)
 		| `cons (xr, _, x) ->
-			let v = fold_idl f a xr in
+			let v = fold_idrl f a xr in
 			begin match x with
 			| `some x ->
 				f v x
@@ -176,6 +201,29 @@ struct
 			f a (fst xs, x)
 		| `cons (xr, x) ->
 			f (fold_sdnl f a xr) x
+		end
+	);;
+	
+	let rec fold_sql (s_f: 'a -> type_specifier p -> 'a) (q_f: 'a -> type_qualifier p -> 'a)
+		(a: 'a) (xs: specifier_qualifier_list p): 'a =
+	(
+		begin match snd xs with
+		| `type_specifier (s, xr) ->
+			let v = s_f a s in
+			begin match xr with
+			| `some xr ->
+				fold_sql s_f q_f v xr
+			| `none ->
+				v
+			end
+		| `type_qualifier (q, xr) ->
+			let v = q_f a q in
+			begin match xr with
+			| `some xr ->
+				fold_sql s_f q_f v xr
+			| `none ->
+				v
+			end
 		end
 	);;
 	
@@ -233,12 +281,36 @@ struct
 		end
 	);;
 	
+	let rec fold_idl (f: 'a -> identifier p -> 'a) (a: 'a) (xs: identifier_list p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a (fst xs, x)
+		| `cons (xr, _, x) ->
+			let v = fold_idl f a xr in
+			begin match x with
+			| `some x ->
+				f v x
+			| `error ->
+				v
+			end
+		end
+	);;
+	
 	let rec fold_il (f: 'a -> designation opt * initializer_t e -> 'a) (a: 'a) (xs: initializer_list p): 'a = (
 		begin match snd xs with
 		| `nil x ->
 			f a x
 		| `cons (xr, _, x1, x2) ->
 			f (fold_il f a xr) (x1, x2)
+		end
+	);;
+	
+	let rec fold_drl (f: 'a -> designator p -> 'a) (a: 'a) (xs: designator_list p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a (fst xs, x)
+		| `cons (xr, x) ->
+			f (fold_drl f a xr) x
 		end
 	);;
 	
@@ -308,6 +380,15 @@ struct
 			end
 		) in
 		folding f in_f out_f a (make_list xs []) []
+	);;
+	
+	let rec fold_dnl (f: 'a -> declaration p -> 'a) (a: 'a) (xs: declaration_list p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a (fst xs, x)
+		| `cons (xr, x) ->
+			f (fold_dnl f a xr) x
+		end
 	);;
 	
 end;;

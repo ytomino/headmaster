@@ -1588,7 +1588,7 @@ struct
 		let _, (spec, idecls, _) = x in
 		let derived_types, namespace, source, (storage_class, base_type, attributes) = handle_declaration_specifiers error predefined_types derived_types namespace source alignment spec in
 		let derived_types, namespace, source, result =
-			Traversing.opt Traversing.fold_idl (fun (derived_types, namespace, source, rs as result) (idecl: Syntax.init_declarator p) ->
+			Traversing.opt Traversing.fold_idrl (fun (derived_types, namespace, source, rs as result) (idecl: Syntax.init_declarator p) ->
 				let derived_types, namespace, source, item = handle_init_declarator error predefined_types derived_types namespace source storage_class base_type attributes `none idecl in
 				begin match item with
 				| Some item -> derived_types, namespace, source, (item :: rs)
