@@ -117,8 +117,6 @@ let c_reserved_word_table: (string * c_reserved_word) list = [
 	"__TIME__", `__TIME__;
 	"__VA_ARGS__", `__VA_ARGS__];;
 
-let crw_of_string_table = snd_of_fst_table c_reserved_word_table;;
-
 (* c++ *)
 
 type cxx_only_reserved_word = [
@@ -187,12 +185,6 @@ let cxx_only_reserved_word_table: (string * cxx_only_reserved_word) list = [
 
 type cxx_reserved_word = [c_reserved_word | cxx_only_reserved_word];;
 
-let cxx_reserved_word_table: (string * cxx_reserved_word) list =
-	(c_reserved_word_table :> (string * cxx_reserved_word) list) @
-	(cxx_only_reserved_word_table :> (string * cxx_reserved_word) list);;
-
-let cxxrw_of_string_table = snd_of_fst_table cxx_reserved_word_table;;
-
 (* objective-c *)
 
 type objc_only_reserved_word = [
@@ -216,12 +208,6 @@ let objc_only_reserved_word_table: (string * objc_only_reserved_word) list = [
 	"__weak", `__WEAK];;
 
 type objc_reserved_word = [c_reserved_word | objc_only_reserved_word];;
-
-let objc_reserved_word_table: (string * objc_reserved_word) list =
-	(c_reserved_word_table :> (string * objc_reserved_word) list) @
-	(objc_only_reserved_word_table :> (string * objc_reserved_word) list);;
-
-let objcrw_of_string_table = snd_of_fst_table objc_reserved_word_table;;
 
 type objc_directive = [
 	| `at_CATCH
@@ -270,52 +256,18 @@ let string_of_objcdirective (s: objc_directive): string = (
 	Hashtbl.find string_of_objcdirective_table s
 );;
 
-let is_objcdirective (s: string): bool = (
-	Hashtbl.mem objcdirective_of_string_table s
-);;
-
-let objcdirective_of_string (s: string): objc_directive = (
-	Hashtbl.find objcdirective_of_string_table s
+let objcdirective_of_string (s: string): [objc_directive | `none] = (
+	begin try
+		let result: objc_directive = Hashtbl.find objcdirective_of_string_table s in
+		(result :> [objc_directive | `none])
+	with Not_found ->
+		`none
+	end
 );;
 
 (* objective-c++ *)
 
 type objcxx_reserved_word = [c_reserved_word | objc_only_reserved_word | cxx_only_reserved_word];;
-
-let objcxx_reserved_word_table: (string * objcxx_reserved_word) list =
-	(c_reserved_word_table :> (string * objcxx_reserved_word) list) @
-	(objc_reserved_word_table :> (string * objcxx_reserved_word) list) @
-	(cxx_only_reserved_word_table :> (string * objcxx_reserved_word) list);;
-
-let objcxxrw_of_string_table = snd_of_fst_table objcxx_reserved_word_table;;
-
-(* all *)
-
-type reserved_word = objcxx_reserved_word;;
-let reserved_word_table: (string * reserved_word) list = objcxx_reserved_word_table;;
-let string_of_rw_table = fst_of_snd_table reserved_word_table;;
-
-let string_of_rw (s: reserved_word): string = (
-	Hashtbl.find string_of_rw_table s
-);;
-
-let is_rw (lang: language) (s: string): bool = (
-	begin match lang with
-	| `c -> Hashtbl.mem crw_of_string_table s
-	| `cxx -> Hashtbl.mem cxxrw_of_string_table s
-	| `objc -> Hashtbl.mem objcrw_of_string_table s
-	| `objcxx -> Hashtbl.mem objcxxrw_of_string_table s
-	end
-);;
-
-let rw_of_string (lang: language) (s: string): reserved_word = (
-	begin match lang with
-	| `c -> (Hashtbl.find crw_of_string_table s:> reserved_word)
-	| `cxx -> (Hashtbl.find cxxrw_of_string_table s:> reserved_word)
-	| `objc -> (Hashtbl.find objcrw_of_string_table s:> reserved_word)
-	| `objcxx -> (Hashtbl.find objcxxrw_of_string_table s:> reserved_word)
-	end
-);;
 
 (* extended (currently, gcc only) *)
 
@@ -361,19 +313,49 @@ let extended_word_table = [
 	"__typeof__", `__typeof__;
 	"__volatile__", `__volatile__];;
 
-let string_of_ew_table = fst_of_snd_table extended_word_table;;
-let ew_of_string_table = snd_of_fst_table extended_word_table;;
+(* string_of/of_string for reserved word *)
 
-let string_of_ew (s: extended_word): string = (
-	Hashtbl.find string_of_ew_table s
+type reserved_word = [objcxx_reserved_word | extended_word];;
+
+let reserved_word_table: (string * (reserved_word * [language | `extended])) list =
+	List.map (fun (s, k) -> s, ((k :> reserved_word), `c)) c_reserved_word_table @
+	List.map (fun (s, k) -> s, ((k :> reserved_word), `cxx)) cxx_only_reserved_word_table @
+	List.map (fun (s, k) -> s, ((k :> reserved_word), `objc)) objc_only_reserved_word_table @
+	List.map (fun (s, k) -> s, ((k :> reserved_word), `extended)) extended_word_table;;
+
+let string_of_rw_table = fst_of_snd_table (List.map (fun (s, (k, _)) -> s, k) reserved_word_table);;
+
+let string_of_rw (k: reserved_word): string = (
+	Hashtbl.find string_of_rw_table k
 );;
 
-let is_ew (s: string): bool = (
-	Hashtbl.mem ew_of_string_table s
-);;
+let rw_of_string_table = snd_of_fst_table reserved_word_table;;
 
-let ew_of_string (s: string): extended_word = (
-	Hashtbl.find ew_of_string_table s
+let rw_of_string (lang: language) (s: string): [reserved_word | `none] = (
+	begin try
+		let k, k_lang = Hashtbl.find rw_of_string_table s in
+		begin match lang with
+		| `c ->
+			begin match k_lang with
+			| `c | `extended -> (k :> [reserved_word | `none])
+			| `cxx | `objc | `objcxx -> `none
+			end
+		| `cxx ->
+			begin match k_lang with
+			| `c | `cxx | `extended -> (k :> [reserved_word | `none])
+			| `objc | `objcxx -> `none
+			end
+		| `objc ->
+			begin match k_lang with
+			| `c | `objc | `extended -> (k :> [reserved_word | `none])
+			| `cxx | `objcxx -> `none
+			end
+		| `objcxx ->
+			(k :> [reserved_word | `none])
+		end
+	with Not_found ->
+		`none
+	end
 );;
 
 (* preprocessor directives *)
@@ -417,12 +399,13 @@ let string_of_ppdirective (s: preprocessor_directive): string = (
 	Hashtbl.find string_of_ppdirective_table s
 );;
 
-let is_ppdirective (s: string): bool = (
-	Hashtbl.mem ppdirective_of_string_table s
-);;
-
-let ppdirective_of_string (s: string): preprocessor_directive = (
-	Hashtbl.find ppdirective_of_string_table s
+let ppdirective_of_string (s: string): [preprocessor_directive | `none] = (
+	begin try
+		let result: preprocessor_directive = Hashtbl.find ppdirective_of_string_table s in
+		(result :> [preprocessor_directive | `none])
+	with Not_found ->
+		`none
+	end
 );;
 
 module LexicalElement (Literals: LiteralsType) = struct

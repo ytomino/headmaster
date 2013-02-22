@@ -583,36 +583,38 @@ struct
 						let d = Buffer.contents buf in
 						if d = "" then (
 							`cons ((p1, p1), `sharp, lazy (process state index))
-						) else if is_ppdirective d then (
-							let d = ppdirective_of_string d in
-							let p2 = TextFile.position source index in
-							begin match d with
-							| `sharp_INCLUDE | `sharp_INCLUDE_NEXT ->
-								let index = TextFile.succ_while Triming.is_space source index in
-								let p3 = TextFile.position source index in
-								Buffer.reset buf;
-								let index = read_header_to_buffer buf index in
-								let header = Buffer.contents buf in (* empty if error *)
-								let p4 = TextFile.prev_position source index in
-								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
-									`cons ((p3, p4), `directive_parameter header, lazy (process `pp index))))
-							| `sharp_WARNING | `sharp_ERROR ->
-								let p3 = TextFile.position source index in
-								Buffer.reset buf;
-								let index = TextFile.succ_until_line_to_buffer is_lineescape buf source index in
-								let message = Buffer.contents buf in
-								let message = Triming.trim Triming.is_space message in
-								let p4 = TextFile.prev_position source index in
-								`cons ((p1, p2), (d :> LexicalElement.t), lazy (
-									`cons ((p3, p4), `directive_parameter message, lazy (process `pp index))))
-							| _ ->
-								`cons ((p1, p2), (d :> LexicalElement.t), lazy (process `pp index))
-							end
 						) else (
-							let p2 = TextFile.prev_position source index in
-							error (p1, p2) (unknown_ppdirective d);
-							let index = TextFile.succ_until_line is_lineescape source index in (* skip line *)
-							process state index
+							begin match ppdirective_of_string d with
+							| #preprocessor_directive as d ->
+								let p2 = TextFile.position source index in
+								begin match d with
+								| `sharp_INCLUDE | `sharp_INCLUDE_NEXT ->
+									let index = TextFile.succ_while Triming.is_space source index in
+									let p3 = TextFile.position source index in
+									Buffer.reset buf;
+									let index = read_header_to_buffer buf index in
+									let header = Buffer.contents buf in (* empty if error *)
+									let p4 = TextFile.prev_position source index in
+									`cons ((p1, p2), (d :> LexicalElement.t), lazy (
+										`cons ((p3, p4), `directive_parameter header, lazy (process `pp index))))
+								| `sharp_WARNING | `sharp_ERROR ->
+									let p3 = TextFile.position source index in
+									Buffer.reset buf;
+									let index = TextFile.succ_until_line_to_buffer is_lineescape buf source index in
+									let message = Buffer.contents buf in
+									let message = Triming.trim Triming.is_space message in
+									let p4 = TextFile.prev_position source index in
+									`cons ((p1, p2), (d :> LexicalElement.t), lazy (
+										`cons ((p3, p4), `directive_parameter message, lazy (process `pp index))))
+								| _ ->
+									`cons ((p1, p2), (d :> LexicalElement.t), lazy (process `pp index))
+								end
+							| `none ->
+								let p2 = TextFile.prev_position source index in
+								error (p1, p2) (unknown_ppdirective d);
+								let index = TextFile.succ_until_line is_lineescape source index in (* skip line *)
+								process state index
+							end
 						)
 					) else (
 						`cons ((p1, p1), `sharp, lazy (process state index))
@@ -698,15 +700,12 @@ struct
 					`cons ((p1, p2), `wchars_literal s, lazy (process state index))
 				) else (
 					let p2 = TextFile.prev_position source index in
-					if is_rw lang s then (
-						let rw = rw_of_string lang s in
+					begin match rw_of_string lang s with
+					| #reserved_word as rw -> (* implies #extended_word *)
 						`cons ((p1, p2), (rw :> LexicalElement.t), lazy (process state index))
-					) else if is_ew s then (
-						let ew = ew_of_string s in
-						`cons ((p1, p2), (ew :> LexicalElement.t), lazy (process state index))
-					) else (
+					| `none ->
 						`cons ((p1, p2), `ident s, lazy (process state index))
-					)
+					end
 				)
 			| '@' when objc lang ->
 				let state = nx state in
@@ -724,13 +723,13 @@ struct
 					let index = TextFile.succ_while_to_buffer is_tailing buf source index in
 					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
-					if is_objcdirective s then (
-						let d = objcdirective_of_string s in
+					begin match objcdirective_of_string s with
+					| #objc_directive as d ->
 						`cons ((p1, p2), (d :> LexicalElement.t), lazy (process state index))
-					) else (
+					| `none ->
 						error (p1, p2) (unknown_objcdirective s);
 						process state index
-					)
+					end
 				| _ ->
 					error (p1, p1) (unexpected '@');
 					process state index

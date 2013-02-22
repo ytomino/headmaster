@@ -23,10 +23,8 @@ struct
 	let print_element (print_string: string -> unit) (e: LexicalElement.t): unit = (
 		let image =
 			begin match e with
-			| #reserved_word as w ->
+			| #reserved_word as w -> (* implies #extended_word *)
 				string_of_rw w
-			| #extended_word as w ->
-				string_of_ew w
 			| #objc_directive as w ->
 				string_of_objcdirective w
 			| #preprocessor_directive as w ->

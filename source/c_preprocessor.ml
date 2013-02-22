@@ -799,7 +799,7 @@ struct
 						end
 					| lazy (`cons (name_ps, (#extended_word as ew), xs)) ->
 						let filename, _, _, _ = fst name_ps in
-						let name = string_of_ew ew in
+						let name = string_of_rw ew in
 						if filename <> predefined_name && not (is_known_error name_ps name `redefine_extended_word) then (
 							error name_ps (redefined_extended_word name)
 						);
@@ -825,13 +825,8 @@ struct
 						let predefined = StringMap.remove name predefined in
 						let xs = take_end_of_line error xs in
 						process state predefined StringMap.empty xs
-					| lazy (`cons (_, (#reserved_word as rw), xs)) ->
+					| lazy (`cons (_, (#reserved_word as rw), xs)) -> (* implies #extended_word *)
 						let name = string_of_rw rw in
-						let predefined = StringMap.remove name predefined in
-						let xs = take_end_of_line error xs in
-						process state predefined StringMap.empty xs
-					| lazy (`cons (_, (#extended_word as ew), xs)) ->
-						let name = string_of_ew ew in
 						let predefined = StringMap.remove name predefined in
 						let xs = take_end_of_line error xs in
 						process state predefined StringMap.empty xs
@@ -854,7 +849,7 @@ struct
 						let xs = take_end_of_line error xs in
 						process_if cond xs
 					| lazy (`cons (_, (#extended_word as ew), xs)) ->
-						let name = string_of_ew ew in
+						let name = string_of_rw ew in
 						let cond = StringMap.mem name predefined in
 						let xs = take_end_of_line error xs in
 						process_if cond xs
@@ -874,7 +869,7 @@ struct
 						let xs = take_end_of_line error xs in
 						process_if cond xs
 					| lazy (`cons (_, (#extended_word as ew), xs)) ->
-						let name = string_of_ew ew in
+						let name = string_of_rw ew in
 						let cond = not (StringMap.mem name predefined) in
 						let xs = take_end_of_line error xs in
 						process_if cond xs
@@ -1061,7 +1056,7 @@ struct
 							lazy (`cons ((_, p2), `r_paren, xs))))))
 					| lazy (`cons ((_, p2), (#extended_word as ew), xs)) ->
 						let (p1, _) = ps in
-						let name = string_of_ew ew in
+						let name = string_of_rw ew in
 						let cond = leinteger_of_bool (StringMap.mem name predefined) in
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
@@ -1141,25 +1136,14 @@ struct
 						`cons (ps, token, lazy (
 							process state predefined macro_arguments xs))
 					end
-				| #reserved_word as rw ->
+				| #reserved_word as rw -> (* implies #extended_word *)
 					begin match xs with
 					| lazy (`cons (ds_p, `d_sharp, xs)) ->
 						process_d_sharp ps (`ident (string_of_rw rw)) ds_p xs
 					| _ ->
-						if StringMap.mem (string_of_rw rw) predefined then (
-							process_replace ps token (string_of_rw rw) xs
-						) else (
-							`cons (ps, token, lazy (
-								process state predefined macro_arguments xs))
-						)
-					end
-				| #extended_word as ew ->
-					begin match xs with
-					| lazy (`cons (ds_p, `d_sharp, xs)) ->
-						process_d_sharp ps (`ident (string_of_ew ew)) ds_p xs
-					| _ ->
-						if StringMap.mem (string_of_ew ew) predefined then (
-							process_replace ps token (string_of_ew ew) xs
+						let s_rw = string_of_rw rw in
+						if StringMap.mem s_rw predefined then (
+							process_replace ps token s_rw xs
 						) else (
 							`cons (ps, token, lazy (
 								process state predefined macro_arguments xs))

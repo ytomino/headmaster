@@ -210,8 +210,7 @@ let rec loop (xs: PP.out_t): unit = (
 		begin match token with
 		| `end_of_line ->
 			print_end_of_line ps ()
-		| #reserved_word
-		| #extended_word
+		| #reserved_word (* implies #extended_word *)
 		| #objc_directive
 		| #preprocessor_directive
 		| `directive_parameter _
