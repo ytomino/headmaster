@@ -15,7 +15,7 @@ module type DefineAnalyzerType = sig
 		with module Literals := Literals;;
 	
 	type define = [
-		| `operator of operator
+		| `operator of iso646_operator
 		| `declaration_specifiers of Syntax.declaration_specifiers
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
@@ -154,7 +154,7 @@ struct
 	(* define type *)
 	
 	type define = [
-		| `operator of operator
+		| `operator of iso646_operator
 		| `declaration_specifiers of Syntax.declaration_specifiers
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression

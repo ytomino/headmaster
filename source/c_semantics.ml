@@ -2,60 +2,6 @@ open C_filename;;
 open C_literals;;
 open Position;;
 
-(* types *)
-
-type predefined_numeric_type = [
-	| `bool
-	| int_prec
-	| real_prec
-	| `imaginary of float_prec
-	| `complex of float_prec
-	| `char
-	| `wchar];; (* only C++ or Objective-C++ *)
-
-type predefined_type = [predefined_numeric_type
-	| `void
-	| `__builtin_va_list];;
-
-let unsigned_of_signed (p: signed_int_prec): [> unsigned_int_prec] = (
-	match p with
-	| `signed_char -> `unsigned_char
-	| `signed_short -> `unsigned_short
-	| `signed_int -> `unsigned_int
-	| `signed_long -> `unsigned_long
-	| `signed_long_long -> `unsigned_long_long
-);;
-
-(* operators in iso646.h *)
-
-type operator = [
-	| `ampersand
-	| `and_assign
-	| `and_then
-	| `caret
-	| `exclamation
-	| `ne
-	| `or_assign
-	| `or_else
-	| `tilde
-	| `vertical
-	| `xor_assign];;
-
-(* (6.5.16) assignment-operator *)
-
-type assignment_operator = [
-	| `assign
-	| `mul_assign
-	| `div_assign
-	| `rem_assign
-	| `add_assign
-	| `sub_assign
-	| `l_shift_assign
-	| `r_shift_assign
-	| `and_assign
-	| `xor_assign
-	| `or_assign];;
-
 module StringMap = struct
 	include Map.Make (String);;
 	
@@ -145,6 +91,19 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	(* items *)
 	
+	type predefined_numeric_type = [
+		| `bool
+		| int_prec
+		| real_prec
+		| `imaginary of float_prec
+		| `complex of float_prec
+		| `char
+		| `wchar];; (* only C++ or Objective-C++ *)
+	
+	type predefined_type = [predefined_numeric_type
+		| `void
+		| `__builtin_va_list];;
+	
 	type storage_class = [
 		| `typedef
 		| `extern
@@ -187,15 +146,7 @@ module Semantics (Literals: LiteralsType) = struct
 	and prototype = calling_convention * variable list * varargs_opt * all_type
 	and function_type = [`function_type of prototype]
 	and not_qualified_type = [ (* predefined_type | anonymous_type | named_type | `pointer | `block_pointer | `array | `restrict *)
-		| `void
-		| `bool
-		| int_prec
-		| real_prec
-		| `imaginary of float_prec
-		| `complex of float_prec
-		| `char
-		| `wchar (* only C++ or Objective-C++ *)
-		| `__builtin_va_list
+		| predefined_type
 		| `pointer of all_type
 		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
@@ -204,15 +155,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `function_type of prototype (* also, anonymous *)
 		| `named of ranged_position * string * named_type_var * attributes]
 	and not_const_type = [ (* not_qualified_type | `volatile *)
-		| `void
-		| `bool
-		| int_prec
-		| real_prec
-		| `imaginary of float_prec
-		| `complex of float_prec
-		| `char
-		| `wchar (* only C++ or Objective-C++ *)
-		| `__builtin_va_list
+		| predefined_type
 		| `pointer of all_type
 		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
@@ -222,15 +165,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `function_type of prototype (* also, anonymous *)
 		| `named of ranged_position * string * named_type_var * attributes]
 	and all_type = [ (* not_const_type | `const *)
-		| `void
-		| `bool
-		| int_prec
-		| real_prec
-		| `imaginary of float_prec
-		| `complex of float_prec
-		| `char
-		| `wchar (* only C++ or Objective-C++ *)
-		| `__builtin_va_list
+		| predefined_type
 		| `pointer of all_type
 		| `block_pointer of function_type
 		| `array of Integer.t option * not_qualified_type
@@ -259,7 +194,7 @@ module Semantics (Literals: LiteralsType) = struct
 		| `variable of all_type * expression option
 		| `function_forward of [`static | `builtin] * function_type
 		| `function_definition of [`static | `extern_inline | `none] * function_type * statement list
-		| `defined_operator of operator
+		| `defined_operator of iso646_operator
 		| `defined_attributes
 		| `defined_storage_class of storage_class
 		| `defined_type_specifier of [`imaginary | `complex]
@@ -343,6 +278,19 @@ module Semantics (Literals: LiteralsType) = struct
 		| `cond of expression * expression * expression
 		| `assign of expression * assignment_operator * expression
 		| `comma of expression * expression]
+	and assignment_operator = [
+		(* (6.5.16) assignment-operator *)
+		| `assign
+		| `mul_assign
+		| `div_assign
+		| `rem_assign
+		| `add_assign
+		| `sub_assign
+		| `l_shift_assign
+		| `r_shift_assign
+		| `and_assign
+		| `xor_assign
+		| `or_assign]
 	and expression = expression_var * all_type
 	and statement = [
 		| `asm of [`volatile | `none] * string * (string * expression) list * (string * expression) list * string list
@@ -523,6 +471,15 @@ module Semantics (Literals: LiteralsType) = struct
 		with Not_found -> (* C++ or Objective-C++ *)
 			find_predefined_type `wchar predefined_types
 		end
+	);;
+	
+	let unsigned_of_signed (p: signed_int_prec): [> unsigned_int_prec] = (
+		match p with
+		| `signed_char -> `unsigned_char
+		| `signed_short -> `unsigned_short
+		| `signed_int -> `unsigned_int
+		| `signed_long -> `unsigned_long
+		| `signed_long_long -> `unsigned_long_long
 	);;
 	
 	(* derived types *)

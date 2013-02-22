@@ -310,7 +310,7 @@ struct
 		) in
 		List.fold_left (fun r x ->
 			begin match x with
-			| #predefined_type
+			| #Semantics.predefined_type
 			| #Semantics.derived_type
 			| #Semantics.anonymous_type
 			| `named (_, _, #Semantics.named_type_var, _) as x ->
@@ -514,7 +514,7 @@ struct
 	
 	let pp_predefined_type_name
 		(ff: formatter)
-		(item: predefined_type)
+		(item: Semantics.predefined_type)
 		: unit =
 	(
 		begin match item with
@@ -705,7 +705,7 @@ struct
 			end
 		| _ ->
 			begin match item with
-			| #predefined_type as item ->
+			| #Semantics.predefined_type as item ->
 				pp_predefined_type_name ff item
 			| #Semantics.anonymous_type as item ->
 				let mappings = name_mapping, anonymous_mapping in
@@ -787,7 +787,7 @@ struct
 	let pp_predefined_type
 		(ff: formatter)
 		~(language_mapping: Semantics.language_mapping)
-		(item: predefined_type * int)
+		(item: Semantics.predefined_type * int)
 		: unit =
 	(
 		let t, _ = item in
@@ -867,7 +867,7 @@ struct
 	
 	let pp_primitives_for_predefined_type
 		(ff: formatter)
-		(item: predefined_type * int)
+		(item: Semantics.predefined_type * int)
 		: unit =
 	(
 		let t, _ = item in
@@ -899,7 +899,7 @@ struct
 		(ff: formatter)
 		~(language_mapping: Semantics.language_mapping)
 		(name: string)
-		(t: predefined_type)
+		(t: Semantics.predefined_type)
 		: unit =
 	(
 		begin try
@@ -1023,7 +1023,7 @@ struct
 							(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype)
 							(base_type :> Semantics.all_type);
 						begin match resolved_base_type with
-						| #predefined_type ->
+						| #Semantics.predefined_type ->
 							()
 						| _ ->
 							pp_pragma_convention ff `cdecl name
@@ -1608,7 +1608,7 @@ struct
 			let is_signed, unsigned_of_signed =
 				begin match Semantics.resolve_typedef t with
 				| #unsigned_int_prec as p -> false, p
-				| #signed_int_prec as p -> (need_to_cast left || need_to_cast right), unsigned_of_signed p
+				| #signed_int_prec as p -> (need_to_cast left || need_to_cast right), Semantics.unsigned_of_signed p
 				| _ -> assert false
 				end
 			in
@@ -3376,7 +3376,7 @@ struct
 	let pp_translated_package_spec
 		(ff: formatter)
 		~(language_mapping: Semantics.language_mapping)
-		~(predefined_types: (predefined_type * int) list * Semantics.typedef_type list)
+		~(predefined_types: (Semantics.predefined_type * int) list * Semantics.typedef_type list)
 		~(derived_types: Semantics.derived_type list)
 		~(enum_of_element: Semantics.full_enum_type StringMap.t)
 		~(opaque_mapping: Semantics.opaque_mapping)
@@ -3446,7 +3446,7 @@ struct
 					(* special-typedefs (size_t is required before any array types) *)
 					List.iter (fun item ->
 						begin match item with
-						| `named (_, current, `typedef (#predefined_type as t), _) ->
+						| `named (_, current, `typedef (#Semantics.predefined_type as t), _) ->
 							pp_newtype_of_predefind_type ff ~language_mapping current t
 						| _ ->
 							assert false (* does not come here *)
@@ -3461,7 +3461,7 @@ struct
 					(* derived types of special typedefs *)
 					List.iter (fun item ->
 						begin match item with
-						| `named (_, current, `typedef #predefined_type, _) as item ->
+						| `named (_, current, `typedef #Semantics.predefined_type, _) as item ->
 							ignore (pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, [])
 								~casts ~sized_arrays:all_sized_arrays
 								~current ~special:true (item :> Semantics.all_type) derived_types [])

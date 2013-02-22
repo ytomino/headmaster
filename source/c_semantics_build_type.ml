@@ -114,7 +114,7 @@ module type TypingType = sig
 	(* sizeof / alignof *)
 	
 	val sizeof_predefined_type:
-		[< predefined_type] ->
+		[< Semantics.predefined_type] ->
 		Semantics.predefined_types ->
 		int;;
 	val sizeof:
@@ -123,7 +123,7 @@ module type TypingType = sig
 		int option;;
 	
 	val alignof_predefined_type:
-		[< predefined_type] ->
+		[< Semantics.predefined_type] ->
 		Semantics.predefined_types ->
 		int;;
 	val alignof:

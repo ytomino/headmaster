@@ -1,31 +1,6 @@
 open C_literals;;
 open Position;;
 
-(* operators in iso646.h for define parser *)
-
-type operator = [
-	| `ampersand
-	| `and_assign
-	| `and_then
-	| `caret
-	| `exclamation
-	| `ne
-	| `or_assign
-	| `or_else
-	| `tilde
-	| `vertical
-	| `xor_assign];;
-
-(* builtin functions *)
-
-type builtin_comparator = [
-	| `__builtin_isgreater
-	| `__builtin_isgreaterequal
-	| `__builtin_isless
-	| `__builtin_islessequal
-	| `__builtin_islessgreater
-	| `__builtin_isunordered];;
-
 module Syntax (Literals: LiteralsType) = struct
 	open Literals;;
 	
@@ -200,6 +175,14 @@ module Syntax (Literals: LiteralsType) = struct
 		(* (6.5.2) argument-expression-list *)
 		| `nil of assignment_expression
 		| `cons of argument_expression_list p * [`comma] p * assignment_expression e]
+	and builtin_comparator = [
+		(* extended *)
+		| `__builtin_isgreater
+		| `__builtin_isgreaterequal
+		| `__builtin_isless
+		| `__builtin_islessequal
+		| `__builtin_islessgreater
+		| `__builtin_isunordered]
 	and unary_operator = [
 		(* (6.5.3) unary-operator *)
 		| `ampersand

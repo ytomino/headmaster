@@ -58,6 +58,21 @@ type bit_width_mode = [
 	| `__unwind_word__ (* pointer size ? *)
 	| `__word__];;
 
+(* operators in iso646.h *)
+
+type iso646_operator = [
+	| `ampersand
+	| `and_assign
+	| `and_then
+	| `caret
+	| `exclamation
+	| `ne
+	| `or_assign
+	| `or_else
+	| `tilde
+	| `vertical
+	| `xor_assign];;
+
 (* representation *)
 
 module type LiteralsType = sig

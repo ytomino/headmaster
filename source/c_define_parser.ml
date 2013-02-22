@@ -37,7 +37,7 @@ module type DefineParserType = sig
 		with module Literals := Literals;;
 	
 	type define = [
-		| `operator of operator
+		| `operator of iso646_operator
 		| `declaration_specifiers of Syntax.declaration_specifiers
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
@@ -100,10 +100,10 @@ struct
 	
 	let parse_operator_option
 		(xs: 'a Parser.in_t)
-		: operator p option * 'a Parser.in_t =
+		: iso646_operator p option * 'a Parser.in_t =
 	(
 		begin match xs with
-		| lazy (`cons (op_p, (#operator as op_e), xs)) ->
+		| lazy (`cons (op_p, (#iso646_operator as op_e), xs)) ->
 			Some (op_p, op_e), xs
 		| _ ->
 			None, xs
@@ -149,7 +149,7 @@ struct
 	(* define parser *)
 	
 	type define = [
-		| `operator of operator
+		| `operator of iso646_operator
 		| `declaration_specifiers of Syntax.declaration_specifiers
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
