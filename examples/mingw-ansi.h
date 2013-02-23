@@ -18,10 +18,12 @@
 #undef NT_INCLUDED
 #include <winnt.h>
 #include <winsock2.h> /* before windows.h */
-#include <windows.h>
-#include <wincrypt.h>
-
-#undef WIN32_LEAN_AND_MEAN
-
 /* #pragma for Ada "winsock2.h" monolithic_include "psdk_inc/_wsa_errnos.h" */
 #undef h_errno
+#include <windows.h>
+#include <wincrypt.h>
+#include <ws2tcpip.h>
+#undef _S6_un /* false positive warning of gcc */
+#undef s6_addr /* use _S6_un */
+
+#undef WIN32_LEAN_AND_MEAN

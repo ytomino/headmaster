@@ -11,7 +11,7 @@
 #if defined (__linux__)
 #include <limits.h> /* LONG_MAX for bits/posix1_lim.h */
 #endif
-#include <sys/fcntl.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
