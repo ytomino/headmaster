@@ -96,8 +96,12 @@ struct
 		"extended keyword " ^ s ^ " is re-defined.";;
 	let redefined_compiler_macro (s: string): string =
 		"compiler macro " ^ s ^ " is re-defined.";;
+	let vanished_macro (s: string): string =
+		"macro " ^ s ^ " is vanished.";;
+	let redefined_macro (s: string): string =
+		"macro " ^ s ^ " is re-defined.";;
 	let defined_macro_is_pushed (s: string): string =
-		s ^ " is defined, and pushed. (not supported)"
+		s ^ " is defined, and pushed. (not supported)";;
 	let undefined_macro (s: string): string =
 		s ^ " is undefined. (preprocessor)";;
 	let too_many_arguments (s: string): string =
@@ -166,6 +170,51 @@ struct
 	and concatable_element = [reserved_word
 		| `ident of string
 		| `numeric_literal of string * LexicalElement.numeric_literal];;
+	
+	(* define_item *)
+	
+	let define_item_eq (left: define_item) (right: define_item): bool = (
+		let rec equals_args (left: (ranged_position * string) list) (right: (ranged_position * string) list): bool = (
+			begin match left with
+			| (_, left_e) :: left_r ->
+				begin match right with
+				| (_, right_e) :: right_r ->
+					left_e = right_e && equals_args left_r right_r
+				| _ ->
+					false
+				end
+			| [] ->
+				begin match right with
+				| [] ->
+					true
+				| _ ->
+					false
+				end
+			end
+		) in
+		let rec equals_in (left: in_t) (right: in_t): bool = (
+			begin match left with
+			| lazy (`cons (_, left_e, left_r)) ->
+				begin match right with
+				| lazy (`cons (_, right_e, right_r)) ->
+					left_e = right_e && equals_in left_r right_r
+				| _ ->
+					false
+				end
+			| lazy (`nil _) ->
+				begin match right with
+				| lazy (`nil _) ->
+					true
+				| _ ->
+					false
+				end
+			end
+		) in
+		left.df_has_arguments = right.df_has_arguments
+		&& equals_args left.df_args right.df_args
+		&& left.df_varargs = right.df_varargs
+		&& equals_in left.df_contents right.df_contents
+	);;
 	
 	(* line *)
 	
@@ -749,54 +798,73 @@ struct
 					assert (state <> `in_macro_expr);
 					begin match xs with
 					| lazy (`cons (name_ps, `ident name, xs)) ->
-						let (_, (name_file, name_lpos, _, _)) = name_ps in
-						begin match xs with
-						| lazy (`cons (((lp_file, lp_fpos, _, _), _), `l_paren, xs))
-							when lp_file = name_file && lp_fpos = name_lpos + 1 ->
-							(* function macro *)
-							let rec loop xs = (
-								begin match xs with
-								| lazy (`cons (arg_p, `ident arg,
-									lazy (`cons (_, `comma, xs)))) ->
-									let args, varargs, xs = loop xs in
-									((arg_p, arg) :: args), varargs, xs
-								| lazy (`cons (arg_p, `ident arg,
-									lazy (`cons (_, `r_paren, xs)))) ->
-									[arg_p, arg], false, xs
-								| lazy (`cons (_, `varargs,
-									lazy (`cons (_, `r_paren, xs)))) ->
-									[], true, xs
-								| lazy (`cons (_, `r_paren, xs)) ->
-									[], false, xs
-								| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
-									error ps parenthesis_is_missing;
-									[], false, xs
-								end
-							) in
-							let args, varargs, xs = loop xs in
-							let cs, xs = take_line xs in
-							let predefined = StringMap.add name {
-								df_name = name;
-								df_position = name_ps;
-								df_has_arguments = true;
-								df_args = args;
-								df_varargs = varargs;
-								df_contents = cs} predefined
-							in
-							process state predefined StringMap.empty xs
-						| _ ->
-							(* simple macro *)
-							let cs, xs = take_line xs in
-							let predefined = StringMap.add name {
-								df_name = name;
-								df_position = name_ps;
-								df_has_arguments = false;
-								df_args = [];
-								df_varargs = false;
-								df_contents = cs} predefined
-							in
-							process state predefined StringMap.empty xs
-						end
+						let new_item, xs =
+							let (_, (name_file, name_lpos, _, _)) = name_ps in
+							begin match xs with
+							| lazy (`cons (((lp_file, lp_fpos, _, _), _), `l_paren, xs))
+								when lp_file = name_file && lp_fpos = name_lpos + 1 ->
+								(* function macro *)
+								let rec loop xs = (
+									begin match xs with
+									| lazy (`cons (arg_p, `ident arg,
+										lazy (`cons (_, `comma, xs)))) ->
+										let args, varargs, xs = loop xs in
+										((arg_p, arg) :: args), varargs, xs
+									| lazy (`cons (arg_p, `ident arg,
+										lazy (`cons (_, `r_paren, xs)))) ->
+										[arg_p, arg], false, xs
+									| lazy (`cons (_, `varargs,
+										lazy (`cons (_, `r_paren, xs)))) ->
+										[], true, xs
+									| lazy (`cons (_, `r_paren, xs)) ->
+										[], false, xs
+									| lazy (`cons (ps, _, _)) | lazy (`nil (ps, _)) ->
+										error ps parenthesis_is_missing;
+										[], false, xs
+									end
+								) in
+								let args, varargs, xs = loop xs in
+								let cs, xs = take_line xs in
+								let new_item = {
+									df_name = name;
+									df_position = name_ps;
+									df_has_arguments = true;
+									df_args = args;
+									df_varargs = varargs;
+									df_contents = cs}
+								in
+								new_item, xs
+							| _ ->
+								(* simple macro *)
+								let cs, xs = take_line xs in
+								let new_item = {
+									df_name = name;
+									df_position = name_ps;
+									df_has_arguments = false;
+									df_args = [];
+									df_varargs = false;
+									df_contents = cs}
+								in
+								new_item, xs
+							end
+						in
+						let inserting =
+							if StringMap.mem name predefined then (
+								let old_item = StringMap.find name predefined in
+								if define_item_eq new_item old_item then false else (
+									error old_item.df_position (vanished_macro name);
+									error ps (redefined_macro name);
+									true
+								)
+							) else (
+								true
+							)
+						in
+						let predefined =
+							if inserting then StringMap.add new_item.df_name new_item predefined else
+							predefined
+						in
+						process state predefined StringMap.empty xs
 					| lazy (`cons (name_ps, (#extended_word as ew), xs)) ->
 						let filename, _, _, _ = fst name_ps in
 						let name = string_of_rw ew in
