@@ -28,9 +28,11 @@ module type TraversingType = sig
 	
 	(* ia_register_list *)
 	val fold_iarl: ('a -> [`chars_literal of string] p -> 'a) -> 'a -> Syntax.ia_register_list p -> 'a;;
+	val fold_right_iarl: ([`chars_literal of string] p -> 'a -> 'a) -> Syntax.ia_register_list p -> 'a -> 'a;;
 	
 	(* argument_expression_list *)
 	val fold_ael: ('a -> Syntax.assignment_expression p -> 'a) -> 'a -> Syntax.argument_expression_list p -> 'a;;
+	val fold_right_ael: (Syntax.assignment_expression p -> 'a -> 'a) -> Syntax.argument_expression_list p -> 'a -> 'a;;
 	
 	(* init_declarator_list *)
 	val fold_idrl: ('a -> Syntax.init_declarator p -> 'a) -> 'a -> Syntax.init_declarator_list p -> 'a;;
@@ -65,6 +67,7 @@ module type TraversingType = sig
 	
 	(* block_item_list *)
 	val fold_bil: ('a -> Syntax.block_item p -> 'a) -> 'a -> Syntax.block_item_list p -> 'a;;
+	val fold_right_bil: (Syntax.block_item p -> 'a -> 'a) -> Syntax.block_item_list p -> 'a -> 'a;;
 	
 	(* translation_unit *)
 	val fold_tu: ('b -> Syntax.external_declaration p -> 'b) ->
@@ -165,6 +168,23 @@ struct
 		end
 	);;
 	
+	let rec fold_right_iarl (f: [`chars_literal of string] p -> 'a -> 'a) (xs: ia_register_list p) (a: 'a): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f (fst xs, x) a
+		| `cons (xr, _, x) ->
+			let v =
+				begin match x with
+				| `some x ->
+					f x a
+				| `error ->
+					a
+				end
+			in
+			fold_right_iarl f xr v
+		end
+	);;
+	
 	let rec fold_ael (f: 'a -> assignment_expression p -> 'a) (a: 'a) (xs: argument_expression_list p): 'a = (
 		begin match snd xs with
 		| `nil x ->
@@ -177,6 +197,23 @@ struct
 			| `error ->
 				v
 			end
+		end
+	);;
+	
+	let rec fold_right_ael (f: assignment_expression p -> 'a -> 'a) (xs: argument_expression_list p) (a: 'a): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f (fst xs, x) a
+		| `cons (xr, _, x) ->
+			let v =
+				begin match x with
+				| `some x ->
+					f x a
+				| `error ->
+					a
+				end
+			in
+			fold_right_ael f xr v
 		end
 	);;
 	
@@ -320,6 +357,15 @@ struct
 			f a (fst xs, x)
 		| `cons (xr, x) ->
 			f (fold_bil f a xr) x
+		end
+	);;
+	
+	let rec fold_right_bil (f: block_item p -> 'a -> 'a) (xs: block_item_list p) (a: 'a): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f (fst xs, x) a
+		| `cons (xr, x) ->
+			fold_right_bil f xr (f x a)
 		end
 	);;
 	

@@ -49,6 +49,19 @@ module type TypingType = sig
 		language_typedef ->
 		Semantics.predefined_types;;
 	
+	val select_bit_width_int:
+		Semantics.predefined_types ->
+		int ->
+		int_prec ->
+		int_prec ->
+		[> int_prec] * [> `none | `not_had of int];;
+	
+	val apply_bit_width_mode:
+		Semantics.predefined_types ->
+		bit_width_mode ->
+		Semantics.all_type ->
+		Semantics.all_type * [> `none | `not_had of int | `not_int];;
+	
 	(* derived types *)
 	
 	val find_const_type:
@@ -110,6 +123,11 @@ module type TypingType = sig
 		Semantics.predefined_types ->
 		Semantics.namespace ->
 		Semantics.all_type;;
+	
+	val resolve_opaque:
+		Semantics.namespace ->
+		([> [> Semantics.opaque_type_var | Semantics.non_opaque_type_var] Semantics.with_name] as 'a) ->
+		'a;;
 	
 	(* sizeof / alignof *)
 	
@@ -313,6 +331,60 @@ struct
 			)
 		in
 		predefined_types, language_typedefs
+	);;
+	
+	let select_bit_width_int predefined_types size (t1: int_prec) (t2: int_prec) = (
+		let t1_pdt, t1_size = find_predefined_type_with_size t1 predefined_types in
+		assert (t1_pdt == (t1 :> predefined_type));
+		if t1_size = size then (t1 : int_prec :> [> int_prec]), `none else
+		let t2_pdt, t2_size = find_predefined_type_with_size t2 predefined_types in
+		assert (t2_pdt == (t2 :> predefined_type));
+		if t2_size = size then (t2 : int_prec :> [> int_prec]), `none else
+		(t2 : int_prec :> [> int_prec]), `not_had size
+	);;
+	
+	let apply_bit_width_mode
+		(predefined_types: predefined_types)
+		(bit_width_mode: bit_width_mode)
+		(t : all_type)
+		: all_type * [> `none | `not_had of int | `not_int] =
+	(
+		begin match t with
+		| #signed_int_prec ->
+			begin match bit_width_mode with
+			| `__QI__ ->
+				assert (`signed_char == find_predefined_type `signed_char predefined_types);
+				`signed_char, `none
+			| `__HI__ ->
+				(select_bit_width_int predefined_types 2 `signed_int `signed_short :> all_type * 'err)
+			| `__SI__ ->
+				(select_bit_width_int predefined_types 4 `signed_int `signed_long :> all_type * 'err)
+			| `__DI__ ->
+				(select_bit_width_int predefined_types 8 `signed_long `signed_long_long :> all_type * 'err)
+			| `__pointer__ | `__unwind_word__ | `__word__ ->
+				let ptrdiff_t = find_ptrdiff_t predefined_types in
+				let `named (_, _, `typedef result, _) = ptrdiff_t in
+				result, `none
+			end
+		| #unsigned_int_prec ->
+			begin match bit_width_mode with
+			| `__QI__ ->
+				assert (`unsigned_char == find_predefined_type `unsigned_char predefined_types);
+				`unsigned_char, `none
+			| `__HI__ ->
+				(select_bit_width_int predefined_types 2 `unsigned_int `unsigned_short :> all_type * 'err)
+			| `__SI__ ->
+				(select_bit_width_int predefined_types 4 `unsigned_int `unsigned_long :> all_type * 'err)
+			| `__DI__ ->
+				(select_bit_width_int predefined_types 8 `unsigned_long `unsigned_long_long :> all_type * 'err)
+			| `__pointer__ | `__unwind_word__ | `__word__ ->
+				let size_t = find_size_t predefined_types in
+				let `named (_, _, `typedef result, _) = size_t in
+				result, `none
+			end
+		| _ ->
+			t, `not_int
+		end
 	);;
 	
 	(* derived types *)
@@ -675,8 +747,6 @@ struct
 			item, namespace, source
 	);;
 	
-	(* enum element *)
-	
 	let find_enum_by_element
 		(element: enum_item)
 		(predefined_types: predefined_types)
@@ -690,6 +760,40 @@ struct
 		with Not_found ->
 			(* when building emum type, ns_enum_of_element has not been set yet *)
 			find_predefined_type `signed_int predefined_types
+		end
+	);;
+	
+	let resolve_opaque (namespace: namespace)
+		(t: [> [> opaque_type_var | non_opaque_type_var] with_name] as 'a)
+		: 'a =
+	(
+		begin match t with
+		| `named (_, name, `opaque_enum, _) ->
+			begin try
+				begin match StringMap.find name namespace.ns_enum with
+				| `named (_, _, `enum _, _) as result -> result
+				end
+			with Not_found ->
+				t
+			end
+		| `named (_, name, `opaque_struct, _) ->
+			begin try
+				begin match StringMap.find name namespace.ns_struct with
+				| `named (_, _, `struct_type _, _) as result -> result
+				end
+			with Not_found ->
+				t
+			end
+		| `named (_, name, `opaque_union, _) ->
+			begin try
+				begin match StringMap.find name namespace.ns_union with
+				| `named (_, _, `union _, _) as result -> result
+				end
+			with Not_found ->
+				t
+			end
+		| _ ->
+			t
 		end
 	);;
 	

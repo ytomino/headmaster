@@ -1,6 +1,7 @@
 open C_filename;;
 open C_literals;;
 open C_semantics;;
+open C_semantics_build_decl;;
 open C_semantics_build_expr;;
 open C_semantics_build_type;;
 open C_syntax;;
@@ -32,6 +33,7 @@ module Analyzer
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
 	module Typing = Typing (Literals) (Semantics);;
+	module Declaring = Declaring (Literals) (Semantics) (Typing);;
 	module Expressing = Expressing (Literals) (Semantics) (Typing);;
 	open Literals;;
 	open Semantics;;
@@ -44,6 +46,10 @@ struct
 		s ^ " is not a struct or union.";;
 	let unalignable_struct_item (s: string): string =
 		"the type of " ^ s ^ " can not be aligned.";;
+	let not_had_bit_width_int (size: int): string =
+		"this environment does not have " ^ string_of_int (size * 8) ^ " bit-integer.";;
+	let inapplicable_attribute_mode: string =
+		"attribute \"__mode__\" can not be applied to not int type.";
 	
 	(* in *)
 	
@@ -54,13 +60,6 @@ struct
 	(* source info *)
 	
 	let empty_source = [], no_extra_info;;
-	
-	(* attributes *)
-	
-	let attributes_of_alignment (alignment: alignment): attributes = (
-		if alignment = `default then no_attributes else
-		{no_attributes with at_aligned = alignment}
-	);;
 	
 	(* namespace *)
 	
@@ -96,112 +95,7 @@ struct
 		to_opaque_mapping namespace.ns_opaque_union namespace.ns_union
 	);;
 	
-	let resolve_opaque (namespace: namespace) (t: all_type): all_type = (
-		begin match t with
-		| `named (_, name, `opaque_enum, _) ->
-			(try (StringMap.find name namespace.ns_enum :> all_type) with Not_found -> t)
-		| `named (_, name, `opaque_struct, _) ->
-			(try (StringMap.find name namespace.ns_struct :> all_type) with Not_found -> t)
-		| `named (_, name, `opaque_union, _) ->
-			(try (StringMap.find name namespace.ns_union :> all_type) with Not_found -> t)
-		| _ ->
-			t
-		end
-	);;
-	
-	let is_function_conflicted (item: function_item) (namespace: namespace): [`error | `same | `precedence of named_item | `none] = (
-		let id, `function_type prototype, alias =
-			begin match item with
-			| `named (_, id, `extern (t, alias), _) -> id, t, alias
-			| `named (_, id, `function_forward (_, t), _) -> id, t, `none
-			| `named (_, id, `function_definition (_, t, _), _) -> id, t, `none
-			end
-		in
-		begin try
-			let previous = StringMap.find id namespace.ns_namespace in
-			begin match previous with
-			| `named (_, _, `extern ((`function_type previous_prototype), _), _)
-			| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) as previous ->
-				if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype = `just then (
-					begin match previous with
-					| `named (_, _, `extern (_, prev_alias), _) when prev_alias <> alias ->
-						`precedence previous
-					| _ ->
-						`same (* no error when same prototype *)
-					end
-				) else (
-					`error (* prototype mismatch *)
-				)
-			| _ ->
-				`error
-			end
-		with Not_found ->
-			`none
-		end
-	);;
-	
 	(* detect type from specifiers *)
-	
-	let get_bit_width_int error predefined_types ps size t1 t2 = (
-		if Typing.sizeof_predefined_type t1 predefined_types = size then t1 else
-		if Typing.sizeof_predefined_type t2 predefined_types = size then t2 else (
-			error ps ("this environment does not have " ^ string_of_int (size * 8) ^ " bit-integer.");
-			t2
-		)
-	);;
-	
-	let apply_bit_width_mode
-		(error: ranged_position -> string -> unit)
-		(predefined_types: predefined_types)
-		(ps: ranged_position)
-		(bit_width_mode: bit_width_mode)
-		(t : all_type)
-		: all_type =
-	(
-		begin match t with
-		| #signed_int_prec ->
-			begin match bit_width_mode with
-			| `__QI__ ->
-				let t = `signed_char in
-				find_predefined_type t predefined_types
-			| `__HI__ ->
-				let t = get_bit_width_int error predefined_types ps 2 `signed_int `signed_short in
-				find_predefined_type t predefined_types
-			| `__SI__ ->
-				let t = get_bit_width_int error predefined_types ps 4 `signed_int `signed_long in
-				find_predefined_type t predefined_types
-			| `__DI__ ->
-				let t = get_bit_width_int error predefined_types ps 8 `signed_long `signed_long_long in
-				find_predefined_type t predefined_types
-			| `__pointer__ | `__unwind_word__ | `__word__ ->
-				let ptrdiff_t = find_ptrdiff_t predefined_types in
-				let `named (_, _, `typedef result, _) = ptrdiff_t in
-				result
-			end
-		| #unsigned_int_prec ->
-			begin match bit_width_mode with
-			| `__QI__ ->
-				let t = `unsigned_char in
-				find_predefined_type t predefined_types
-			| `__HI__ ->
-				let t = get_bit_width_int error predefined_types ps 2 `unsigned_int `unsigned_short in
-				find_predefined_type t predefined_types
-			| `__SI__ ->
-				let t = get_bit_width_int error predefined_types ps 4 `unsigned_int `unsigned_long in
-				find_predefined_type t predefined_types
-			| `__DI__ ->
-				let t = get_bit_width_int error predefined_types ps 8 `unsigned_long `unsigned_long_long in
-				find_predefined_type t predefined_types
-			| `__pointer__ | `__unwind_word__ | `__word__ ->
-				let size_t = find_size_t predefined_types in
-				let `named (_, _, `typedef result, _) = size_t in
-				result
-			end
-		| _ ->
-			error ps "attribute \"__mode__\" was used for not int type.";
-			t
-		end
-	);;
 	
 	type type_specifier_set = {
 		ts_void: int;
@@ -330,11 +224,26 @@ struct
 				) else if set = {no_type_specifier_set with ts_long = 1; ts_double = 1; ts_complex = 1} then (
 					`complex `long_double
 				) else if set = {no_type_specifier_set with ts_int64 = 1} then (
-					get_bit_width_int error predefined_types ps 8 `signed_long `signed_long_long
+					let t, err = Typing.select_bit_width_int predefined_types 8 `signed_long `signed_long_long in
+					begin match err with
+					| `none -> ()
+					| `not_had size -> error ps (not_had_bit_width_int size)
+					end;
+					t
 				) else if set = {no_type_specifier_set with ts_signed = 1; ts_int64 = 1} then (
-					get_bit_width_int error predefined_types ps 8 `signed_long `signed_long_long
+					let t, err = Typing.select_bit_width_int predefined_types 8 `signed_long `signed_long_long in
+					begin match err with
+					| `none -> ()
+					| `not_had size -> error ps (not_had_bit_width_int size)
+					end;
+					t
 				) else if set = {no_type_specifier_set with ts_unsigned = 1; ts_int64 = 1} then (
-					get_bit_width_int error predefined_types ps 8 `unsigned_long `unsigned_long_long
+					let t, err = Typing.select_bit_width_int predefined_types 8 `unsigned_long `unsigned_long_long in
+					begin match err with
+					| `none -> ()
+					| `not_had size -> error ps (not_had_bit_width_int size)
+					end;
+					t
 				) else if set = {no_type_specifier_set with ts_builtin_va_list = 1} then (
 					`__builtin_va_list
 				) else (
@@ -344,7 +253,13 @@ struct
 			in
 			begin match bit_width_mode with
 			| Some bit_width_mode ->
-				apply_bit_width_mode error predefined_types ps bit_width_mode (find_predefined_type t predefined_types)
+				let t, err = Typing.apply_bit_width_mode predefined_types bit_width_mode (find_predefined_type t predefined_types) in
+				begin match err with
+				| `none -> ()
+				| `not_had size -> error ps (not_had_bit_width_int size)
+				| `not_int -> error ps inapplicable_attribute_mode
+				end;
+				t
 			| None ->
 				find_predefined_type t predefined_types
 			end
@@ -666,27 +581,16 @@ struct
 				None
 			end
 		) in
-		let rec int_list_of_expr_list (list: Syntax.argument_expression_list p) rs = (
-			begin match snd list with
-			| `nil n ->
-				begin match int_of_expr (fst list, n) with
+		let int_list_of_expr_list (list: Syntax.argument_expression_list p) = (
+			Traversing.fold_right_ael (fun ae rs ->
+				begin match int_of_expr ae with
 				| Some n ->
 					n :: rs
 				| None ->
 					rs
-				end
-			| `cons (list, _, n) ->
-				int_list_of_expr_list list (
-					begin match n with
-					| `some n ->
-						begin match int_of_expr n with
-						| Some n -> n :: rs
-						| None -> rs
-						end
-					| `error ->
-						rs
-					end)
-			end
+				end)
+				list
+				[]
 		) in
 		begin match snd x with
 		| `aligned (_, param) ->
@@ -709,7 +613,7 @@ struct
 		| `alloc_size (_, _, list, _) ->
 			begin match list with
 			| `some list ->
-				{attributes with at_alloc_size = int_list_of_expr_list list []}
+				{attributes with at_alloc_size = int_list_of_expr_list list}
 			| `error ->
 				attributes
 			end
@@ -779,7 +683,7 @@ struct
 		| `nonnull (_, _, list, _) ->
 			begin match list with
 			| `some list ->
-				{attributes with at_nonnull = int_list_of_expr_list list []}
+				{attributes with at_nonnull = int_list_of_expr_list list}
 			| `error ->
 				attributes
 			end
@@ -1626,7 +1530,7 @@ struct
 				result
 			end
 		) in
-		let attributes = attributes_of_alignment alignment in
+		let attributes = Declaring.attributes_of_alignment alignment in
 		let derived_types, namespace, source, attributes, storage_class, specs, qualifiers = extract (derived_types, namespace, source, attributes, `none, (no_type_specifier_set, None), no_type_qualifier_set) x in
 		let type_by_spec = get_type_by_specifier_set error predefined_types (fst x) attributes.at_mode specs in
 		let derived_types, type_by_qualifiers = get_type_by_qualifier_set error derived_types (fst x) type_by_spec qualifiers in
@@ -1725,7 +1629,7 @@ struct
 				begin match t with
 				| `function_type _ as t ->
 					let result = `named (ps, id, `extern (t, alias), attr) in
-					begin match is_function_conflicted result namespace with
+					begin match Declaring.is_function_conflicted result namespace with
 					| `error ->
 						error ps ("\"" ^ id ^ "\" was conflicted.");
 						derived_types, namespace, source, None
@@ -1781,7 +1685,7 @@ struct
 						error ps "initializer was found with function."
 					);
 					let result = `named (ps, id, `extern (t, alias), attr) in
-					begin match is_function_conflicted result namespace with
+					begin match Declaring.is_function_conflicted result namespace with
 					| `error ->
 						error ps ("\"" ^ id ^ "\" was conflicted.");
 						derived_types, namespace, source, None
@@ -1940,7 +1844,7 @@ struct
 					end
 				in
 				(* attributes *)
-				let default_attributes = attributes_of_alignment alignment in
+				let default_attributes = Declaring.attributes_of_alignment alignment in
 				let attributes = default_attributes in
 				let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs1 in
 				let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs2 in
@@ -2054,7 +1958,7 @@ struct
 		(x: Syntax.struct_declaration p)
 		: derived_types * namespace * source_item list * struct_item list =
 	(
-		let attributes = attributes_of_alignment alignment in
+		let attributes = Declaring.attributes_of_alignment alignment in
 		let handle_anonymous (x: Syntax.struct_or_union_specifier p) = (
 			let derived_types, namespace, source, anonymous_sou = handle_struct_or_union_specifier error predefined_types derived_types namespace source alignment x in
 			begin match anonymous_sou with
@@ -2343,7 +2247,13 @@ struct
 			let t =
 				begin match attributes.at_mode with
 				| Some mode ->
-					apply_bit_width_mode error predefined_types (fst x) mode base_type
+					let t, err = Typing.apply_bit_width_mode predefined_types mode base_type in
+					begin match err with
+					| `none -> ()
+					| `not_had size -> error (fst x) (not_had_bit_width_int size)
+					| `not_int -> error (fst x) inapplicable_attribute_mode
+					end;
+					t
 				| None ->
 					base_type
 				end
@@ -2725,7 +2635,7 @@ struct
 		: derived_types * source_item list * expression option =
 	(
 		let resolved_type1 = resolve_typedef required_type in
-		let resolved_type2 = resolve_opaque namespace resolved_type1 in
+		let resolved_type2 = Typing.resolve_opaque namespace resolved_type1 in
 		let required_type =
 			if resolved_type1 != resolved_type2 then (
 				resolved_type2 (* opaque to full declaration *)
@@ -2878,10 +2788,6 @@ struct
 					derived_types, source, rs
 				end
 			) in
-			let handle_reg (derived_types, rs) reg = (
-				let _, `chars_literal reg = reg in
-				derived_types, reg :: rs
-			) in
 			let volatile =
 				begin match volatile with
 				| `some (_, (`VOLATILE | `__volatile__)) ->
@@ -2903,8 +2809,7 @@ struct
 							let out_args = List.rev out_args in
 							begin match destructive with
 							| `some (_, (_, `some destructive)) ->
-								let derived_types, destructive = Traversing.fold_iarl handle_reg (derived_types, []) destructive in
-								let destructive = List.rev destructive in
+								let destructive = Traversing.fold_right_iarl (fun (_, `chars_literal reg) rs -> reg :: rs) destructive [] in
 								derived_types, source, in_args, out_args, destructive
 							| `some (_, (_, `error)) | `none ->
 								derived_types, source, in_args, out_args, []
@@ -3132,7 +3037,7 @@ struct
 		let _, (_, items, _) = x in
 		begin match items with
 		| `some items ->
-			let items = List.rev (Traversing.fold_bil (fun rs item -> item :: rs) [] items) in
+			let items = Traversing.fold_right_bil (fun item rs -> item :: rs) items [] in
 			let rec loop derived_types namespace source (xs: Syntax.block_item p list) rs = (
 				begin match xs with
 				| x :: xr ->
