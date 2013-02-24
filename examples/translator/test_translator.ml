@@ -124,7 +124,7 @@ let opaque_mapping = A.opaque_mapping namespace;;
 
 print_string "---- language mapping ----\n";;
 
-let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options;;
+let ada_mapping = SEM.find_langauge_mapping "ADA" mapping_options;;
 
 List.iter (fun (_, ada_type) ->
 	(* pretty printer for C types is unimplemented... *)

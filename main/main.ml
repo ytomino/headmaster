@@ -246,7 +246,7 @@ if options.create_dest_dir && not (Sys.file_exists options.dest_dir) then (
 begin match options.to_lang with
 | `ada ->
 	let module T = AdaTranslator (Literals) (SEM) in
-	let ada_mapping = SEM.find_langauge_mappings "ADA" mapping_options in
+	let ada_mapping = SEM.find_langauge_mapping "ADA" mapping_options in
 	let filename_mapping = T.filename_mapping remove_include_dir ada_mapping sources in
 	let dirs = T.dir_packages filename_mapping in
 	List.iter (fun x ->

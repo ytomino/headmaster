@@ -57,21 +57,7 @@ struct
 	type 'a e = 'a Syntax.e;;
 	type 'a opt = 'a Syntax.opt;;
 	
-	(* source info *)
-	
-	let empty_source = [], no_extra_info;;
-	
 	(* namespace *)
-	
-	let empty_namespace = {
-		ns_namespace = StringMap.empty;
-		ns_enum_of_element = StringMap.empty;
-		ns_opaque_enum = StringMap.empty;
-		ns_enum = StringMap.empty;
-		ns_opaque_struct = StringMap.empty;
-		ns_struct = StringMap.empty;
-		ns_opaque_union = StringMap.empty;
-		ns_union = StringMap.empty};;
 	
 	let opaque_mapping (namespace: namespace): opaque_mapping = (
 		let to_opaque_mapping (type a) (type b)

@@ -15,7 +15,7 @@ module StringMap = struct
 	
 end;;
 
-module Semantics (Literals: LiteralsType) = struct
+module SemanticsThin (Literals: LiteralsType) = struct
 	open Literals;;
 	
 	(* calling conventions *)
@@ -57,37 +57,6 @@ module Semantics (Literals: LiteralsType) = struct
 		at_used: [`none | `used | `unused];
 		at_warn_unused_result : bool;
 		at_weak_link: [`none | `weak | `weak_import]};;
-	
-	let no_attributes = {
-		at_aligned = `default;
-		at_alloc_size = [];
-		at_artificial = false;
-		at_blocks = `none;
-		at_const = false;
-		at_conventions = `cdecl;
-		at_deprecated = false;
-		at_dllimport = false;
-		at_dllexport = false;
-		at_format = `none;
-		at_inline = `none;
-		at_leaf = false;
-		at_malloc = false;
-		at_mode = None;
-		at_nonnull = [];
-		at_noreturn = false;
-		at_nothrow = false;
-		at_objc_gc = `none;
-		at_optimize = None;
-		at_pure = false;
-		at_regparm = None;
-		at_returns_twice = false;
-		at_sentinel = false;
-		at_selectany = false;
-		at_transparent_union = false;
-		at_unavailable = false;
-		at_used = `none;
-		at_warn_unused_result = false;
-		at_weak_link = `none};;
 	
 	(* items *)
 	
@@ -392,6 +361,196 @@ module Semantics (Literals: LiteralsType) = struct
 	ignore (lazy ((assert false : any_assignment_expression) :> expression));;
 	ignore (lazy ((assert false : statement_expression) :> expression));;
 	
+	(* list *)
+	
+	type predefined_types = (predefined_type * int) list * typedef_type list;;
+	type derived_types = derived_type list;;
+	
+	(* namespace *)
+	
+	type namespace = {
+		ns_namespace: named_item StringMap.t;
+		ns_enum_of_element: full_enum_type StringMap.t;
+		ns_opaque_enum: opaque_enum_type StringMap.t;
+		ns_enum: named_enum_type StringMap.t;
+		ns_opaque_struct: opaque_struct_type StringMap.t;
+		ns_struct: named_struct_type StringMap.t;
+		ns_opaque_union: opaque_union_type StringMap.t;
+		ns_union: named_union_type StringMap.t};;
+	
+	(* mapping from opaque type to body *)
+	
+	type opaque_mapping =
+		(opaque_enum_type * named_enum_type) StringMap.t *
+		(opaque_struct_type * named_struct_type) StringMap.t *
+		(opaque_union_type * named_union_type) StringMap.t;;
+	
+	(* source info *)
+	
+	type extra_info = {
+		ei_fenv: bool; (* #pragma GCC fenv *)
+		ei_system_header: bool};; (* #pragma GCC system_header *)
+	
+	(* mapping options *)
+	
+	type language_mapping = {
+		lm_type: (all_type * string) list;
+		lm_overload: (function_item * prototype list) list;
+		lm_include: (string * string) list;
+		lm_monolithic_include: (string * string) list};;
+	
+	type mapping_options = {
+		mo_instances: (all_type list) StringMap.t;
+		mo_language_mappings: language_mapping StringMap.t};;
+	
+end;;
+
+module type SemanticsThinType = sig
+	module Literals: LiteralsType;;
+	include module type of SemanticsThin (Literals);;
+end;;
+
+module type SemanticsType = sig
+	module Literals: LiteralsType;;
+	open Literals;;
+	include SemanticsThinType
+		with module Literals := Literals;;
+	
+	(* attributes *)
+	
+	val no_attributes: attributes;;
+	
+	(* typedef *)
+	
+	val resolve_typedef:
+		?stop_on_language_typedef: bool ->
+		?stop_on_anonymous: bool ->
+		all_type ->
+		all_type;;
+	
+	val remove_type_qualifiers: all_type -> not_qualified_type;;
+	
+	(* predefined types *)
+	
+	val find_predefined_type_with_size: [< predefined_type] -> predefined_types -> [> predefined_type] * int;;
+	val find_predefined_type: [< predefined_type] -> predefined_types -> [> predefined_type];;
+	val find_ptrdiff_t: predefined_types -> [> [> typedef_var] with_name];;
+	val find_size_t: predefined_types -> [> [> typedef_var] with_name];;
+	val find_wchar_t: predefined_types -> [> predefined_type | [> typedef_var] with_name];;
+	
+	val unsigned_of_signed: signed_int_prec -> [> unsigned_int_prec];;
+	
+	(* derived types *)
+	
+	val is_derived_type: (all_type -> bool) -> derived_type -> bool;;
+	
+	val is_pointer: all_type -> bool;;
+	val dereference: all_type -> all_type option;;
+	
+	val fold_derived_types: ('a -> derived_type -> 'a) ->
+		'a -> all_type -> derived_types -> 'a;;
+	
+	(* namespace *)
+	
+	val empty_namespace: namespace;;
+	
+	(* mapping from opaque type to body *)
+	
+	val empty_opaque_mapping: opaque_mapping;;
+	
+	val opaque_to_full: opaque_type -> opaque_mapping -> non_opaque_type option;;
+	val full_to_opaque: non_opaque_type -> opaque_mapping -> opaque_type;;
+	
+	val is_opaque: opaque_type -> opaque_mapping -> bool;;
+	
+	(* struct / union *)
+	
+	val find_field: string -> struct_item list -> struct_item option;;
+	
+	val is_bitfield: struct_item list -> bool;;
+	
+	val tail_type_of_element_access: struct_item list -> all_type;;
+	
+	(* generic types *)
+	
+	val is_generic_type: all_type -> bool;;
+	
+	(* expression / statement *)
+	
+	val is_static_expression: expression -> bool;;
+	
+	val integer_of_expression: expression -> (int_prec * Integer.t) option;;
+	
+	val exists_in_expression: (statement -> bool) -> (expression -> bool) ->
+		expression -> bool;;
+	val exists_in_statement: (statement -> bool) -> (expression -> bool) ->
+		statement -> bool;;
+	
+	val fold_expression: ('a -> statement -> 'a) -> ('a -> expression -> 'a) ->
+		'a -> expression -> 'a;;
+	val fold_statement: ('a -> statement -> 'a) -> ('a -> expression -> 'a) ->
+		'a -> statement -> 'a;;
+	
+	(* source info *)
+	
+	val no_extra_info: extra_info;;
+	val empty_source: source_item list * extra_info;;
+	
+	(* mapping options *)
+	
+	val no_language_mapping: language_mapping;;
+	val no_mapping_options: mapping_options;;
+	
+	val find_langauge_mapping: string -> mapping_options -> language_mapping;;
+	
+	val find_mapped_type: all_type -> language_mapping -> string;;
+	val find_mapped_type_of_unconstrained_array: not_qualified_type -> language_mapping -> string;;
+	
+	val mem_mapped_type: all_type -> language_mapping -> bool;;
+	
+end;;
+
+module Semantics
+	(Literals: LiteralsType)
+	: SemanticsType
+		with module Literals := Literals =
+struct
+	open Literals;;
+	include SemanticsThin (Literals);;
+	
+	(* attributes *)
+	
+	let no_attributes = {
+		at_aligned = `default;
+		at_alloc_size = [];
+		at_artificial = false;
+		at_blocks = `none;
+		at_const = false;
+		at_conventions = `cdecl;
+		at_deprecated = false;
+		at_dllimport = false;
+		at_dllexport = false;
+		at_format = `none;
+		at_inline = `none;
+		at_leaf = false;
+		at_malloc = false;
+		at_mode = None;
+		at_nonnull = [];
+		at_noreturn = false;
+		at_nothrow = false;
+		at_objc_gc = `none;
+		at_optimize = None;
+		at_pure = false;
+		at_regparm = None;
+		at_returns_twice = false;
+		at_sentinel = false;
+		at_selectany = false;
+		at_transparent_union = false;
+		at_unavailable = false;
+		at_used = `none;
+		at_warn_unused_result = false;
+		at_weak_link = `none};;
+	
 	(* typedef *)
 	
 	let rec resolve_typedef
@@ -431,8 +590,6 @@ module Semantics (Literals: LiteralsType) = struct
 	);;
 	
 	(* predefined types *)
-	
-	type predefined_types = (predefined_type * int) list * typedef_type list;;
 	
 	let find_predefined_type_with_size (e: [< predefined_type]) (predefined_types: predefined_types): [> predefined_type] * int = (
 		begin match List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types) with
@@ -483,8 +640,6 @@ module Semantics (Literals: LiteralsType) = struct
 	);;
 	
 	(* derived types *)
-	
-	type derived_types = derived_type list;;
 	
 	let rec is_derived_type (f: all_type -> bool) (d: derived_type): bool = (
 		let rec handle (f: all_type -> bool) (x: all_type): bool = (
@@ -567,12 +722,19 @@ module Semantics (Literals: LiteralsType) = struct
 		) a derived_types
 	);;
 	
-	(* mapping from opaque type to body *)
+	(* namespace *)
 	
-	type opaque_mapping =
-		(opaque_enum_type * named_enum_type) StringMap.t *
-		(opaque_struct_type * named_struct_type) StringMap.t *
-		(opaque_union_type * named_union_type) StringMap.t;;
+	let empty_namespace = {
+		ns_namespace = StringMap.empty;
+		ns_enum_of_element = StringMap.empty;
+		ns_opaque_enum = StringMap.empty;
+		ns_enum = StringMap.empty;
+		ns_opaque_struct = StringMap.empty;
+		ns_struct = StringMap.empty;
+		ns_opaque_union = StringMap.empty;
+		ns_union = StringMap.empty};;
+	
+	(* mapping from opaque type to body *)
 	
 	let empty_opaque_mapping =
 		StringMap.empty,
@@ -678,18 +840,6 @@ module Semantics (Literals: LiteralsType) = struct
 			false
 		end
 	);;
-	
-	(* namespace *)
-	
-	type namespace = {
-		ns_namespace: named_item StringMap.t;
-		ns_enum_of_element: full_enum_type StringMap.t;
-		ns_opaque_enum: opaque_enum_type StringMap.t;
-		ns_enum: named_enum_type StringMap.t;
-		ns_opaque_struct: opaque_struct_type StringMap.t;
-		ns_struct: named_struct_type StringMap.t;
-		ns_opaque_union: opaque_union_type StringMap.t;
-		ns_union: named_union_type StringMap.t};;
 	
 	(* expression / statement *)
 	
@@ -895,21 +1045,13 @@ module Semantics (Literals: LiteralsType) = struct
 	
 	(* source info *)
 	
-	type extra_info = {
-		ei_fenv: bool; (* #pragma GCC fenv *)
-		ei_system_header: bool};; (* #pragma GCC system_header *)
-	
 	let no_extra_info = {
 		ei_fenv = false;
 		ei_system_header = false};;
 	
-	(* mapping options *)
+	let empty_source = [], no_extra_info;;
 	
-	type language_mapping = {
-		lm_type: (all_type * string) list;
-		lm_overload: (function_item * prototype list) list;
-		lm_include: (string * string) list;
-		lm_monolithic_include: (string * string) list};;
+	(* mapping options *)
 	
 	let no_language_mapping = {
 		lm_type = [];
@@ -917,15 +1059,11 @@ module Semantics (Literals: LiteralsType) = struct
 		lm_include = [];
 		lm_monolithic_include = []};;
 	
-	type mapping_options = {
-		mo_instances: (all_type list) StringMap.t;
-		mo_language_mappings: language_mapping StringMap.t};;
-	
 	let no_mapping_options = {
 		mo_instances = StringMap.empty;
 		mo_language_mappings = StringMap.empty};;
 	
-	let find_langauge_mappings (lang: string) (x: mapping_options): language_mapping = (
+	let find_langauge_mapping (lang: string) (x: mapping_options): language_mapping = (
 		try
 			StringMap.find lang x.mo_language_mappings
 		with Not_found -> no_language_mapping
@@ -964,9 +1102,4 @@ module Semantics (Literals: LiteralsType) = struct
 		List.mem_assq t language_mapping.lm_type
 	);;
 	
-end;;
-
-module type SemanticsType = sig
-	module Literals: LiteralsType;;
-	include module type of Semantics (Literals);;
 end;;
