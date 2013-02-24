@@ -23,13 +23,6 @@ let list_remove (a: 'a) (xs: 'a list): 'a list = (
 	loop a [] xs xs
 );;
 
-let bind_option (f: 'a -> 'a) (x : 'a option): 'a option = (
-	begin match x with
-	| Some x -> Some (f x)
-	| None -> None
-	end
-);;
-
 module Analyzer
 	(Literals: LiteralsType)
 	(Syntax: SyntaxType
@@ -3109,7 +3102,12 @@ struct
 				begin match expr with
 				| `some expr ->
 					let derived_types, source, expr = handle_expression error predefined_types derived_types namespace source `rvalue expr in
-					let expr = bind_option (Expressing.implicit_conv return_type) expr in
+					let expr =
+						begin match expr with
+						| Some expr -> Some (Expressing.implicit_conv return_type expr)
+						| None -> None
+						end
+					in
 					derived_types, source, Some (`return (expr, return_type))
 				| `none ->
 					derived_types, source, Some (`return (None, return_type))
