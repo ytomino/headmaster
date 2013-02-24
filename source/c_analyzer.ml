@@ -2109,25 +2109,17 @@ struct
 		(x: Syntax.specifier_qualifier_list p)
 		: derived_types * namespace * source_item list * all_type =
 	(
-		let rec extract (derived_types, namespace, source, type_specs, qualifiers) spec = (
-			let result, next =
-				begin match snd spec with
-				| `type_specifier (ts, next) ->
+		let derived_types, namespace, source, specs, qualifiers =
+			Traversing.fold_sql
+				(fun (derived_types, namespace, source, type_specs, qualifiers) (ts: Syntax.type_specifier p) ->
 					let derived_types, namespace, source, type_specs = handle_type_specifier error predefined_types derived_types namespace source alignment ts type_specs in
-					(derived_types, namespace, source, type_specs, qualifiers), next
-				| `type_qualifier (q, next) ->
+					derived_types, namespace, source, type_specs, qualifiers)
+				(fun (derived_types, namespace, source, type_specs, qualifiers) (q: Syntax.type_qualifier p) ->
 					let qualifiers = handle_type_qualifier error qualifiers q in
-					(derived_types, namespace, source, type_specs, qualifiers), next
-				end
-			in
-			begin match next with
-			| `some s ->
-				extract result s
-			| `none ->
-				result
-			end
-		) in
-		let derived_types, namespace, source, specs, qualifiers = extract (derived_types, namespace, source, (no_type_specifier_set, None), no_type_qualifier_set) x in
+					derived_types, namespace, source, type_specs, qualifiers)
+				(derived_types, namespace, source, (no_type_specifier_set, None), no_type_qualifier_set)
+				x
+		in
 		let type_by_spec = get_type_by_specifier_set error predefined_types (fst x) None specs in
 		let derived_types, type_by_qualifiers = get_type_by_qualifier_set error derived_types (fst x) type_by_spec qualifiers in
 		derived_types, namespace, source, type_by_qualifiers
