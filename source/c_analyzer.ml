@@ -3213,43 +3213,18 @@ struct
 		(translation_unit: Syntax.translation_unit)
 		: predefined_types * derived_types * namespace * (source_item list * extra_info) StringMap.t * mapping_options =
 	(
+		(* predefined types *)
 		let predefined_types = Typing.ready_predefined_types lang sizeof typedef in
+		(* builtin functions *)
 		let derived_types, namespace, builtin_source =
-			List.fold_left (fun (derived_types, namespace, source) (name, args, ret) ->
-				let type_map t predefined_types derived_types: all_type * derived_types = (
-					begin match t with
-					| `pointer (#predefined_type as target_t) ->
-						let target_t = find_predefined_type target_t predefined_types in
-						Typing.find_pointer_type target_t derived_types
-					| `pointer (`const (#predefined_type as target_t)) ->
-						let target_t = find_predefined_type target_t predefined_types in
-						let const_type, derived_types = Typing.find_const_type target_t derived_types in
-						Typing.find_pointer_type const_type derived_types
-					| `size_t ->
-						find_size_t predefined_types, derived_types
-					| #predefined_type as t ->
-						find_predefined_type t predefined_types, derived_types
-					end
-				) in
-				let derived_types, args =
-					List.fold_left (fun (derived_types, rs) arg ->
-						let arg, derived_types = type_map arg predefined_types derived_types in
-						let item = `named (builtin_position, "", `variable (arg, None), no_attributes) in
-						derived_types, item :: rs
-					) (derived_types, []) args
-				in
-				let args = List.rev args in
-				let ret, derived_types = type_map ret predefined_types derived_types in
-				let t = `function_type (`cdecl, args, `none, ret) in
-				let item = `named (builtin_position, name, `function_forward (`builtin, t), no_attributes) in
-				let namespace = {namespace with ns_namespace = StringMap.add name item namespace.ns_namespace} in
-				let source = item :: source in
-				derived_types, namespace, source
-			) ([], empty_namespace, []) builtin
+			Declaring.ready_builtin_functions predefined_types [] empty_namespace builtin
 		in
-		let sources = StringMap.add builtin_name (builtin_source, no_extra_info) StringMap.empty in
-		let derived_types, namespace, sources, _, mapping_options = handle_translation_unit error predefined_types derived_types namespace sources translation_unit in
-		(* stack order *)
+		let sources = StringMap.add builtin_name builtin_source StringMap.empty in
+		(* analyzing translation unit *)
+		let derived_types, namespace, sources, _, mapping_options =
+			handle_translation_unit error predefined_types derived_types namespace sources translation_unit
+		in
+		(* result is reverse order *)
 		predefined_types, derived_types, namespace, sources, mapping_options
 	);;
 	
