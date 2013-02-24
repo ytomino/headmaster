@@ -2321,43 +2321,37 @@ struct
 		(x: Syntax.pointer p)
 		: derived_types * (source_item list) * (all_type * attributes) =
 	(
-		let apply_pointer derived_types source pk t conv = (
-			begin match pk with
-			| `asterisk ->
-				let t, source =
+		let apply_pointer (derived_types, source, (t, attributes)) ((_, pk), qs, attrs) = (
+			let derived_types, source, t =
+				begin match pk with
+				| `asterisk ->
+					let t, source =
+						begin match t with
+						| `function_type (cc, params, varargs, ret) when cc <> attributes.at_conventions ->
+							Typing.find_function_type (attributes.at_conventions, params, varargs, ret) source
+						| _ ->
+							t, source
+						end
+					in
+					let t, derived_type = Typing.find_pointer_type t derived_types in
+					derived_type, source, t
+				| `caret ->
 					begin match t with
-					| `function_type (cc, params, varargs, ret) when cc <> conv ->
-						Typing.find_function_type (conv, params, varargs, ret) source
+					| `function_type _ as t ->
+						let t, derived_types = Typing.find_block_pointer_type t derived_types in
+						derived_types, source, t
 					| _ ->
-						t, source
+						error (fst x) "block pointer could not be applied to not function type.";
+						derived_types, source, t
 					end
-				in
-				let t, derived_type = Typing.find_pointer_type t derived_types in
-				derived_type, source, t
-			| `caret ->
-				begin match t with
-				| `function_type _ as t ->
-					let t, derived_types = Typing.find_block_pointer_type t derived_types in
-					derived_types, source, t
-				| _ ->
-					error (fst x) "block pointer could not be applied to not function type.";
-					derived_types, source, t
 				end
-			end
-		) in
-		begin match snd x with
-		| `nil ((_, pk), qs, attrs) ->
-			let derived_types, source, t = apply_pointer derived_types source pk t attributes.at_conventions in
+			in
 			let qualifiers = Traversing.opt Traversing.fold_tql (handle_type_qualifier error) no_type_qualifier_set qs in
 			let derived_types, t = get_type_by_qualifier_set error derived_types (fst x) t qualifiers in
 			let attributes = Traversing.opt Traversing.fold_al (handle_attribute error) attributes attrs in
 			derived_types, source, (t, attributes)
-		| `cons ((_, pk), qs, next) ->
-			let derived_types, source, t = apply_pointer derived_types source pk t attributes.at_conventions in
-			let qualifiers = Traversing.opt Traversing.fold_tql (handle_type_qualifier error) no_type_qualifier_set qs in
-			let derived_types, t = get_type_by_qualifier_set error derived_types (fst x) t qualifiers in
-			handle_pointer error derived_types source t attributes next
-		end
+		) in
+		Traversing.fold_p apply_pointer (derived_types, source, (t, attributes)) x
 	) and handle_parameter_type_list
 		(error: ranged_position -> string -> unit)
 		(predefined_types: predefined_types)

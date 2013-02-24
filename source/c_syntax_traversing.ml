@@ -47,6 +47,10 @@ module type TraversingType = sig
 	(* struct_declarator_list *)
 	val fold_sdrl: ('a -> Syntax.struct_declarator p -> 'a) -> 'a -> (Syntax.struct_declarator_list p) -> 'a;;
 	
+	(* pointer *)
+	val fold_p: ('a -> [`asterisk | `caret] p * Syntax.type_qualifier_list opt * Syntax.attribute_list opt -> 'a) ->
+		'a -> Syntax.pointer p -> 'a;;
+	
 	(* enumerator_list *)
 	val fold_el: ('a -> Syntax.enumerator p -> 'a) -> 'a -> Syntax.enumerator_list p -> 'a;;
 	
@@ -291,6 +295,16 @@ struct
 			| `error ->
 				v
 			end
+		end
+	);;
+	
+	let rec fold_p (f: 'a -> [`asterisk | `caret] p * type_qualifier_list opt * attribute_list opt -> 'a) (a: 'a) (xs: pointer p): 'a = (
+		begin match snd xs with
+		| `nil x ->
+			f a x
+		| `cons (mark, tql, xr) ->
+			let v = f a (mark, tql, `none) in
+			fold_p f v xr
 		end
 	);;
 	
