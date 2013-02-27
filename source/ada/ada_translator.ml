@@ -61,7 +61,7 @@ struct
 			begin try
 				let rindex = String.rindex package '.' in
 				let dir = String.sub package 0 rindex in
-				if List.mem dir rs then rs else dir :: rs
+				Listtbl.add dir rs
 			with Not_found ->
 				rs
 			end
@@ -284,12 +284,12 @@ struct
 	(
 		let rec process (r: with_option StringMap.t) (x: Semantics.all_type) = (
 			let r =
-				begin try
-					let alias = Semantics.find_mapped_type x language_mapping in
+				begin match Semantics.finds_mapped_type x language_mapping with
+				| (_, alias) :: _ when String.contains alias '.' ->
 					let rindex = String.rindex alias '.' in
 					let package_name = String.sub alias 0 rindex in
 					add_to_with_caluse_map package_name (`none, `none, `none) r
-				with Not_found -> (* find_mapped_type / String.rindex *)
+				| _ ->
 					begin match x with
 					| `__builtin_va_list
 					| `pointer `void
@@ -664,10 +664,11 @@ struct
 			end
 		in
 		let unique_key =
-			begin try
-				let _, anonymous_mapping = mappings in
-				snd (List.assq item anonymous_mapping)
-			with Not_found ->
+			let _, anonymous_mapping = mappings in
+			begin match Listtbl.assqs item anonymous_mapping with
+			| (_, unique_key) :: _ ->
+				snd unique_key
+			| [] -> (* not found *)
 				hash_name item
 			end
 		in
@@ -791,10 +792,10 @@ struct
 		: unit =
 	(
 		let t, _ = item in
-		begin try
-			let alias = Semantics.find_mapped_type (t :> Semantics.all_type) language_mapping in
+		begin match Semantics.finds_mapped_type (t :> Semantics.all_type) language_mapping with
+		| (_, alias) :: _ ->
 			pp_subtype ff (string_of_pp pp_predefined_type_name t) pp_print_string alias
-		with Not_found ->
+		| [] -> (* not found *)
 			let t, size = item in
 			let name = string_of_pp pp_predefined_type_name t in
 			begin match t with
@@ -902,17 +903,16 @@ struct
 		(t: Semantics.predefined_type)
 		: unit =
 	(
-		begin try
-			let _, alias =
-				List.find (fun (x, _) ->
-					begin match x with
-					| `named (_, "size_t", _, _) -> true
-					| _ -> false
-					end
-				) language_mapping.Semantics.lm_type
-			in
+		begin match
+			Listtbl.finds (fun (x, _) ->
+				begin match x with
+				| `named (_, "size_t", _, _) -> true
+				| _ -> false
+				end) language_mapping.Semantics.lm_type
+		with
+		| (_, alias) :: _ ->
 			pp_subtype ff name pp_print_string alias
-		with Not_found ->
+		| [] -> (* not found *)
 			pp_type ff name pp_derived_type_definition pp_predefined_type_name t
 		end
 	);;
@@ -925,16 +925,16 @@ struct
 		(item: Semantics.derived_type)
 		: unit =
 	(
-		begin try
-			let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
+		let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+		begin match Semantics.finds_mapped_type (item :> Semantics.all_type) language_mapping with
+		| (_, alias) :: _ ->
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			pp_subtype ff
 				(string_of_pp
 					(fun ff -> pp_derived_type_name ff ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name)
 					item)
 				pp_print_string alias
-		with Not_found ->
+		| [] -> (* not found *)
 			let pp_pointer_type ff ~mappings name ~restrict t = (
 				begin match t with
 				| `function_type prototype
@@ -977,22 +977,20 @@ struct
 			| None ->
 				begin match item with
 				| `pointer t ->
-					let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) item in
 					pp_pointer_type ff ~mappings name ~restrict:false t
 				| `block_pointer _ ->
 					() (* block pointer is mapped to System.Address *)
 				| `array (n, base_type) ->
-					let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) item in
 					begin match n with
 					| None ->
-						begin try
-							let alias = Semantics.find_mapped_type_of_unconstrained_array base_type language_mapping in
+						begin match Semantics.finds_mapped_type_of_unconstrained_array base_type language_mapping with
+						| (_, alias) :: _ ->
 							pp_subtype ff name pp_print_string alias
-						with Not_found ->
+						| [] -> (* not found *)
 							pp_type ff name pp_array_definition
 								(fun ff () -> pp_print_string ff "size_t range <>")
 								`aliased
@@ -1004,20 +1002,18 @@ struct
 						pp_sized_array ff ~mappings name n base_type
 					end
 				| `restrict (`pointer t) ->
-					let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) item in
 					pp_pointer_type ff ~mappings name ~restrict:true t
 				| `volatile `void ->
 					fprintf ff "@ --  type void_volatile is new void;"
 				| `volatile base_type ->
-					let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) item in
-					begin try
-						let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
+					begin match Semantics.finds_mapped_type (item :> Semantics.all_type) language_mapping with
+					| (_, alias) :: _ ->
 						pp_subtype ff name pp_print_string alias
-					with Not_found ->
+					| [] -> (* not found *)
 						let resolved_base_type = Semantics.resolve_typedef (base_type :> Semantics.all_type) in
 						pp_type ff name pp_derived_type_definition
 							(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype)
@@ -1034,7 +1030,6 @@ struct
 					() (* only "access constant" form *)
 				end
 			| Some typedef ->
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 				let name = string_of_pp (pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) item in
 				begin match item with
@@ -1490,13 +1485,12 @@ struct
 		(item: Semantics.typedef_type)
 		: unit =
 	(
-		begin try
-			let language_mapping, _, _, _ = mappings in
-			let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
+		let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+		begin match Semantics.finds_mapped_type (item :> Semantics.all_type) language_mapping with
+		| (_, alias) :: _ ->
 			let `named (_, name, _, _) = item in
 			pp_subtype ff name pp_print_string alias
-		with Not_found ->
-			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+		| [] -> (* not found *)
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			let `named (ps, name, `typedef t, _) = item in
 			pp_typedef_without_language_mapping ff ~mappings ~current ~where:`typedef ps name t
@@ -1511,15 +1505,14 @@ struct
 		(item: Semantics.named_type)
 		: unit =
 	(
-		begin try
-			let language_mapping, _, _, _ = mappings in
-			let alias = Semantics.find_mapped_type (item :> Semantics.all_type) language_mapping in
+		let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+		begin match Semantics.finds_mapped_type (item :> Semantics.all_type) language_mapping with
+		| (_, alias) :: _ ->
 			let `named (_, name, _, _) = item in
 			pp_subtype ff name pp_print_string alias
-		with Not_found ->
+		| [] -> (* not found *)
 			begin match item with
 			| `named (ps, name, (`opaque_enum | `opaque_struct | `opaque_union as kind), _) as item ->
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let name = ada_name_of current ps name kind name_mapping in
 				begin match Semantics.opaque_to_full item opaque_mapping with
 				| None ->
@@ -1546,17 +1539,14 @@ struct
 					)
 				end
 			| `named (ps, name, `enum _, _) as t ->
-				let _, _, name_mapping, anonymous_mapping = mappings in
 				let name = ada_name_of current ps name `opaque_enum name_mapping in
 				let mappings = name_mapping, anonymous_mapping in
 				pp_enum ff ~mappings ~current name t
 			| `named (ps, name, (`struct_type (_, items)), attrs) ->
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let name = ada_name_of current ps name `opaque_struct name_mapping in
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 				pp_struct ff ~mappings ~current ~hidden_packages name items attrs
 			| `named (ps, name, `union items, _) ->
-				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let name = ada_name_of current ps name `opaque_union name_mapping in
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 				pp_union ff ~mappings ~current ~hidden_packages name items
@@ -2721,10 +2711,10 @@ struct
 			end
 		) in
 		let pp_subprogram_overload_alias source_name (source_item: Semantics.function_item) = (
-			begin try
-				let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				let overload = List.assq source_item language_mapping.Semantics.lm_overload in
+			let language_mapping, opaque_mapping, name_mapping, anonymous_mapping = mappings in
+			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+			begin match Listtbl.assqs source_item language_mapping.Semantics.lm_overload with
+			| (_, overload) :: _ ->
 				List.iter (fun prototype ->
 					pp_print_space ff ();
 					pp_open_box ff indent;
@@ -2732,7 +2722,7 @@ struct
 					fprintf ff "@ renames %s;" source_name;
 					pp_close_box ff ()
 				) overload
-			with Not_found ->
+			| [] -> (* not found *)
 				()
 			end
 		) in
@@ -2926,8 +2916,8 @@ struct
 					ignore (pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype);
 					pp_print_string ff ";";
 					pp_close_box ff ();
-					begin try
-						let overload = List.assq item language_mapping.Semantics.lm_overload in
+					begin match Listtbl.assqs item language_mapping.Semantics.lm_overload with
+					| (_, overload) :: _ ->
 						List.iter (fun prototype ->
 							pp_print_space ff ();
 							pp_open_box ff indent;
@@ -2935,7 +2925,7 @@ struct
 							pp_print_string ff ";";
 							pp_close_box ff ()
 						) overload
-					with Not_found ->
+					| [] -> (* not found *)
 						()
 					end;
 					if attrs.Semantics.at_noreturn then pp_pragma_noreturn ff ada_name

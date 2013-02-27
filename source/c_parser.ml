@@ -166,8 +166,14 @@ struct
 		: v e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (id_p, (`ident s), xs)) when List.mem_assoc s vs ->
-			`some (id_p, List.assoc s vs), xs
+		| lazy (`cons (id_p, (`ident s), xs)) ->
+			begin match Listtbl.assocs s vs with
+			| (_, value) :: _ ->
+				`some (id_p, value), xs
+			| [] ->
+				error (LazyList.hd_a xs) ("identifier \"" ^ s ^ "\" is not expected.");
+				`error, xs
+			end
 		| _ ->
 			error (LazyList.hd_a xs) "identifier was expected.";
 			`error, xs

@@ -503,8 +503,10 @@ module type SemanticsType = sig
 	
 	val find_langauge_mapping: string -> mapping_options -> language_mapping;;
 	
-	val find_mapped_type: all_type -> language_mapping -> string;;
-	val find_mapped_type_of_unconstrained_array: not_qualified_type -> language_mapping -> string;;
+	val finds_mapped_type:
+		all_type -> language_mapping -> (all_type * string) list;;
+	val finds_mapped_type_of_unconstrained_array:
+		not_qualified_type -> language_mapping -> (all_type * string) list;;
 	
 	val mem_mapped_type: all_type -> language_mapping -> bool;;
 	
@@ -592,17 +594,16 @@ struct
 	(* predefined types *)
 	
 	let find_predefined_type_with_size (e: [< predefined_type]) (predefined_types: predefined_types): [> predefined_type] * int = (
-		begin match List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types) with
-		| (#predefined_type, _) as result ->
+		begin match Listtbl.assocs (e :> predefined_type) (fst predefined_types) with
+		| (#predefined_type, _) as result :: _ ->
 			result
+		| [] -> (* not found *)
+			assert false (* does not come here *)
 		end
 	);;
 	
 	let find_predefined_type (e: [< predefined_type]) (predefined_types: predefined_types): [> predefined_type] = (
-		begin match List.find (fun (x, _) -> x = (e :> predefined_type)) (fst predefined_types) with
-		| (#predefined_type as result), _ ->
-			result
-		end
+		fst (find_predefined_type_with_size e predefined_types)
 	);;
 	
 	let find_ptrdiff_t (predefined_types: predefined_types): [> [> typedef_var] with_name] = (
@@ -620,12 +621,10 @@ struct
 	);;
 	
 	let find_wchar_t (predefined_types: predefined_types): [> predefined_type | [> typedef_var] with_name] = (
-		begin try
-			begin match List.find (fun (`named (_, name, _, _)) -> name = "wchar_t") (snd predefined_types) with
-			| `named (_, _, `typedef _, _) as result ->
-				result
-			end
-		with Not_found -> (* C++ or Objective-C++ *)
+		begin match Listtbl.finds (fun (`named (_, name, _, _)) -> name = "wchar_t") (snd predefined_types) with
+		| `named (_, _, `typedef _, _) as result :: _ ->
+			result
+		| [] -> (* C++ or Objective-C++ *)
 			find_predefined_type `wchar predefined_types
 		end
 	);;
@@ -1069,29 +1068,27 @@ struct
 		with Not_found -> no_language_mapping
 	);;
 	
-	let find_mapped_type
+	let finds_mapped_type
 		(t: all_type)
 		(language_mapping: language_mapping)
-		: string =
+		: (all_type * string) list =
 	(
-		List.assq t language_mapping.lm_type
+		Listtbl.assqs t language_mapping.lm_type
 	);;
 	
-	let find_mapped_type_of_unconstrained_array
+	let finds_mapped_type_of_unconstrained_array
 		(base_type: not_qualified_type)
 		(language_mapping: language_mapping)
-		: string =
+		: (all_type * string) list =
 	(
-		snd (
-			List.find (fun (t, _) ->
-				begin match t with
-				| `array (None, b) when b == base_type ->
-					true
-				| _ ->
-					false
-				end
-			) language_mapping.lm_type
-		)
+		Listtbl.finds (fun (t, _) ->
+			begin match t with
+			| `array (None, b) when b == base_type ->
+				true
+			| _ ->
+				false
+			end
+		) language_mapping.lm_type
 	);;
 	
 	let mem_mapped_type

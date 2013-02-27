@@ -1,19 +1,6 @@
 open C_literals;;
 open C_semantics;;
 
-let list_unionq (xs: 'a list) (ys: 'a list): 'a list = (
-	if ys = [] then xs else
-	let rec loop xs ys = (
-		begin match xs with
-		| [] -> ys
-		| x :: xr ->
-			let rs = (if List.memq x ys then ys else x :: ys) in
-			loop xr rs
-		end
-	) in
-	loop xs ys
-);;
-
 module Dependency
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
@@ -39,14 +26,14 @@ struct
 		begin match x with
 		| `struct_type (_, items) | `union items ->
 			List.fold_left (fun rs (_, t, _, _) ->
-				list_unionq (of_item (t: all_type :> all_item)) rs
+				Listtbl.unionq (of_item (t: all_type :> all_item)) rs
 			) [] items
 		end
 	) and of_prototype ~(of_argument: all_type -> named_item list) (x: prototype): named_item list = (
 		let _, args, _, ret = x in
 		List.fold_left (fun rs arg ->
 			let `named (_, _, `variable (arg_t, _), _) = arg in
-			list_unionq (of_argument arg_t) rs
+			Listtbl.unionq (of_argument arg_t) rs
 		) (of_item (ret :> all_item)) args
 	) and of_expr (expr: expression): named_item list = (
 		fold_expression
@@ -152,7 +139,7 @@ struct
 						of_prototype ~of_argument prototype
 					end
 				in
-				list_unionq p r
+				Listtbl.unionq p r
 			| _ ->
 				r
 			end

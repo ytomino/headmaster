@@ -8,22 +8,6 @@ open C_syntax;;
 open C_syntax_traversing;;
 open Position;;
 
-let list_remove (a: 'a) (xs: 'a list): 'a list = (
-	let rec loop a ys xs orig_xs = (
-		begin match xs with
-		| x :: xr ->
-			if x == a then (
-				List.rev_append ys xr
-			) else (
-				loop a (x :: ys) xr orig_xs
-			)
-		| [] ->
-			orig_xs
-		end
-	) in
-	loop a [] xs xs
-);;
-
 module Analyzer
 	(Literals: LiteralsType)
 	(Syntax: SyntaxType
@@ -470,12 +454,11 @@ struct
 												let mapping_options = {mapping_options with mo_language_mappings =
 													StringMap.modify (fun x ->
 														let overload =
-															begin try
-																let e = List.assq func x.lm_overload in
-																let e = prototype :: e in
-																(func, e) :: List.remove_assq func x.lm_overload
-															with Not_found ->
-																(func, [prototype]) :: x.lm_overload
+															begin match Listtbl.assqs func x.lm_overload with
+															| (_, e) :: _ ->
+																(func, prototype :: e) :: List.remove_assq func x.lm_overload
+															| [] -> (* not found *)
+																(func, prototype :: []) :: x.lm_overload
 															end
 														in
 														{x with lm_overload = overload}
@@ -1623,7 +1606,7 @@ struct
 						derived_types, namespace, source, None
 					| `precedence previous ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
-						let source = (result :> source_item) :: list_remove (previous :> source_item) source in
+						let source = (result :> source_item) :: Listtbl.removeq (previous :> source_item) source in
 						derived_types, namespace, source, Some result
 					| `none ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
@@ -1679,7 +1662,7 @@ struct
 						derived_types, namespace, source, None
 					| `precedence previous ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
-						let source = (result :> source_item) :: list_remove (previous :> source_item) source in
+						let source = (result :> source_item) :: Listtbl.removeq (previous :> source_item) source in
 						derived_types, namespace, source, Some result
 					| `none ->
 						let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in

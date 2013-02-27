@@ -21,7 +21,7 @@ struct
 			let t = tail_type_of_element_access route in
 			begin match t with
 			| `array (Some _, _) ->
-				if List.memq t rs then rs else t :: rs
+				Listtbl.addq t rs
 			| _ ->
 				rs
 			end
