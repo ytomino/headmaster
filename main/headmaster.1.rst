@@ -8,7 +8,7 @@ translate C header files
 
 :Author: Yuta Tomino
 :Date: 2010-2013
-:Version: 0.23
+:Version: 0.24
 :Manual section: 1
 :Manual group: preprocessor
 
