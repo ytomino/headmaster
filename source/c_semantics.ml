@@ -9,6 +9,10 @@ module StringMap = struct
 		try find key m with Not_found -> default
 	);;
 	
+	let find_option (key: string) (m: 'a t): 'a option = (
+		try Some (find key m) with Not_found -> None
+	);;
+	
 	let modify (f: 'a -> 'a) ~(default: 'a) (key: string) (m: 'a t): 'a t = (
 		add key (f (find_or ~default key m)) m
 	);;
@@ -1063,9 +1067,7 @@ struct
 		mo_language_mappings = StringMap.empty};;
 	
 	let find_langauge_mapping (lang: string) (x: mapping_options): language_mapping = (
-		try
-			StringMap.find lang x.mo_language_mappings
-		with Not_found -> no_language_mapping
+		StringMap.find_or ~default:no_language_mapping lang x.mo_language_mappings
 	);;
 	
 	let finds_mapped_type

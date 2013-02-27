@@ -443,8 +443,9 @@ struct
 								);
 								begin match t with
 								| `function_type prototype ->
-									begin try
-										begin match StringMap.find name namespace.ns_namespace with
+									begin match StringMap.find_option name namespace.ns_namespace with
+									| Some target_item ->
+										begin match target_item with
 										| `named (_, _, `extern ((#function_type as original_t), _), _)
 										| `named (_, _, `function_forward (_, original_t), _)
 										| `named (_, _, `function_definition (_, original_t, _), _) as func ->
@@ -476,7 +477,7 @@ struct
 											error (fst mapping) ("\"" ^ name ^ "\" is not function.");
 											derived_types, info, alignment_stack, mapping_options
 										end
-									with Not_found ->
+									| None -> (* not found *)
 										error (fst mapping) ("overloading \"" ^ name ^ "\" is undeclared.");
 										derived_types, info, alignment_stack, mapping_options
 									end
@@ -940,8 +941,9 @@ struct
 			error (fst x) "unimplemented!";
 			assert false
 		| `ident name ->
-			begin try
-				begin match StringMap.find name namespace.ns_namespace with
+			begin match StringMap.find_option name namespace.ns_namespace with
+			| Some the_item ->
+				begin match the_item with
 				| `named (_, _, `enum_element _, _) as item ->
 					let t = Typing.find_enum_by_element item predefined_types namespace in
 					derived_types, source, Some (`enumerator item, t)
@@ -964,7 +966,7 @@ struct
 					error (fst x) "unimplemented!";
 					assert false
 				end
-			with Not_found ->
+			| None -> (* not found *)
 				if name = "__func__" || name = "__PRETTY_FUNCTION__" then (
 					let base_type = find_predefined_type `char predefined_types in
 					let t, derived_types = Typing.find_array_type None base_type derived_types in
@@ -1762,15 +1764,16 @@ struct
 					error (fst x) ("type-specifier was duplicated.");
 					named
 				| None ->
-					begin try
-						begin match StringMap.find name namespace.ns_namespace with
+					begin match StringMap.find_option name namespace.ns_namespace with
+					| Some the_item ->
+						begin match the_item with
 						| (`named (_, _, #named_type_var, _)) as t ->
 							Some t
 						| _ ->
 							error (fst x) (name ^ " was not type.");
 							named
 						end
-					with Not_found ->
+					| None -> (* not found *)
 						error (fst x) (is_undeclared name);
 						named
 					end

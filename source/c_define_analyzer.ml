@@ -418,17 +418,13 @@ struct
 						end
 					| _ ->
 						let required_type =
-							begin try
-								begin match StringMap.find name mapping_options.mo_instances with
-								| t :: [] ->
-									(t :> [all_type | `uninterpretable])
-								| _ as ts ->
-									if List.length ts > 1 then (
-										error def_p (initializer_macro_is_overloaded name)
-									);
-									raise Not_found
-								end
-							with Not_found ->
+							begin match StringMap.find_or ~default:[] name mapping_options.mo_instances with
+							| t :: [] ->
+								(t :> [all_type | `uninterpretable])
+							| _ as ts -> (* ts = [] when not found *)
+								if List.length ts > 1 then (
+									error def_p (initializer_macro_is_overloaded name)
+								);
 								if is_known_error def_p name `uninterpretable_macro then (
 									(`uninterpretable :> [all_type | `uninterpretable])
 								) else (

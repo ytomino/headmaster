@@ -116,8 +116,8 @@ struct
 			| `named (_, id, `function_definition (_, t, _), _) -> id, t, `none
 			end
 		in
-		begin try
-			let previous = StringMap.find id namespace.ns_namespace in
+		begin match StringMap.find_option id namespace.ns_namespace with
+		| Some previous ->
 			begin match previous with
 			| `named (_, _, `extern ((`function_type previous_prototype), _), _)
 			| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) as previous ->
@@ -134,7 +134,7 @@ struct
 			| _ ->
 				`error
 			end
-		with Not_found ->
+		| None -> (* not found *)
 			`none
 		end
 	);;

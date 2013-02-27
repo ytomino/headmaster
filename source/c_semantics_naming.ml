@@ -88,11 +88,7 @@ struct
 						let source_h, _, module2 = find_by_relative_path file2 filename_mapping in
 						let source_items: source_item list = StringMap.find module2 items_pp in
 						let dest_items: source_item list =
-							begin try
-								StringMap.find module1 items_pp
-							with Not_found ->
-								[]
-							end
+							StringMap.find_or ~default:[] module1 items_pp
 						in
 						let added_dest_items =
 							List.fold_right (fun item (added_dest_items: source_item list) ->
