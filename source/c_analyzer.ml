@@ -456,8 +456,15 @@ struct
 													StringMap.modify (fun x ->
 														let overload =
 															begin match Listtbl.assqs func x.lm_overload with
-															| (_, e) :: _ ->
-																(func, prototype :: e) :: List.remove_assq func x.lm_overload
+															| (_, es) :: _ ->
+																if List.exists (fun e ->
+																	Typing.prototype_ABI_compatibility ~dest:prototype ~source:e = `just
+																	) es
+																then (
+																	x.lm_overload (* already exists *)
+																) else (
+																	(func, prototype :: es) :: List.remove_assq func x.lm_overload
+																)
 															| [] -> (* not found *)
 																(func, prototype :: []) :: x.lm_overload
 															end
