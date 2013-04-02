@@ -2746,7 +2746,7 @@ struct
 			let t = StringMap.find source_name enum_of_element in
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			fprintf ff "function %s return %a@ renames %s;"
+			fprintf ff "function %s@ return %a@ renames %s;"
 				name
 				(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) (t :> Semantics.all_type)
 				(ada_name_of current source_ps source_name `namespace name_mapping);
