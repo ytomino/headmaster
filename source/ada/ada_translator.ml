@@ -443,6 +443,7 @@ struct
 		~(derived_types: Semantics.derived_type list)
 		~(opaque_mapping: Semantics.opaque_mapping)
 		~(name_mapping: name_mapping)
+		~(anonymous_enums: Semantics.enum_type_var Semantics.anonymous list)
 		~(casts: (Semantics.all_type * Semantics.all_type) list)
 		~(current: string)
 		(items: Semantics.all_item list)
@@ -452,7 +453,7 @@ struct
 		let rs = referencing_packages_by_language_mapping ~language_mapping ~derived_types items rs in
 		let rs = referencing_packages_from_depending ~language_mapping ~name_mapping ~opaque_mapping ~current items rs in
 		let rs =
-			if casts <> [] then (
+			if anonymous_enums <> [] || casts <> [] then (
 				add_to_with_caluse_map "Ada.Unchecked_Conversion" (`none, `none, `none) rs
 			) else (
 				rs
@@ -1142,18 +1143,19 @@ struct
 	
 	let pp_enum
 		(ff: formatter)
-		~(mappings: name_mapping * anonymous_mapping)
+		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
+		~(anonymous_enums: Semantics.enum_type_var Semantics.anonymous list)
 		~(current: string)
 		(name: string)
 		(t: Semantics.full_enum_type)
 		: unit =
 	(
-		let items =
+		let items, is_anonymous =
 			begin match t with
-			| `anonymous (_, `enum items) ->
-				items
+			| `anonymous (_, `enum items) as t ->
+				items, List.mem t anonymous_enums
 			| `named (_, _, `enum items, _) ->
-				items
+				items, false
 			end
 		in
 		(* split elements has same representation *)
@@ -1191,7 +1193,7 @@ struct
 			| `named (item_ps, item_name, _, _) :: xr ->
 				if index > 0 then fprintf ff ",@ ";
 				let item_name =
-					let name_mapping, _ = mappings in
+					let _, name_mapping, _ = mappings in
 					ada_name_of current item_ps item_name `namespace name_mapping
 				in
 				pp_print_string ff item_name;
@@ -1211,7 +1213,7 @@ struct
 			| `named (item_ps, item_name, `enum_element repr, _) :: xr ->
 				if index > 0 then fprintf ff ",@ ";
 				let item_name =
-					let name_mapping, _ = mappings in
+					let _, name_mapping, _ = mappings in
 					ada_name_of current item_ps item_name `namespace name_mapping
 				in
 				fprintf ff "%s => %s" item_name (Integer.to_based_string ~base:10 repr);
@@ -1226,7 +1228,7 @@ struct
 		pp_pragma_convention ff `cdecl name;
 		(* printing duplicated *)
 		List.iter (fun x ->
-			let name_mapping, anonymous_mapping = mappings in
+			let _, name_mapping, anonymous_mapping = mappings in
 			let `named (item_ps, item_name, `enum_element x_value, _) = x in
 			let item_name =
 				ada_name_of current item_ps item_name `namespace name_mapping
@@ -1248,7 +1250,15 @@ struct
 			in
 			fprintf ff "@ renames %s;" same_repr_item_name;
 			pp_close_box ff ()
-		) duplicated
+		) duplicated;
+		(* if real anonymous, declare a cast operation *)
+		if is_anonymous then (
+			pp_print_space ff ();
+			pp_open_box ff indent;
+			fprintf ff "for %s'Size use signed_int'Size;" name;
+			pp_close_box ff ();
+			pp_unchecked_conversion ff ~mappings ~current ((t :> Semantics.all_type), `signed_int)
+		)
 	);;
 	
 	let make_pp_struct_items
@@ -1405,18 +1415,18 @@ struct
 	let pp_anonymous_type
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
+		~(anonymous_enums: Semantics.enum_type_var Semantics.anonymous list)
 		~(current: string)
 		?(hidden_packages: StringSet.t = StringSet.empty)
 		(item: Semantics.anonymous_type)
 		: unit =
 	(
-		let _, name_mapping, anonymous_mapping = mappings in
+		let _, _, anonymous_mapping = mappings in
 		let _, unique_key = List.assq item anonymous_mapping in
 		begin match item with
 		| `anonymous (_, `enum _) as t ->
 			let name = "enum_" ^ unique_key in
-			let mappings = name_mapping, anonymous_mapping in
-			pp_enum ff ~mappings ~current name t
+			pp_enum ff ~mappings ~anonymous_enums ~current name t
 		| `anonymous (_, (`struct_type (alignment, items))) ->
 			let name = "struct_" ^ unique_key in
 			let attrs = {Semantics.no_attributes with Semantics.at_aligned = alignment} in
@@ -1540,8 +1550,8 @@ struct
 				end
 			| `named (ps, name, `enum _, _) as t ->
 				let name = ada_name_of current ps name `opaque_enum name_mapping in
-				let mappings = name_mapping, anonymous_mapping in
-				pp_enum ff ~mappings ~current name t
+				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
+				pp_enum ff ~mappings ~current ~anonymous_enums:[] name t
 			| `named (ps, name, (`struct_type (_, items)), attrs) ->
 				let name = ada_name_of current ps name `opaque_struct name_mapping in
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
@@ -2471,7 +2481,7 @@ struct
 						let hash = hash_name item in
 						let anonymous_mapping = (item, (current, hash)) :: anonymous_mapping in
 						let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-						pp_anonymous_type ff ~mappings ~current item;
+						pp_anonymous_type ff ~mappings ~anonymous_enums:[] ~current item;
 						name_mapping, anonymous_mapping
 					| `named (ps, name, _, _) as item ->
 						(* name mapping *)
@@ -3399,6 +3409,8 @@ struct
 			end)
 			items
 		in
+		(* anonymous enums *)
+		let anonymous_enums = Finding.find_all_anonymous_enum [] items in
 		(* used casts *)
 		let casts = List.fold_left Finding.find_all_cast_in_source_item [] items_having_bodies in
 		let casts = List.fold_left (Finding.find_all_pointer_arithmetic_in_source_item ptrdiff_t) casts items_having_bodies in
@@ -3415,7 +3427,8 @@ struct
 					items
 				)
 			in
-			referencing_packages ~language_mapping ~name_mapping ~derived_types ~opaque_mapping ~casts ~current:name items
+			referencing_packages ~language_mapping ~name_mapping ~derived_types ~opaque_mapping ~anonymous_enums ~casts
+				~current:name items
 		in
 		let hidden_packages = hidden_packages with_packages ~current:name in
 		(* opaque types *)
@@ -3553,7 +3566,7 @@ struct
 							| #Semantics.anonymous_type as item ->
 								let hash = hash_name item in
 								let anonymous_mapping = (item, (current, hash)) :: anonymous_mapping in
-								pp_anonymous_type ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping)
+								pp_anonymous_type ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~anonymous_enums
 									~current ~hidden_packages item;
 								anonymous_mapping
 							| `named (_, _, `function_definition (`extern_inline, _, _), _) as item when extern_exists_before item items ->

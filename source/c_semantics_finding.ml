@@ -10,6 +10,39 @@ struct
 	
 	(* types *)
 	
+	let rec find_all_anonymous_enum
+		(rs : enum_type_var anonymous list)
+		(items: source_item list)
+		: enum_type_var anonymous list =
+	(
+		begin match items with
+		| (`anonymous (_, `enum _) as enum_t) :: items_r ->
+			let rec loop rs enum_t items = (
+				begin match items with
+				| `named (_, _, `enum_element _, _) :: items_r ->
+					loop rs enum_t items_r (* skip *)
+				| `named (_, _, `typedef t, _) :: items_r ->
+					if t == (enum_t :> all_type) then (
+						find_all_anonymous_enum rs items_r (* non-anonymous *)
+					) else (
+						loop rs enum_t items_r (* skip *)
+					)
+				| (`anonymous (_, `enum _) as enum_t2) :: items_r ->
+					loop (enum_t :: rs) enum_t2 items_r (* add / next enum *)
+				| _ :: items_r ->
+					find_all_anonymous_enum (enum_t :: rs) items_r (* add *)
+				| [] ->
+					enum_t :: rs (* add *)
+				end
+			) in
+			loop rs enum_t items_r
+		| _ :: items_r ->
+			find_all_anonymous_enum rs items_r
+		| [] ->
+			rs
+		end
+	);;
+	
 	let rec find_all_sized_array_in_source_item
 		(rs : all_type list)
 		(item: source_item)
