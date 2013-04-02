@@ -2787,9 +2787,19 @@ struct
 			assert false
 		| `named (_, _, `defined_attributes, _) ->
 			fprintf ff "@ --  %s renames __attribute__((...)) (macro)" name
-		| `named (_, _, `defined_storage_class _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
+		| `named (_, _, `defined_storage_class storage_class, _) ->
+			begin match storage_class with
+			| `auto ->
+				fprintf ff "@ --  %s renames static (macro)" name
+			| `extern ->
+				fprintf ff "@ --  %s renames extern (macro)" name
+			| `register ->
+				fprintf ff "@ --  %s renames register (macro)" name
+			| `static ->
+				fprintf ff "@ --  %s renames static (macro)" name
+			| `typedef ->
+				fprintf ff "@ --  %s renames typedef (macro)" name
+			end
 		| `named (_, _, `defined_type_specifier _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
 			assert false
