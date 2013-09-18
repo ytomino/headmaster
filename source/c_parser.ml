@@ -8,6 +8,9 @@ module TypedefSet = struct
 	include Set.Make (String);;
 end;;
 
+open PositionOperators;;
+let ( & ) = PositionOperators.( & );;
+
 module Parser
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType
@@ -18,7 +21,6 @@ struct
 	module FirstSet = FirstSet (Literals);;
 	open Literals;;
 	open Syntax;;
-	open PositionOperators;;
 	
 	type 'a in_t = (ranged_position, LexicalElement.t, 'a) LazyList.t;;
 	type 'a nil = (ranged_position, 'a) LazyList.nil;;

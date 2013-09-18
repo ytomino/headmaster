@@ -4,8 +4,6 @@ open C_lexical_scanner;;
 open C_literals;;
 open Position;;
 
-module StringMap = Map.Make (String);;
-
 type known_errors_of_preprocessor = [
 	| `undefined_macro
 	| `redefine_compiler_macro

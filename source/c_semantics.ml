@@ -3,7 +3,7 @@ open C_literals;;
 open Position;;
 
 module StringMap = struct
-	include Map.Make (String);;
+	include StringMap;;
 	
 	let find_or ~(default: 'a) (key: string) (m: 'a t): 'a = (
 		try find key m with Not_found -> default
