@@ -357,18 +357,44 @@ struct
 				error ps term_is_missing;
 				Integer.zero, xs
 			end
+		) and calc_product (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
+			let rec loop (left, xs as result) = (
+				begin match xs with
+				| lazy (`cons (_, `asterisk, xs)) ->
+					let right, xs = calc_term shortcircuit xs in
+					let value = Integer.mul left right in
+					loop (value, xs)
+				| lazy (`cons (_, `slash, xs)) ->
+					let right, xs = calc_term shortcircuit xs in
+					let value = Integer.div left right in
+					loop (value, xs)
+				| lazy (`cons (_, `percent, xs)) ->
+					let right, xs = calc_term shortcircuit xs in
+					let value = Integer.rem left right in
+					loop (value, xs)
+				| _ ->
+					result
+				end
+			) in
+			let result = calc_term shortcircuit xs in
+			loop result
 		) and calc_sum (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
-			let value1, xs as result = calc_term shortcircuit xs in
-			begin match xs with
-			| lazy (`cons (_, `plus, xs)) ->
-				let value2, xs = calc_term shortcircuit xs in
-				(Integer.add value1 value2), xs
-			| lazy (`cons (_, `minus, xs)) ->
-				let value2, xs = calc_term shortcircuit xs in
-				(Integer.sub value1 value2), xs
-			| _ ->
-				result
-			end
+			let rec loop (left, xs as result) = (
+				begin match xs with
+				| lazy (`cons (_, `plus, xs)) ->
+					let right, xs = calc_product shortcircuit xs in
+					let value = Integer.add left right in
+					loop (value, xs)
+				| lazy (`cons (_, `minus, xs)) ->
+					let right, xs = calc_product shortcircuit xs in
+					let value = Integer.sub left right in
+					loop (value, xs)
+				| _ ->
+					result
+				end
+			) in
+			let result = calc_product shortcircuit xs in
+			loop result
 		) and calc_shift (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
 			let value1, xs as result = calc_sum shortcircuit xs in
 			begin match xs with
