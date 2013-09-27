@@ -414,14 +414,34 @@ struct
 			let value1, xs as result = calc_relation shortcircuit xs in
 			begin match xs with
 			| lazy (`cons (_, `ampersand, xs)) ->
-				let value2, xs = calc_relation shortcircuit xs in
+				let value2, xs = calc_bit_and shortcircuit xs in
 				let r = Integer.logand value1 value2 in
 				r, xs
 			| _ ->
 				result
 			end
-		) and calc_and_then (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
+		) and calc_bit_xor (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
 			let value1, xs as result = calc_bit_and shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `caret, xs)) ->
+				let value2, xs = calc_bit_xor shortcircuit xs in
+				let r = Integer.logor value1 value2 in
+				r, xs
+			| _ ->
+				result
+			end
+		) and calc_bit_or (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
+			let value1, xs as result = calc_bit_xor shortcircuit xs in
+			begin match xs with
+			| lazy (`cons (_, `vertical, xs)) ->
+				let value2, xs = calc_bit_or shortcircuit xs in
+				let r = Integer.logor value1 value2 in
+				r, xs
+			| _ ->
+				result
+			end
+		) and calc_and_then (shortcircuit: bool) (xs: out_t): Integer.t * out_t = (
+			let value1, xs as result = calc_bit_or shortcircuit xs in
 			begin match xs with
 			| lazy (`cons (_, `and_then, xs)) ->
 				let b1 = bool_of_leinteger value1 in
