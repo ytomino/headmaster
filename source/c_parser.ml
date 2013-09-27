@@ -819,8 +819,8 @@ struct
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
 				`some (ps, `visibility (n, l_paren, arg, r_paren)), xs
-			| "__warn_unused_result__" ->
-				`some (p4, `warn_unused_result), xs
+			| "warn_unused_result" | "__warn_unused_result__" ->
+				`some (p4, `warn_unused_result attr_keyword), xs
 			| "__weak__" ->
 				`some (p4, `weak), xs
 			| "weak_import" ->

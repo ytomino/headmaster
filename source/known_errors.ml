@@ -29,6 +29,7 @@ let match_target ~(pattern: string) (target: string): bool = (
 type known_error = [
 	(* for preprocessor *)
 	| `undefined_macro
+	| `redefine_macro
 	| `redefine_compiler_macro
 	| `redefine_extended_word
 	| `push_defined_macro
@@ -723,6 +724,12 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"WCOREDUMP"]]]; (* using __WAIT_INT *)
 	"*-w64-mingw*", [
+		"bcrypt.h", [
+			`unparsible_macro, [
+				"BCRYPT_INIT_AUTH_MODE_INFO"; (* multi-statements *)
+				"BCRYPT_MAKE_INTERFACE_VERSION"]; (* parameterized initializer *)
+			`uninterpretable_macro, [
+				"BCRYPT_IS_INTERFACE_VERSION_COMPATIBLE"]]; (* accessing element of untyped parameter *)
 		"commdlg.h", [
 			`unparsible_macro, [
 				"CDSIZEOF_STRUCT"]]; (* parameterized field *)
@@ -742,6 +749,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"float.h", [
 			`undefined_macro, [
 				"__clang_major__"]];
+		"fltwinerror.h", [
+			`uninterpretable_macro, [
+				"FILTER_HRESULT_FROM_FLT_NTSTATUS"]]; (* NT_ASSERT is undefined *)
 		"guiddef.h", [
 			`unparsible_macro, [
 				"CLSID_NULL"; (* GUID_NULL is undefined on WIN32_LEAN_AND_MEAN mode *)
@@ -758,6 +768,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"_malloca"; (* for the case of RC_INVOKED is defined *)
 				"_STATIC_ASSERT"]]; (* parameterized declaration *)
 		"_mingw.h", [
+			`undefined_macro, [
+				"__clang_major__";
+				"__cplusplus"];
 			`redefine_extended_word, [
 				"__int64"];
 			`unparsible_macro, [
@@ -768,6 +781,12 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__MINGW_ATTRIB_NONNULL"; (* parameterized attribute *)
 				"__MINGW_BROKEN_INTERFACE"; (* parameterized pragma *)
 				"__UNUSED_PARAM"]]; (* parameterized attribute *)
+		"_mingw_mac.h", [
+			`unparsible_macro, [
+				"__MINGW_GNU_PRINTF"; (* parameterized attribute *)
+				"__MINGW_GNU_SCANF"; (* parameterized attribute *)
+				"__MINGW_MS_PRINTF"; (* parameterized attribute *)
+				"__MINGW_MS_SCANF"]]; (* parameterized attribute *)
 		"_mingw_secapi.h", [
 			`unparsible_macro, [
 				"__CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_0_2_"; (* parameterized declaraton *)
@@ -781,6 +800,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__MINGW_TYPEDEF_AW"; (* parameterized declaration *)
 				"__MINGW_TYPEDEF_UAW"]]; (* parameterized declaration *)
+		"mstcpip.h", [
+			`redefine_macro, [
+				"SOCKET_SETTINGS_ALLOW_INSECURE";
+				"SOCKET_SETTINGS_GUARANTEE_ENCRYPTION"]];
 		"ntsecapi.h", [
 			`uninterpretable_macro, [
 				"MSV1_0_NTLM3_MIN_NT_RESPONSE_LENGTH"]]; (* use RTL_SIZEOF_THROUGH_FIELD *)
@@ -877,6 +900,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"PROPSHEETHEADER_V2_SIZE"; (* does not have DUMMYUNION5_MEMBER *)
 				"PROPSHEETHEADERA_V2_SIZE"; (* does not have DUMMYUNION5_MEMBER *)
 				"PROPSHEETHEADERW_V2_SIZE"]]; (* does not have DUMMYUNION5_MEMBER *)
+		"psdk_inc/intrin-mac.h", [
+			`unparsible_macro, [
+				"__buildstos"]]; (* parameterized declaration *)
 		"psdk_inc/_ip_types.h", [
 			`unparsible_macro, [
 				"h_addr"]]; (* alias of element and dereferencing *)

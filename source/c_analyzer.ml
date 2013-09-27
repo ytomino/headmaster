@@ -718,7 +718,7 @@ struct
 			{attributes with at_used = `used}
 		| `visibility _ ->
 			attributes (* ignore __attribute__((visibility(...))) *)
-		| `warn_unused_result ->
+		| `warn_unused_result _ ->
 			{attributes with at_warn_unused_result = true}
 		| `weak ->
 			{attributes with at_weak_link = `weak}

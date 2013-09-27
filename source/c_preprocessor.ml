@@ -6,6 +6,7 @@ open Position;;
 
 type known_errors_of_preprocessor = [
 	| `undefined_macro
+	| `redefine_macro
 	| `redefine_compiler_macro
 	| `redefine_extended_word
 	| `push_defined_macro];;
@@ -870,8 +871,10 @@ struct
 							if StringMap.mem name predefined then (
 								let old_item = StringMap.find name predefined in
 								if define_item_eq new_item old_item then false else (
-									error old_item.df_position (vanished_macro name);
-									error ps (redefined_macro name);
+									if not (is_known_error ps name `redefine_macro) then (
+										error old_item.df_position (vanished_macro name);
+										error ps (redefined_macro name)
+									);
 									true
 								)
 							) else (

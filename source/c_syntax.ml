@@ -82,7 +82,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `unused of string
 		| `used
 		| `visibility of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
-		| `warn_unused_result
+		| `warn_unused_result of string
 		| `weak
 		| `weak_import]
 	(* inline assembler *)
