@@ -147,7 +147,7 @@ struct
 		?(hiding: StringSet.t = StringSet.empty)
 		(ps: ranged_position)
 		(name: string)
-		(kind: [`namespace | `opaque_enum | `opaque_struct | `opaque_union])
+		(kind: [< `namespace | `opaque_enum | `opaque_struct | `opaque_union])
 		(name_mapping: name_mapping)
 		: string =
 	(
@@ -3538,7 +3538,22 @@ struct
 						| _ ->
 							assert false (* does not come here *)
 						end
-					) used_sized_arrays
+					) used_sized_arrays;
+					(* forward declarations for separated enum/struct/union *)
+					List.iter (fun item ->
+						begin match item with
+						| `named (ps, name, #Semantics.non_opaque_type_var, _) as t ->
+							begin match separated_full_to_forward_opaque t opaque_mapping with
+							| Some (`named (_, _, kind, _)) ->
+								let name = ada_name_of current ps name kind name_mapping in
+								pp_incomplete_type ff name
+							| None ->
+								()
+							end
+						| _ ->
+							()
+						end
+					) items
 				);
 				(* items *)
 				let rec extern_exists_before
