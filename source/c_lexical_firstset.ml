@@ -54,10 +54,11 @@ struct
 		| `increment
 		| `decrement
 		| `SIZEOF
-		| `__extension__
 		| `__real__
 		| `__imag__];;
-	type firstset_of_cast_expression = firstset_of_unary_op_expression;;
+	type firstset_of_cast_expression = [
+		| firstset_of_unary_op_expression
+		| `__extension__];;
 	type firstset_of_binary_op_expression = firstset_of_cast_expression;;
 	type firstset_of_conditional_expression = firstset_of_binary_op_expression;;
 	type firstset_of_assignment_expression = firstset_of_conditional_expression;;

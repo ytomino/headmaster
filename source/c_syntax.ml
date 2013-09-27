@@ -132,11 +132,11 @@ module Syntax (Literals: LiteralsType) = struct
 		| `unary of unary_operator p * expression e
 		| `sizeof_expr of [`SIZEOF] p * expression e
 		| `sizeof_type of [`SIZEOF] p * [`l_paren] p * type_name p * [`r_paren] e
-		| `extension of [`__extension__] p * expression e (* extended *)
 		| `real of [`__real__] p * expression e (* extended *)
 		| `imag of [`__imag__] p * expression e (* extended *)
 		(* (6.5.4) cast-expression *)
 		| `cast of [`l_paren] p * type_name p * [`r_paren] e * expression e
+		| `extension of [`__extension__] p * expression e (* extended *)
 		(* (6.5.5) multiplicative-expression *)
 		| `mul of expression p * [`asterisk] p * expression e
 		| `div of expression p * [`slash] p * expression e

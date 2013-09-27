@@ -1287,11 +1287,6 @@ struct
 				let `some (ps, ()) = (`some sizeof) &^ expr in
 				(ps, `sizeof_expr (sizeof, expr)), xs
 			end
-		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
-			let op = ex_p, ex_e in
-			let right, xs = parse_unary_expression_or_error error lang typedefs xs in
-			let `some (ps, ()) = (`some op) &^ right in
-			(ps, `extension (op, right)), xs
 		| lazy (`cons (re_p, (`__real__ as re_e), xs)) ->
 			let op = re_p, re_e in
 			let right, xs = parse_unary_expression_or_error error lang typedefs xs in
@@ -1356,7 +1351,13 @@ struct
 		->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_cast (lp_p, lp_e) xs
-		| _ ->
+		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
+			let op = ex_p, ex_e in
+			let right, xs = parse_cast_expression_or_error error lang typedefs xs in
+			let `some (ps, ()) = (`some op) &^ right in
+			(ps, `extension (op, right)), xs
+		| lazy (`cons (a, (#FirstSet.firstset_of_unary_op_expression as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
 			parse_unary_expression error lang typedefs xs
 		end
 	) and parse_cast_expression_or_error
