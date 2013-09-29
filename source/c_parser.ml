@@ -1095,14 +1095,14 @@ struct
 			end
 		| lazy (`cons (a, (#FirstSet.firstset_of_primary_expression as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
-			let rec loop left xs = (
+			let rec loop (left, xs as result) = (
 				begin match xs with
 				| lazy (`cons (lb_p, (`l_bracket as lb_e), xs)) ->
 					let l_bracket = lb_p, lb_e in
 					let index, xs = parse_expression_or_error error lang typedefs xs in
 					let r_bracket, xs = parse_r_bracket_or_error error xs in
 					let `some (ps, ()) = (`some left) & (`some l_bracket) &^ index &^ r_bracket in
-					loop (ps, `array_access (left, l_bracket, index, r_bracket)) xs
+					loop ((ps, `array_access (left, l_bracket, index, r_bracket)), xs)
 				| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
 					let l_paren = lp_p, lp_e in
 					let args, xs = parse_argument_expression_list_option error lang typedefs xs in
@@ -1171,17 +1171,17 @@ struct
 							`function_call (left, l_paren, args, r_paren)
 						end
 					in
-					loop (ps, item) xs
+					loop ((ps, item), xs)
 				| lazy (`cons (period_p, (`period as period_e), xs)) ->
 					let period = period_p, period_e in
 					let id, xs = parse_identifier_or_error error xs in
 					let `some (ps, ()) = (`some left) & (`some period) &^ id in
-					loop (ps, `element_access (left, period, id)) xs
+					loop ((ps, `element_access (left, period, id)), xs)
 				| lazy (`cons (arrow_p, (`arrow as arrow_e), xs)) ->
 					let arrow = arrow_p, arrow_e in
 					let id, xs = parse_identifier_or_error error xs in
 					let `some (ps, ()) = (`some left) & (`some arrow) &^ id in
-					loop (ps, `dereferencing_element_access (left, arrow, id)) xs
+					loop ((ps, `dereferencing_element_access (left, arrow, id)), xs)
 				| lazy (`cons (op_p, (`increment as op_e), xs)) ->
 					let op = op_p, op_e in
 					let `some (ps, ()) = (`some left) & (`some op) in
@@ -1191,11 +1191,11 @@ struct
 					let `some (ps, ()) = (`some left) & (`some op) in
 					(ps, `post_decrement (left, op)), xs
 				| _ ->
-					left, xs
+					result
 				end
 			) in
-			let left, xs = parse_primary_expression error lang typedefs xs in
-			loop left xs
+			let result = parse_primary_expression error lang typedefs xs in
+			loop result
 		end
 	) and parse_argument_expression_list
 		(error: ranged_position -> string -> unit)
@@ -1392,29 +1392,29 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`asterisk as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_cast_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`mul (left, op, right))) xs
+				loop ((ps, (`mul (left, op, right))), xs)
 			| lazy (`cons (op_p, (`slash as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_cast_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`div (left, op, right))) xs
+				loop ((ps, (`div (left, op, right))), xs)
 			| lazy (`cons (op_p, (`percent as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_cast_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`rem (left, op, right))) xs
+				loop ((ps, (`rem (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_cast_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_cast_expression error lang typedefs xs in
+		loop result
 	) and parse_multicative_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1438,24 +1438,24 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`plus as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_multicative_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`add (left, op, right))) xs
+				loop ((ps, (`add (left, op, right))), xs)
 			| lazy (`cons (op_p, (`minus as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_multicative_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`sub (left, op, right))) xs
+				loop ((ps, (`sub (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_multicative_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_multicative_expression error lang typedefs xs in
+		loop result
 	) and parse_additive_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1479,24 +1479,24 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`l_shift as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_additive_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`l_shift (left, op, right))) xs
+				loop ((ps, (`l_shift (left, op, right))), xs)
 			| lazy (`cons (op_p, (`r_shift as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_additive_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`r_shift (left, op, right))) xs
+				loop ((ps, (`r_shift (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_additive_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_additive_expression error lang typedefs xs in
+		loop result
 	) and parse_shift_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1520,34 +1520,34 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`lt as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`lt (left, op, right))) xs
+				loop ((ps, (`lt (left, op, right))), xs)
 			| lazy (`cons (op_p, (`gt as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`gt (left, op, right))) xs
+				loop ((ps, (`gt (left, op, right))), xs)
 			| lazy (`cons (op_p, (`le as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`le (left, op, right))) xs
+				loop ((ps, (`le (left, op, right))), xs)
 			| lazy (`cons (op_p, (`ge as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_shift_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`ge (left, op, right))) xs
+				loop ((ps, (`ge (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_shift_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_shift_expression error lang typedefs xs in
+		loop result
 	) and parse_relational_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1571,24 +1571,24 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (eq_p, (`eq as eq_e), xs)) ->
 				let op = eq_p, eq_e in
 				let right, xs = parse_relational_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`eq (left, op, right))) xs
+				loop ((ps, (`eq (left, op, right))), xs)
 			| lazy (`cons (ne_p, (`ne as ne_e), xs)) ->
 				let op = ne_p, ne_e in
 				let right, xs = parse_relational_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`ne (left, op, right))) xs
+				loop ((ps, (`ne (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_relational_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_relational_expression error lang typedefs xs in
+		loop result
 	) and parse_equality_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1612,19 +1612,19 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`ampersand as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_equality_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`bit_and (left, op, right))) xs
+				loop ((ps, (`bit_and (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_equality_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_equality_expression error lang typedefs xs in
+		loop result
 	) and parse_and_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1648,19 +1648,19 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`caret as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_and_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`bit_xor (left, op, right))) xs
+				loop ((ps, (`bit_xor (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_and_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_and_expression error lang typedefs xs in
+		loop result
 	) and parse_exclusive_or_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1684,19 +1684,19 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`vertical as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_exclusive_or_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`bit_or (left, op, right))) xs
+				loop ((ps, (`bit_or (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_exclusive_or_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_exclusive_or_expression error lang typedefs xs in
+		loop result
 	) and parse_inclusive_or_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1720,19 +1720,19 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`and_then as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_inclusive_or_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`and_then (left, op, right))) xs
+				loop ((ps, (`and_then (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_inclusive_or_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_inclusive_or_expression error lang typedefs xs in
+		loop result
 	) and parse_logical_and_expression_or_error
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1756,19 +1756,19 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_binary_op_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`or_else as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_logical_and_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`or_else (left, op, right))) xs
+				loop ((ps, (`or_else (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_logical_and_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_logical_and_expression error lang typedefs xs in
+		loop result
 	) and parse_conditional_expression
 		(error: ranged_position -> string -> unit)
 		(lang: language)
@@ -1860,19 +1860,19 @@ struct
 		(xs: [`cons of ranged_position * FirstSet.firstset_of_expression * 'a in_t] lazy_t)
 		: expression p * 'a in_t =
 	(
-		let rec loop left xs = (
+		let rec loop (left, xs as result) = (
 			begin match xs with
 			| lazy (`cons (op_p, (`comma as op_e), xs)) ->
 				let op = op_p, op_e in
 				let right, xs = parse_assignment_expression_or_error error lang typedefs xs in
 				let `some (ps, ()) = (`some left) & (`some op) &^ right in
-				loop (ps, (`comma (left, op, right))) xs
+				loop ((ps, (`comma (left, op, right))), xs)
 			| _ ->
-				left, xs
+				result
 			end
 		) in
-		let left, xs = parse_assignment_expression error lang typedefs xs in
-		loop left xs
+		let result = parse_assignment_expression error lang typedefs xs in
+		loop result
 	) and parse_expression_option
 		(error: ranged_position -> string -> unit)
 		(lang: language)
