@@ -766,7 +766,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"malloc.h", [
 			`unparsible_macro, [
 				"_malloca"; (* for the case of RC_INVOKED is defined *)
-				"_STATIC_ASSERT"]]; (* parameterized declaration *)
+				"_STATIC_ASSERT"]; (* parameterized declaration *)
+			`uninterpretable_macro, [
+				"_mm_free"; (* _aligned_free is undefined unless __DO_ALIGN_DEFINES *)
+				"_mm_malloc"]]; (* _aligned_malloc is undefined unless __DO_ALIGN_DEFINES *)
 		"_mingw.h", [
 			`undefined_macro, [
 				"__clang_major__";
@@ -902,6 +905,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"PROPSHEETHEADERW_V2_SIZE"]]; (* does not have DUMMYUNION5_MEMBER *)
 		"psdk_inc/intrin-mac.h", [
 			`unparsible_macro, [
+				"__buildbittesti"; (* parameterized declaration *)
 				"__buildstos"]]; (* parameterized declaration *)
 		"psdk_inc/_ip_types.h", [
 			`unparsible_macro, [
@@ -963,6 +967,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"_PTR_LD"]]; (* accessing element of untyped parameter *)
 		"stralign.h", [
+			`redefine_macro, [
+				"WSTR_ALIGNED"]; (* 64 bit mode *)
 			`unparsible_macro, [
 				"__UA_STACKCOPY"]]; (* _alloca is undefined *)
 		"_timeval.h", [
@@ -1003,6 +1009,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"BitTestAndReset"; (* _bittestandreset is undefined on 32 bit mode *)
 				"BitTestAndSet"; (* _bittestandset is undefined on 32 bit mode *)
 				"C_ASSERT"; (* static assert *)
+				"CacheLineFlush"; (* _mm_clflush *)
 				"CONTAINING_RECORD"; (* parameterized field *)
 				"DECLSPEC_ALIGN"; (* parameterized attribute *)
 				"FIELD_OFFSET"; (* parameterized field *)
@@ -1011,8 +1018,19 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"InterlockedCompareExchange16"; (* _InterlockedCompareExchange16 is undefined on 32 bit mode *)
 				"InterlockedDecrement16"; (* _InterlockedDecrement16 is undefined on 32 bit mode *)
 				"InterlockedIncrement16"; (* _InterlockedIncrement16 is undefined on 32 bit mode *)
+				"LoadFence"; (* _mm_lfence *)
+				"MemoryFence"; (* _mm_mfence *)
 				"NOP_FUNCTION"; (* (void)0 ??? *)
+				"PF_NON_TEMPORAL_LEVEL_ALL"; (* _MM_HINT_NTA *)
+				"PF_TEMPORAL_LEVEL_1"; (* _MM_HINT_T0 *)
+				"PF_TEMPORAL_LEVEL_2"; (* _MM_HINT_T1 *)
+				"PF_TEMPORAL_LEVEL_3"; (* _MM_HINT_T2 *)
+				"PreFetchCacheLine"; (* _mm_prefetch *)
+				"PrefetchForWrite"; (* _m_prefetchw *)
 				"PROBE_ALIGNMENT"; (* new struct in macro *)
+				"ReadMxCsr"; (* _mm_getcsr *)
+				"ReadForWriteAccess"; (* _m_prefetchw *)
+				"ReadTimeStampCounter"; (* __rdtsc *)
 				"REPARSE_GUID_DATA_BUFFER_HEADER_SIZE"; (* accessing element of null *)
 				"RTL_BITS_OF_FIELD"; (* parameterized field *)
 				"RTL_CONTAINS_FIELD"; (* parameterized field *)
@@ -1027,15 +1045,19 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"STDAPIV_"; (* storage class and parameterized type *)
 				"STDMETHODIMP_"; (* storage class and parameterized type *)
 				"STDMETHODIMPV_"; (* storage class and parameterized type *)
+				"StoreFence"; (* _mm_sfence *)
 				"TEXT"; (* ## *)
-				"TYPE_ALIGNMENT"]]; (* new struct in macro *)
+				"TYPE_ALIGNMENT"; (* new struct in macro *)
+				"WriteMxCsr"; (* _mm_setcsr *)
+				"YieldProcessor"]]; (* _mm_pause *)
 		"winuser.h", [
 			`undefined_macro, [
 				"_WIN32_WCE"];
 			`uninterpretable_macro, [
 				"NEXTRAWINPUTBLOCK"; (* accessing element of untyped parameter *)
 				"POINTSTOPOINT"; (* accessing element of untyped parameter *)
-				"POINTTOPOINTS"]]; (* accessing element of untyped parameter *)
+				"POINTTOPOINTS"; (* accessing element of untyped parameter *)
+				"RAWINPUT_ALIGN"]]; (* QWORD is undefined on 64 bit mode *)
 		"wtypes.h", [
 			`uninterpretable_macro, [
 				"CBPCLIPDATA"; (* accessing element of untyped parameter *)

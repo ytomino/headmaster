@@ -740,6 +740,8 @@ struct
 				`some (p4, `leaf), xs
 			| "__malloc__" ->
 				`some (p4, `malloc), xs
+			| "__may_alias__" ->
+				`some (p4, `may_alias), xs
 			| "__mode__" ->
 				let modes: (string * bit_width_mode) list = [
 					"__QI__", `__QI__;
@@ -812,6 +814,13 @@ struct
 				`some (p4, `unused attr_keyword), xs
 			| "__used__" ->
 				`some (p4, `used), xs
+			| "__vector_size__" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_assignment_expression_or_error error lang typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				`some (ps, `vector_size (n, l_paren, arg, r_paren)), xs
 			| "visibility" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in

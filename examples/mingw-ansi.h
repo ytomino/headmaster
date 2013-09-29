@@ -16,7 +16,9 @@
 #undef LONG
 #undef SHORT
 #undef NT_INCLUDED
+#define __INTRIN_H_
 #include <winnt.h>
+#undef __INTRIN_H_
 #include <winsock2.h> /* before windows.h */
 /* #pragma for Ada "winsock2.h" monolithic_include "psdk_inc/_wsa_errnos.h" */
 #undef h_errno

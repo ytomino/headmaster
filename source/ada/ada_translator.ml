@@ -1020,12 +1020,17 @@ struct
 							(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype)
 							(base_type :> Semantics.all_type);
 						begin match resolved_base_type with
-						| #Semantics.predefined_type ->
-							()
+						| `pointer `void ->
+							() (* a representation for new System.Address is too late *)
 						| _ ->
-							pp_pragma_convention ff `cdecl name
-						end;
-						pp_pragma_volatile ff name
+							begin match resolved_base_type with
+							| #Semantics.predefined_type ->
+								()
+							| _ ->
+								pp_pragma_convention ff `cdecl name
+							end;
+							pp_pragma_volatile ff name
+						end
 					end
 				| `const _ ->
 					() (* only "access constant" form *)
@@ -1913,7 +1918,7 @@ struct
 				end;
 				fprintf ff "'(%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
-			| _, (#int_prec | #real_prec), (#int_prec | #real_prec) ->
+			| _, (#int_prec | #real_prec | `const #int_prec), (#int_prec | #real_prec) ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in

@@ -45,6 +45,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_inline: [`none | `noinline | `inline | `always_inline];
 		at_leaf: bool;
 		at_malloc: bool;
+		at_may_alias: bool;
 		at_mode: bit_width_mode option;
 		at_nonnull: int list;
 		at_noreturn: bool;
@@ -59,6 +60,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_transparent_union: bool;
 		at_unavailable: bool;
 		at_used: [`none | `used | `unused];
+		at_vector_size: int option;
 		at_warn_unused_result : bool;
 		at_weak_link: [`none | `weak | `weak_import]};;
 	
@@ -540,6 +542,7 @@ struct
 		at_inline = `none;
 		at_leaf = false;
 		at_malloc = false;
+		at_may_alias = false;
 		at_mode = None;
 		at_nonnull = [];
 		at_noreturn = false;
@@ -554,6 +557,7 @@ struct
 		at_transparent_union = false;
 		at_unavailable = false;
 		at_used = `none;
+		at_vector_size = None;
 		at_warn_unused_result = false;
 		at_weak_link = `none};;
 	

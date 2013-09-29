@@ -92,6 +92,9 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 						| "long int" ->
 							sizeof_intptr := sizeof_long;
 							typedef_ptrdiff_t := Some `signed_long
+						| "long long int" ->
+							sizeof_intptr := sizeof_long_long;
+							typedef_ptrdiff_t := Some `signed_long_long
 						| _ ->
 							assert false
 						end
@@ -101,6 +104,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 							typedef_size_t := Some `unsigned_int
 						| "long unsigned int" ->
 							typedef_size_t := Some `unsigned_long
+						| "long long unsigned int" ->
+							typedef_size_t := Some `unsigned_long_long
 						| _ ->
 							assert false
 						end
@@ -261,6 +266,7 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_fabs", [`double], `double;
 		"__builtin_fabsl", [`long_double], `long_double;
 		"__builtin_flt_rounds", [], `signed_int;
+		"__builtin_frame_address", [`unsigned_int], `pointer `char;
 		"__builtin_huge_valf", [], `float;
 		"__builtin_huge_val", [], `double;
 		"__builtin_huge_vall", [], `long_double;

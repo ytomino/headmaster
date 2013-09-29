@@ -62,6 +62,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `inline of string
 		| `leaf
 		| `malloc
+		| `may_alias
 		| `mode of string p * [`l_paren] e * bit_width_mode e * [`r_paren] e
 		| `noinline of string
 		| `nonnull of string p * [`l_paren] e * argument_expression_list e * [`r_paren] e
@@ -81,6 +82,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `unavailable
 		| `unused of string
 		| `used
+		| `vector_size of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `visibility of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
 		| `warn_unused_result of string
 		| `weak

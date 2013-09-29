@@ -648,6 +648,8 @@ struct
 			{attributes with at_leaf = true}
 		| `malloc ->
 			{attributes with at_malloc = true}
+		| `may_alias ->
+			{attributes with at_may_alias = true}
 		| `mode (_, _, mode, _) ->
 			begin match mode with
 			| `some mode ->
@@ -716,6 +718,18 @@ struct
 			{attributes with at_used = `unused}
 		| `used ->
 			{attributes with at_used = `used}
+		| `vector_size (_, _, arg, _) ->
+			begin match arg with
+			| `some expr ->
+				begin match int_of_expr expr with
+				| Some _ as r ->
+					{attributes with at_vector_size = r}
+				| None ->
+					attributes
+				end
+			| `error ->
+				attributes
+			end
 		| `visibility _ ->
 			attributes (* ignore __attribute__((visibility(...))) *)
 		| `warn_unused_result _ ->
