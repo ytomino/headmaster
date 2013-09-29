@@ -245,7 +245,7 @@ struct
 		begin match t with
 		| `signed_char | `signed_short | `signed_int | `signed_long | `signed_long_long ->
 			let x3 =
-				if Integer.compare x Integer.zero >= 0 then x2 else
+				if Integer.test_bit x (bit_size - 1) = 0 then x2 else
 				Integer.logor x2 (Integer.shift_left (Integer.of_int ~-1) bit_size)
 			in
 			`int_literal (t, x3), (t :> all_type)

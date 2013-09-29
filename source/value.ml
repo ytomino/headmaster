@@ -24,6 +24,7 @@ module type IntegerType = sig
 	val lognot: t -> t;;
 	val shift_left: t -> int -> t;;
 	val shift_right: t -> int -> t;;
+	val test_bit: t -> int -> int;;
 end;;
 
 module type RealType = sig

@@ -55,6 +55,7 @@ module Integer = struct
 	let lognot = lnot;;
 	let shift_left left right = left lsl right;;
 	let shift_right left right = left asr right;;
+	let test_bit x b = if x land (1 lsl b) <> 0 then 1 else 0;;
 end;;
 
 module Integer64 = struct
@@ -85,6 +86,7 @@ module Integer64 = struct
 		loop (Int64.of_int base) (Buffer.create 32) x
 	);;
 	let scale fraction ~base ~exponent = Int64.mul fraction (Int64.of_float (float_of_int base ** float_of_int exponent));;
+	let test_bit x b = if Int64.logand x (Int64.shift_left 1L b) <> 0L then 1 else 0;;
 end;;
 
 module Real = struct

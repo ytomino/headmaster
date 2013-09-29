@@ -924,8 +924,9 @@ struct
 			) left right
 		) in
 		begin match snd x with
-		| `int_literal (prec, _) as v ->
-			derived_types, source, Some (v, find_predefined_type prec predefined_types)
+		| `int_literal (prec, value) ->
+			let v = Expressing.int_conv predefined_types prec value in
+			derived_types, source, Some v
 		| `float_literal (prec, _) as v ->
 			derived_types, source, Some (v, find_predefined_type prec predefined_types)
 		| `imaginary_literal (prec, _) as v ->
