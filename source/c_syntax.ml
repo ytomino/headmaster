@@ -249,6 +249,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `FLOAT
 		| `DOUBLE
 		| `SIGNED
+		| `__signed__ (* extended *)
 		| `UNSIGNED
 		| `_BOOL
 		| `_IMAGINARY
