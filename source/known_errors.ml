@@ -533,6 +533,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__FP_FAST_FMA";
 				"__FP_FAST_FMAF";
 				"__FP_FAST_FMAL"]];
+		"bits/predefs.h", [
+			`redefine_compiler_macro, [
+				"__STDC_IEC_559__";
+				"__STDC_IEC_559_COMPLEX__"]];
 		"bits/sched.h", [
 			`unparsible_macro, [
 				"__CPU_OP_S"]; (* parameterized operator *)
@@ -591,6 +595,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"features.h", [
 			`redefine_compiler_macro, [
 				"__STDC_ISO_10646__"]];
+		"fnmatch.h", [
+			`redefine_extended_word, [
+				"__const"]];
 		"_G_config.h", [
 			`unparsible_macro, [
 				"_G_FSTAT64"; (* __fxstat64 is undefined *)
