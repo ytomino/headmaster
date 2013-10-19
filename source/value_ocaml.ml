@@ -41,6 +41,7 @@ module Integer = struct
 		loop base (Buffer.create 32) x
 	);;
 	let compare: t -> t -> int = compare;;
+	let compare_int: t -> int -> int = compare;;
 	let neg = ( ~- );;
 	let add = ( + );;
 	let sub = ( - );;
@@ -86,6 +87,7 @@ module Integer64 = struct
 		) in
 		loop (Int64.of_int base) (Buffer.create 32) x
 	);;
+	let compare_int x y = Int64.compare x (Int64.of_int y);;
 	let scale fraction ~base ~exponent = Int64.mul fraction (Int64.of_float (float_of_int base ** float_of_int exponent));;
 	let test_bit x b = if Int64.logand x (Int64.shift_left 1L b) <> 0L then 1 else 0;;
 end;;

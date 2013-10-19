@@ -242,19 +242,26 @@ struct
 		(t: int_prec)
 		(x: Integer.t): expression =
 	(
-		let bit_size = Typing.sizeof_predefined_type t predefined_types * 8 in
-		let bits = Integer.sub (Integer.shift_left Integer.one bit_size) Integer.one in
-		let x2 = Integer.logand x bits in
-		begin match t with
-		| `signed_char | `signed_short | `signed_int | `signed_long | `signed_long_long ->
-			let x3 =
-				if Integer.test_bit x (bit_size - 1) = 0 then x2 else
-				Integer.logor x2 (Integer.shift_left (Integer.of_int ~-1) bit_size)
-			in
-			`int_literal (t, x3), (t :> all_type)
-		| `unsigned_char | `unsigned_short | `unsigned_int | `unsigned_long | `unsigned_long_long ->
-			`int_literal (t, x2), (t :> all_type)
-		end
+		if Integer.compare x Integer.zero >= 0 && Integer.compare_int x 128 < 0 then (
+			`int_literal (t, x), (t :> all_type) (* all int types can have 0..127 *)
+		) else (
+			let bit_size = Typing.sizeof_predefined_type t predefined_types * 8 in
+			let bits = Integer.sub (Integer.shift_left Integer.one bit_size) Integer.one in
+			begin match t with
+			| `signed_char | `signed_short | `signed_int | `signed_long | `signed_long_long ->
+				let x2 =
+					if Integer.test_bit x (bit_size - 1) = 0 then (
+						Integer.logand x bits
+					) else (
+						Integer.logor x (Integer.lognot bits)
+					)
+				in
+				`int_literal (t, x2), (t :> all_type)
+			| `unsigned_char | `unsigned_short | `unsigned_int | `unsigned_long | `unsigned_long_long ->
+				let x2 = Integer.logand x bits in
+				`int_literal (t, x2), (t :> all_type)
+			end
+		)
 	);;
 	
 	let rec zero
