@@ -3589,7 +3589,23 @@ struct
 					end
 				) in
 				ignore (
-					List.fold_left (fun (anonymous_mapping, done_list) item ->
+					List.fold_left (fun (anonymous_mapping, done_list, hidden_packages) item ->
+						(* update hidden packages *)
+						let hidden_packages =
+							begin match item with
+							| `named (ps, name, kind, _) ->
+								begin match kind with
+								| #Semantics.opaque_type_var | `enum _ | `struct_type _ | `union _
+								| `defined_alias (`named (_, _, (#Semantics.opaque_type_var | `enum _ | `struct_type _ | `union _), _)) ->
+									hidden_packages
+								| _ ->
+									let ada_name = ada_name_of current ps name `namespace name_mapping in
+									StringSet.add ada_name hidden_packages
+								end
+							| _ ->
+								hidden_packages
+							end
+						in
 						(* source item *)
 						let anonymous_mapping =
 							begin match item with
@@ -3635,8 +3651,8 @@ struct
 								done_list
 							end
 						in
-						anonymous_mapping, done_list
-					) ([], []) items
+						anonymous_mapping, done_list, hidden_packages
+					) ([], [], hidden_packages) items
 				)
 			)
 			~pp_private:(
