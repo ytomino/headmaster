@@ -1604,12 +1604,12 @@ struct
 			pp_expression ff ~mappings ~current ~outside:`relation right;
 			if paren then pp_close_paren ff ()
 		) in
+		let need_to_cast expr = (
+			match Semantics.integer_of_expression expr with
+			| Some (_, n) -> Integer.compare n Integer.zero < 0
+			| None -> true
+		) in
 		let pp_bit_op ff inside left right t = (
-			let need_to_cast expr = (
-				match Semantics.integer_of_expression expr with
-				| Some (_, n) -> Integer.compare n Integer.zero < 0
-				| None -> true
-			) in
 			let is_signed, unsigned_of_signed =
 				begin match Semantics.resolve_typedef t with
 				| #unsigned_int_prec as p -> false, p
@@ -1910,6 +1910,16 @@ struct
 			| _, `char, #int_prec ->
 				fprintf ff "char'Pos (%a)"
 					(pp_expression ~mappings ~current ~outside:`lowest) expr
+			| _, #signed_int_prec, #unsigned_int_prec when need_to_cast expr ->
+				begin
+					let opaque_mapping, name_mapping = mappings in
+					let mappings = opaque_mapping, name_mapping, [] in
+					pp_type_name ff ~mappings ~current ~where:`name t2
+				end;
+				pp_print_string ff "'Mod (";
+				pp_print_break ff 0 0;
+				pp_expression ff ~mappings ~current ~outside:`lowest expr;
+				pp_print_char ff ')'
 			| (`int_literal _, _), #int_prec, #int_prec ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
