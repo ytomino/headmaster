@@ -223,6 +223,9 @@ struct
 					&& Integer.compare n Integer.zero = 0
 			->
 				`implicit_conv z, t (* (void * )NULL -> (any type * )NULL *)
+			| `int_literal (_, n), _
+				when Integer.compare n Integer.zero = 0 ->
+				`implicit_conv expr, t (* 0 -> (any type * )NULL *)
 			| _, `pointer `void
 			| _, `pointer (`const `void) ->
 				`implicit_conv expr, t (* void * -> any type * *)

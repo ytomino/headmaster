@@ -6,6 +6,7 @@ module Finding
 	(Semantics: SemanticsType
 		with module Literals := Literals) =
 struct
+	open Literals;;
 	open Semantics;;
 	
 	(* types *)
@@ -345,6 +346,12 @@ struct
 				begin match t1, t2 with
 				| #int_prec, `pointer `void when is_static_expression expr ->
 					rs (* use System'To_Address *)
+				| #int_prec, `pointer _
+					when (
+						match expr with
+						| `int_literal (_, n), _ when Integer.compare n Integer.zero = 0 -> true
+						| _ -> false) ->
+					rs (* NULL *)
 				| (`array ((Some _), _) as t1), (`pointer _) ->
 					add_array t1 t2 rs
 				| _, (`pointer _)
