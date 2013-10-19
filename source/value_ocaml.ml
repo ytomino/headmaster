@@ -48,6 +48,7 @@ module Integer = struct
 	let div = ( / );;
 	let rem = ( mod );;
 	let scale fraction ~base ~exponent = fraction * int_of_float (float_of_int base ** float_of_int exponent);;
+	let of_int32 = Int32.to_int;;
 	let to_int x = x;;
 	let logand = ( land );;
 	let logor = ( lor );;

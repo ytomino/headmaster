@@ -16,6 +16,7 @@ end;;
 
 module type IntegerType = sig
 	include NumericType;;
+	val of_int32: int32 -> t;;
 	val to_int: t -> int;;
 	val rem: t -> t -> t;;
 	val logand: t -> t -> t;;

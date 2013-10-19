@@ -348,6 +348,8 @@ struct
 					if c < 0x80 then c else c lor (-1 lxor 0xff)
 				in
 				Integer.of_int x, xs
+			| lazy (`cons (_, `wchar_literal value, xs)) ->
+				Integer.of_int32 value, xs
 			| lazy (`cons (ps, `ident name, xs)) ->
 				if not shortcircuit && not (is_known_error ps name `undefined_macro) then (
 					error ps (undefined_macro name)
