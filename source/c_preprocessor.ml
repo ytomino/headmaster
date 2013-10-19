@@ -965,14 +965,14 @@ struct
 						let cond = StringMap.mem name predefined in
 						let xs = take_end_of_line error xs in
 						process_if cond xs
-					| lazy (`cons (_, (#extended_word as ew), xs)) ->
-						let name = string_of_rw ew in
-						let cond = StringMap.mem name predefined in
-						let xs = take_end_of_line error xs in
-						process_if cond xs
 					| lazy (`cons (_, #compiler_macro, xs)) ->
 						let xs = take_end_of_line error xs in
 						process_if true xs
+					| lazy (`cons (_, (#reserved_word as rw), xs)) ->
+						let name = string_of_rw rw in
+						let cond = StringMap.mem name predefined in
+						let xs = take_end_of_line error xs in
+						process_if cond xs
 					| _ ->
 						error ps macro_name_is_missing_for_ifdef;
 						let xs = skip_line xs in
@@ -985,14 +985,14 @@ struct
 						let cond = not (StringMap.mem name predefined) in
 						let xs = take_end_of_line error xs in
 						process_if cond xs
-					| lazy (`cons (_, (#extended_word as ew), xs)) ->
-						let name = string_of_rw ew in
-						let cond = not (StringMap.mem name predefined) in
-						let xs = take_end_of_line error xs in
-						process_if cond xs
 					| lazy (`cons (_, #compiler_macro, xs)) ->
 						let xs = take_end_of_line error xs in
 						process_if false xs
+					| lazy (`cons (_, (#reserved_word as rw), xs)) ->
+						let name = string_of_rw rw in
+						let cond = not (StringMap.mem name predefined) in
+						let xs = take_end_of_line error xs in
+						process_if cond xs
 					| _ ->
 						error ps macro_name_is_missing_for_ifndef;
 						let xs = skip_line xs in
