@@ -123,8 +123,8 @@ struct
 			[]
 		| `named (_, _, `defined_typedef t, _) ->
 			of_item (t :> all_item)
-		| `named (_, _, `defined_opaque_type t, _) ->
-			of_item (t :> all_item)
+		| `named (_, _, `defined_opaque_type _, _) ->
+			[]
 		| `named (_, _, `defined_element_access _, _) ->
 			[]
 		| `named (_, _, `defined_expression expr, _) ->
