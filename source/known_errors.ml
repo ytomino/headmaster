@@ -133,6 +133,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"mach/vm_region.h", [
 			`undefined_macro, [
 				"VM32_SUPPORT"]]; (* darwin10 *)
+		"mach-o/dyld.h", [
+			`undefined_macro, [
+				"__cplusplus"]]; (* darwin10 *)
 		"netdb.h", [
 			`unparsible_macro, [
 				"h_addr"]]; (* darwin9 / alias of element and dereferencing *)
