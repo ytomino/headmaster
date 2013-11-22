@@ -224,7 +224,7 @@ struct
 	
 	let using_anonymous_access_for_pointed_type (pointed_t: Semantics.all_type): Semantics.all_type option = (
 		begin match Semantics.resolve_typedef pointed_t with
-		| `void | `function_type _ ->
+		| `void | `volatile `void | `const (`volatile `void) | `function_type _ ->
 			None
 		| `const pointed_t when (
 			match Semantics.resolve_typedef (pointed_t :> Semantics.all_type) with
@@ -3532,7 +3532,18 @@ struct
 					) in
 					List.iter (fun (x, y as pair) ->
 						if not (belongs_to x items) && not (belongs_to y items) then (
-							pp_unchecked_conversion ff ~mappings:(opaque_mapping, name_mapping, []) ~current pair
+							begin match x with
+							| `pointer (`const (`volatile `void))
+								when List.exists (fun (x2, y2) ->
+									y2 == y &&
+										begin match x2 with
+										| `pointer (`volatile `void) -> true
+										| _ -> false
+										end) casts ->
+								() (* two types are mapped to same System.Address *)
+							| _ ->
+								pp_unchecked_conversion ff ~mappings:(opaque_mapping, name_mapping, []) ~current pair
+							end
 						)
 					) casts;
 					(* sized arrays of types in another packages *)
