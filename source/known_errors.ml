@@ -40,6 +40,10 @@ type known_error = [
 
 let known_error_table: (string * (string * (known_error * string list) list) list) list = [
 	"*-apple-darwin*", [
+		"AvailabilityMacros.h", [
+			`undefined_macro, [
+				"__i386__"; (* darwin10 *)
+				"__ppc64__"]]; (* darwin10 *)
 		"complex.h", [
 			`undefined_macro, [
 				"__WANT_LONG_DOUBLE_FORMAT__"]]; (* darwin10 *)
@@ -525,6 +529,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"bits/cmathcalls.h", [
 			`unparsible_macro, [
 				"_Mdouble_complex_"]]; (* parameterized type specifier *)
+		"bits/dlfcn.h", [
+			`unparsible_macro, [
+				"DL_CALL_FCT"]]; (* parameterized argument expression list *)
 		"bits/in.h", [
 			`unparsible_macro, [
 				"SCM_SRCRT"]]; (* IPV6_RXSRCRT is undefined *)
