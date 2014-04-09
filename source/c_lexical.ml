@@ -290,6 +290,7 @@ type extended_word = [
 	| `__restrict
 	| `__restrict__
 	| `__signed__
+	| `__thread
 	| `__typeof__
 	| `__volatile__];;
 
@@ -312,6 +313,7 @@ let extended_word_table = [
 	"__restrict", `__restrict;
 	"__restrict__", `__restrict__;
 	"__signed__", `__signed__;
+	"__thread", `__thread;
 	"__typeof__", `__typeof__;
 	"__volatile__", `__volatile__];;
 

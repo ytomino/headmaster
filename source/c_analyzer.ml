@@ -1643,6 +1643,21 @@ struct
 					let source = (result :> source_item) :: source in
 					derived_types, namespace, source, Some result
 				end
+			| `extern__Thread_local ->
+				if init <> None then (
+					error ps "initializer was found with extern."
+				);
+				begin match t with
+				| `function_type _ ->
+					error (fst x) "\"_Thread_local\" could not be applied to function type.";
+					derived_types, namespace, source, None
+				| _ ->
+					let attr = {attr with at_thread_local = true} in
+					let result = `named (ps, id, `extern (t, alias), attr) in
+					let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
+					let source = (result :> source_item) :: source in
+					derived_types, namespace, source, Some result
+				end
 			| `static ->
 				begin match t with
 				| `function_type _ as t ->
@@ -1699,6 +1714,9 @@ struct
 					let source = (result :> source_item) :: source in
 					derived_types, namespace, source, Some result
 				end
+			| `_Thread_local ->
+				error (fst x) "unimplemented!";
+				assert false
 			end
 		| None ->
 			derived_types, namespace, source, None
@@ -1716,7 +1734,10 @@ struct
 			| `STATIC -> `static
 			| `AUTO -> `auto
 			| `REGISTER -> `register
+			| `__thread -> `_Thread_local
 			end
+		) else if storage_class = `extern && snd x = `__thread then (
+			`extern__Thread_local
 		) else (
 			error (fst x) "storage-class-specifier was duplicated.";
 			storage_class
@@ -3124,7 +3145,7 @@ struct
 							`none
 						| `extern when attr.at_inline <> `none ->
 							`extern_inline
-						| `extern | `typedef | `auto | `register ->
+						| `extern | `typedef | `auto | `register | `_Thread_local | `extern__Thread_local ->
 							error (fst x) "bad storage-class was found in function-definition.";
 							`none
 						end

@@ -75,7 +75,8 @@ struct
 		| `EXTERN
 		| `STATIC
 		| `AUTO
-		| `REGISTER];;
+		| `REGISTER
+		| `__thread];;
 	type simple_type_specifier = [
 		| `VOID
 		| `CHAR

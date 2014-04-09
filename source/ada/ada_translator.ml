@@ -2824,6 +2824,10 @@ struct
 				fprintf ff "@ --  %s renames static (macro)" name
 			| `typedef ->
 				fprintf ff "@ --  %s renames typedef (macro)" name
+			| `_Thread_local ->
+				fprintf ff "@ --  %s renames _Thread_local (macro)" name
+			| `extern__Thread_local ->
+				fprintf ff "@ --  %s renames extern _Thread_local (macro)" name
 			end
 		| `named (_, _, `defined_type_specifier _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
@@ -3109,6 +3113,10 @@ struct
 				fprintf ff "@ --  %s (alias of static)" name
 			| `typedef ->
 				fprintf ff "@ --  %s (alias of typedef)" name
+			| `_Thread_local ->
+				fprintf ff "@ --  %s (alias of _Thread_local)" name
+			| `extern__Thread_local ->
+				fprintf ff "@ --  %s (alias of extern _Thread_local)" name
 			end
 		| `named (_, name, `defined_type_specifier ts, _) ->
 			begin match ts with

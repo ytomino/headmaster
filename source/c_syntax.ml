@@ -238,7 +238,8 @@ module Syntax (Literals: LiteralsType) = struct
 		| `EXTERN
 		| `STATIC
 		| `AUTO
-		| `REGISTER]
+		| `REGISTER
+		| `__thread]
 	and type_specifier = [
 		(* (6.7.2) type-specifier *)
 		| `VOID

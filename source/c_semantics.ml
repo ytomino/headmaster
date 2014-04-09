@@ -57,6 +57,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_returns_twice: bool;
 		at_sentinel: bool;
 		at_selectany: bool;
+		at_thread_local: bool; (* _Thread_local *)
 		at_transparent_union: bool;
 		at_unavailable: bool;
 		at_used: [`none | `used | `unused];
@@ -84,7 +85,9 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		| `extern
 		| `static
 		| `auto
-		| `register];;
+		| `register
+		| `_Thread_local
+		| `extern__Thread_local];;
 	
 	type literal_value = [
 		| `int_literal of int_prec * Integer.t
@@ -554,6 +557,7 @@ struct
 		at_returns_twice = false;
 		at_sentinel = false;
 		at_selectany = false;
+		at_thread_local = false;
 		at_transparent_union = false;
 		at_unavailable = false;
 		at_used = `none;
