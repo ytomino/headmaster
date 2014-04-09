@@ -360,7 +360,16 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"MID_MACHINE"; (* freebsd7 / MID_I386 was undefined, #include <sys/imgact_aout.h> *)
 				"NPDEPG"; (* freebsd7 / pd_entry_t was undefined, #include <machine/pmap.h> *)
 				"NPDEPTD"; (* freebsd7 / pd_entry_t was undefined, #include <machine/pmap.h> *)
+				"NPDPEPG"; (* freebsd9 / pdp_entry_t was undefined *)
+				"NPML4EPG"; (* freebsd9 / pml4_entry_t was undefined *)
 				"NPTEPG"]]; (* freebsd7 / pd_entry_t was undefined, #include <machine/pmap.h> *)
+		"machine/_stdint.h", [
+			`uninterpretable_macro, [
+				"INTMAX_C"; (* freebsd9 / ## *)
+				"UINTMAX_C"]]; (* freebsd9 / ## *)
+		"math.h", [
+			`undefined_macro, [
+				"_DECLARE_C99_LDBL_MATH"]]; (* freebsd9 *)
 		"netdb.h", [
 			`unparsible_macro, [
 				"h_addr"]]; (* freebsd7 / alias of element and dereferencing *)
@@ -374,7 +383,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"M_AUTHIPDGM"; (* freebsd7 / M_PROTO5 was undefined *)
 				"M_AUTHIPHDR"; (* freebsd7 / M_PROTO2 was undefined *)
 				"M_DECRYPTED"; (* freebsd7 / M_PROTO3 was undefined *)
-				"M_LOOP"]; (* freebsd7 / M_PROTO4 was undefined *)
+				"M_LOOP"; (* freebsd7 / M_PROTO4 was undefined *)
+				"M_RTALERT_MLD"]; (* freebsd9 / M_PROTO6 was undefined *)
 			`uninterpretable_macro, [
 				"IN6_IS_ADDR_LINKLOCAL"; (* freebsd7 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_LOOPBACK"; (* freebsd7 / accessing element of untyped parameter *)
@@ -389,6 +399,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"IN6_IS_ADDR_V4MAPPED"; (* freebsd7 / accessing element of untyped parameter *)
 				"IN6_IS_ADDR_UNSPECIFIED"; (* freebsd7 / accessing element of untyped parameter *)
 				"__IPV6_ADDR_MC_SCOPE"]]; (* freebsd7 / accessing element of untyped parameter *)
+		"pthread.h", [
+			`unparsible_macro, [
+				"pthread_cleanup_pop"; (* freebsd9 / partial statement *)
+				"pthread_cleanup_push"]]; (* freebsd9 / partial statement *)
 		"stdio.h", [
 			`uninterpretable_macro, [
 				"__sclearerr"; (* freebsd7 / accessing element of untyped parameter *)
@@ -396,6 +410,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__sferror"; (* freebsd7 / accessing element of untyped parameter *)
 				"__sfileno"; (* freebsd7 / accessing element of untyped parameter *)
 				"__sgetc"]]; (* freebsd7 / accessing element of untyped parameter *)
+		"stdlib.h", [
+			`undefined_macro, [
+				"__cplusplus"]]; (* freebsd9 *)
 		"sys/cdefs.h", [
 			`undefined_macro, [
 				"__FreeBSD_cc_version"]; (* freebsd7 *)
@@ -403,8 +420,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__const"; (* freebsd7 *)
 				"__restrict"]; (* freebsd7 *)
 			`unparsible_macro, [
+				"_Alignas"; (* freebsd9 / parameterized attribute *)
 				"__aligned"; (* freebsd7 / parameterized attribute *)
 				"__CONCAT"; (* freebsd7 / ## *)
+				"__containerof"; (* freebsd9 / accessing element of untyped parameter *)
 				"__COPYRIGHT"; (* freebsd7 / generic declaration *)
 				"__FBSDID"; (* freebsd7 / generic declaration *)
 				"__format_arg"; (* freebsd7 / parameterized attribute *)
@@ -417,19 +436,52 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__RCSID_SOURCE"; (* freebsd7 / generic declaration *)
 				"__scanflike"; (* freebsd7 / parameterized attribute *)
 				"__SCCSID"; (* freebsd7 / generic declaration *)
-				"__section"]]; (* freebsd7 / parameterized attribute *)
+				"__section"; (* freebsd7 / parameterized attribute *)
+				"_Static_assert"; (* freebsd9 / generic declaration *)
+				"__strfmonlike"; (* freebsd9 / parameterized attribute *)
+				"__strftimelike"]; (* freebsd9 / parameterized attribute *)
+			`uninterpretable_macro, [
+				"_Alignof"; (* freebsd9 / generic expression with parameterized type *)
+				"__generic"]]; (* freebsd9 / generic expression with parameterized type *)
+		"sys/cpuset.h", [
+			`uninterpretable_macro, [
+				"CPU_AND"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_CLR"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_CLR_ATOMIC"; (* freebsd9 / atomic_clear_long is undefined *)
+				"CPU_CMP"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_COPY_STORE_REL";  (* freebsd9 / atomic_store_rel_long is undefined *)
+				"CPU_EMPTY"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_FILL"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_ISFULLSET"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_ISSET"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_NAND"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_OR"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_OR_ATOMIC"; (* freebsd9 / atomic_set_long is undefined *)
+				"CPU_OVERLAP"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_SET"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_SET_ATOMIC"; (* freebsd9 / atomic_set_long is undefined *)
+				"CPU_SETOF"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_SUBSET"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_ZERO"]]; (* freebsd9 / accessing element of untyped parameter *)
 		"sys/dirent.h", [
 			`uninterpretable_macro, [
 				"_GENERIC_DIRSIZ"]]; (* freebsd7 / accessing element of untyped parameter *)
+		"sys/mount.h", [
+			`uninterpretable_macro, [
+				"MNT_SHARED_WRITES"]]; (* freebsd9 / accessing element of untyped parameter *)
 		"sys/param.h", [
 			`unparsible_macro, [
-				"CBSIZE"]]; (* freebsd7 / cblock was undefined, #include <sys/clist.h> *)
+				"CBSIZE"; (* freebsd7 / cblock was undefined, #include <sys/clist.h> *)
+				"member2struct"; (* freebsd9 / offsetof *)
+				"__PAST_END"]]; (* freebsd9 / __typeof__ *)
 		"sys/queue.h", [
 			`unparsible_macro, [
 				"LIST_EMPTY"; (* freebsd7 / many bad macros... *)
 				"LIST_ENTRY";
 				"LIST_FIRST";
 				"LIST_FOREACH";
+				"LIST_FOREACH_FROM"; (* freebsd9 *)
+				"LIST_FOREACH_FROM_SAFE"; (* freebsd9 *)
 				"LIST_FOREACH_SAFE";
 				"LIST_HEAD";
 				"LIST_HEAD_INITIALIZER";
@@ -438,11 +490,15 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"LIST_INSERT_BEFORE";
 				"LIST_INSERT_HEAD";
 				"LIST_NEXT";
+				"LIST_PREV"; (* freebsd9 *)
 				"LIST_REMOVE";
+				"LIST_SWAP"; (* freebsd9 *)
 				"SLIST_EMPTY";
 				"SLIST_ENTRY";
 				"SLIST_FIRST";
 				"SLIST_FOREACH";
+				"SLIST_FOREACH_FROM"; (* freebsd9 *)
+				"SLIST_FOREACH_FROM_SAFE"; (* freebsd9 *)
 				"SLIST_FOREACH_PREVPTR";
 				"SLIST_FOREACH_SAFE";
 				"SLIST_HEAD";
@@ -452,12 +508,16 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"SLIST_INSERT_HEAD";
 				"SLIST_NEXT";
 				"SLIST_REMOVE";
+				"SLIST_REMOVE_AFTER"; (* freebsd9 *)
 				"SLIST_REMOVE_HEAD";
+				"SLIST_SWAP"; (* freebsd9 *)
 				"STAILQ_CONCAT";
 				"STAILQ_EMPTY";
 				"STAILQ_ENTRY";
 				"STAILQ_FIRST";
 				"STAILQ_FOREACH";
+				"STAILQ_FOREACH_FROM"; (* freebsd9 *)
+				"STAILQ_FOREACH_FROM_SAFE"; (* freebsd9 *)
 				"STAILQ_FOREACH_SAFE";
 				"STAILQ_HEAD";
 				"STAILQ_HEAD_INITIALIZER";
@@ -468,13 +528,19 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"STAILQ_LAST";
 				"STAILQ_NEXT";
 				"STAILQ_REMOVE";
+				"STAILQ_REMOVE_AFTER"; (* freebsd9 *)
 				"STAILQ_REMOVE_HEAD";
+				"STAILQ_SWAP"; (* freebsd9 *)
 				"TAILQ_CONCAT";
 				"TAILQ_EMPTY";
 				"TAILQ_ENTRY";
 				"TAILQ_FIRST";
 				"TAILQ_FOREACH";
+				"TAILQ_FOREACH_FROM"; (* freebsd9 *)
+				"TAILQ_FOREACH_FROM_SAFE"; (* freebsd9 *)
 				"TAILQ_FOREACH_REVERSE";
+				"TAILQ_FOREACH_REVERSE_FROM"; (* freebsd9 *)
+				"TAILQ_FOREACH_REVERSE_FROM_SAFE"; (* freebsd9 *)
 				"TAILQ_FOREACH_REVERSE_SAFE";
 				"TAILQ_FOREACH_SAFE";
 				"TAILQ_HEAD";
@@ -487,7 +553,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"TAILQ_LAST";
 				"TAILQ_NEXT";
 				"TAILQ_PREV";
-				"TAILQ_REMOVE"]];
+				"TAILQ_REMOVE";
+				"TAILQ_SWAP"]]; (* freebsd9 *)
 		"sys/select.h", [
 			`uninterpretable_macro, [
 				"FD_CLR"; (* freebsd7 / accessing element of untyped parameter *)
@@ -502,8 +569,11 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"CMSG_NXTHDR"]]; (* freebsd7 / accessing element of untyped parameter *)
 		"sys/time.h", [
 			`unparsible_macro, [
+				"bintime_cmp"; (* freebsd9 / parameterized operator *)
 				"timercmp"]; (* freebsd7 / parameterized operator *)
 			`uninterpretable_macro, [
+				"bintime_clear"; (* freebsd9 / accessing element of untyped parameter *)
+				"bintime_isset"; (* freebsd9 / accessing element of untyped parameter *)
 				"timeradd"; (* freebsd7 / accessing element of untyped parameter *)
 				"timerclear"; (* freebsd7 / accessing element of untyped parameter *)
 				"timerisset"; (* freebsd7 / accessing element of untyped parameter *)
