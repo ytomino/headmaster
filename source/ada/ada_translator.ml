@@ -1820,8 +1820,11 @@ struct
 						()
 					| (field_name, _) :: fr, e :: er ->
 						if not first then fprintf ff ",@ ";
-						fprintf ff "%s => " field_name;
+						pp_open_box ff indent;
+						fprintf ff "%s =>" field_name;
+						pp_print_space ff ();
 						pp_expression ff ~mappings ~current ~outside:`lowest e;
+						pp_close_box ff ();
 						loop false fr er
 					| _ ->
 						assert false
