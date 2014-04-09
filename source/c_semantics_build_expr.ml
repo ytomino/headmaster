@@ -217,6 +217,7 @@ struct
 			| `chars_literal _, `array (_, `char) when (match x with `const `char -> true | _ -> false) ->
 				`implicit_conv expr, t (* char array literal -> char const * *)
 			| `cast (`int_literal (_, n), _ as z), t2
+			| `cast (`implicit_conv (`int_literal (_, n), _ as z), #int_prec), t2 (* (any type * )(void * )(implicit ptrdiff_t)0 *)
 			| `explicit_conv (`int_literal (_, n), _ as z), t2
 			| `implicit_conv (`int_literal (_, n), _ as z), t2
 				when (match resolve_typedef t2 with `pointer `void -> true | _ -> false)
@@ -224,6 +225,7 @@ struct
 			->
 				`implicit_conv z, t (* (void * )NULL -> (any type * )NULL *)
 			| `int_literal (_, n), _
+			| `implicit_conv (`int_literal (_, n), _), #int_prec
 				when Integer.compare n Integer.zero = 0 ->
 				`implicit_conv expr, t (* 0 -> (any type * )NULL *)
 			| _, `pointer `void

@@ -1335,14 +1335,8 @@ struct
 						let resolved_expr_t = resolve_typedef (snd expr) in
 						begin match resolved_expr_t with
 						| #signed_int_prec ->
-							let sizeof_expr_t = Typing.sizeof resolved_expr_t predefined_types in
 							let ptrdiff_t = find_ptrdiff_t predefined_types in
-							let sizeof_ptrdiff_t = Typing.sizeof ptrdiff_t predefined_types in
-							if sizeof_expr_t <> sizeof_ptrdiff_t then (
-								derived_types, source, Some (`cast (`implicit_conv expr, resolve_typedef ptrdiff_t), t)
-							) else (
-								derived_types, source, Some (`cast expr, t)
-							)
+							derived_types, source, Some (`cast (Expressing.implicit_conv (resolve_typedef ptrdiff_t) expr), t)
 						| #unsigned_int_prec ->
 							let sizeof_expr_t = Typing.sizeof resolved_expr_t predefined_types in
 							let size_t = find_size_t predefined_types in
