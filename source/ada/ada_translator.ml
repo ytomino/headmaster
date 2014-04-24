@@ -1974,12 +1974,19 @@ struct
 			| (`chars_literal _, _), `array (_, `char), (`pointer `char | `pointer (`const `char)) ->
 				let hash = hash_name expr in
 				fprintf ff "const_%s (0)'Access" hash
-			| _, `pointer _, `bool ->
+			| _, `pointer (`void | `const `void), `bool ->
 				let paren = parenthesis_required ~outside ~inside:`relation in
 				if paren then pp_open_paren ff ();
 				pp_expression ff ~mappings ~current ~outside:`relation expr;
 				pp_print_space ff ();
 				pp_print_string ff "/= System.Null_Address";
+				if paren then pp_close_paren ff ()
+			| _, `pointer _, `bool ->
+				let paren = parenthesis_required ~outside ~inside:`relation in
+				if paren then pp_open_paren ff ();
+				pp_expression ff ~mappings ~current ~outside:`relation expr;
+				pp_print_space ff ();
+				pp_print_string ff "/= null";
 				if paren then pp_close_paren ff ()
 			| _, _, `pointer _ | _, `pointer _, _ ->
 				let opaque_mapping, name_mapping = mappings in
