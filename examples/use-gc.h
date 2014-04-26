@@ -4,3 +4,10 @@
 
 #include <gc/gc.h>
 #include <gc/gc_typed.h>
+
+#if defined(GC_RETURN_ADDR)
+#undef GC_RETURN_ADDR
+#endif
+#if defined(GC_RETURN_ADDR_PARENT)
+#undef GC_RETURN_ADDR_PARENT
+#endif

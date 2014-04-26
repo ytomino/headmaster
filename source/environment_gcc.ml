@@ -262,7 +262,7 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		"__builtin_bswap32", [`unsigned_int], `unsigned_int;
 		"__builtin_bswap64", [`unsigned_long_long], `unsigned_long_long;
 		"__builtin_bzero", [`pointer `char; `size_t], `void;
-		"__builtin_extract_return_addr", [`pointer `void], `pointer `void;
+		"__builtin_extract_return_addr", [`pointer `char], `pointer `char;
 		"__builtin_fabsf", [`float], `float;
 		"__builtin_fabs", [`double], `double;
 		"__builtin_fabsl", [`long_double], `long_double;
