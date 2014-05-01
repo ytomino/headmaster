@@ -232,10 +232,17 @@ print_string "---- check ----\n";;
 
 flush stdout;;
 
-let prefix = String.sub !gcc_command 0 (String.length !gcc_command - 3);;
+let prefix, arguments =
+	let length = String.length !gcc_command in
+	let index = (try String.index !gcc_command ' ' with Not_found -> length) in
+	let prefix = String.sub !gcc_command 0 (index - 3) in
+	let arguments = String.sub !gcc_command index (length - index) in
+	prefix, arguments
+
 let command =
 	List.fold_left (fun command filename ->
 		command ^ " " ^ filename
-	) (prefix ^ "gnatmake -gnatc -gnatef -gnatwa -gnaty -D " ^ destdir) !ada_sources;;
+	) (prefix ^ "gnatmake -gnatc -gnatef -gnatwa -gnaty -D " ^ destdir) !ada_sources
+	^ " -cargs" ^ arguments;;
 
 ignore (Sys.command command);;
