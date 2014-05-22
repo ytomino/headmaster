@@ -1137,6 +1137,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"TYPE_ALIGNMENT"; (* new struct in macro *)
 				"WriteMxCsr"; (* _mm_setcsr *)
 				"YieldProcessor"]]; (* _mm_pause *)
+		"winternl.h", [
+			`uninterpretable_macro, [
+				"InitializeObjectAttributes"; (* accessing element of untyped parameter *)
+				"INTERNAL_TS_ACTIVE_CONSOLE_ID"]]; (* dereference the literal number as pointer *)
 		"winuser.h", [
 			`undefined_macro, [
 				"_WIN32_WCE"];

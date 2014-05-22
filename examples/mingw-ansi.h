@@ -27,5 +27,6 @@
 #include <ws2tcpip.h>
 #undef _S6_un /* false positive warning of gcc */
 #undef s6_addr /* use _S6_un */
+#include <winternl.h>
 
 #undef WIN32_LEAN_AND_MEAN
