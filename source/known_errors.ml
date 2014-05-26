@@ -466,6 +466,15 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"sys/dirent.h", [
 			`uninterpretable_macro, [
 				"_GENERIC_DIRSIZ"]]; (* freebsd7 / accessing element of untyped parameter *)
+		"sys/elf_common.h", [
+			`uninterpretable_macro, [
+				"IS_ELF"]]; (* freebsd9 / accessing element of untyped parameter *)
+		"sys/elf_generic.h", [
+			`unparsible_macro, [
+				"__ElfType"; (* freebsd9 / parameterized declaration *)
+				"__elfN"; (* freebsd9 / ## *)
+				"__ElfN"; (* freebsd9 / ## *)
+				"__ELFN"]]; (* freebsd9 / ## *)
 		"sys/mount.h", [
 			`uninterpretable_macro, [
 				"MNT_SHARED_WRITES"]]; (* freebsd9 / accessing element of untyped parameter *)
@@ -703,6 +712,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"_IO_peekc_unlocked"; (* accessing element of untyped parameter *)
 				"_IO_PENDING_OUTPUT_COUNT"; (* accessing element of untyped parameter *)
 				"_IO_putc_unlocked"]]; (* accessing element of untyped parameter *)
+		"link.h", [
+			`unparsible_macro, [
+				"ElfW"]]; (* ## *)
 		"malloc.h", [
 			`unparsible_macro, [
 				"__MALLOC_P"; (* parameter list *)

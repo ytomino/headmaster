@@ -1575,7 +1575,7 @@ struct
 	
 	let pp_char_literal (ff: formatter) (c: char): unit = (
 		begin match c with
-		| '\x00' .. '\x1f' | '\x80' .. '\xff' ->
+		| '\x00' .. '\x1f' | '\x7f' .. '\xff' ->
 			fprintf ff "char'Val (%d)" (int_of_char c)
 		| _ ->
 			fprintf ff "\'%c\'" c

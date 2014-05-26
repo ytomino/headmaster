@@ -802,6 +802,12 @@ struct
 						let merged_token = rescan error merged_ps (name1 ^ name2) in
 						process state predefined macro_arguments
 							(lazy (`cons (merged_ps, merged_token, xs)))
+					| None, lazy (`cons (ps2, (`ident name2 | `numeric_literal (name2, _)), ys)) ->
+						let merged_ps = merge_positions ps1 ps2 in
+						let merged_token = rescan error merged_ps (name1 ^ name2) in
+						let rs = lazy (LazyList.append ys xs) in
+						`cons (merged_ps, merged_token, lazy (
+							process state predefined macro_arguments rs))
 					| None, lazy (`cons (ps2, `chars_literal s, ys)) ->
 						if name1 = "L" then (
 							let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
