@@ -11,11 +11,11 @@ endif
 BUILDDIR=build
 SOURCEDIR=../source
 ifneq ($(HOMELOCAL),)
-DESTDIR=$(HOMELOCAL)
+PREFIX=$(HOMELOCAL)
 else
-DESTDIR=.
+PREFIX=.
 endif
-BINDIR=$(DESTDIR)/bin
+BINDIR=$(PREFIX)/bin
 
 export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
