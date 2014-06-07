@@ -7,6 +7,10 @@
 #include <sys/types.h> /* before other system headers */
 #include <sys/time.h>
 #include <sys/syscall.h>
+#if defined(__APPLE__)
+#include <sys/vm.h> /* before sys/vm.h */
+#endif
+#include <sys/sysctl.h>
 #include <sys/ucontext.h>
 #include <sys/mman.h>
 #include <unistd.h>

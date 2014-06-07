@@ -311,6 +311,12 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"__DARWIN_FD_CLR"; (* darwin9 / accessing element of untyped parameter *)
 				"__DARWIN_FD_SET"]]; (* darwin9 / accessing element of untyped parameter *)
+		"sys/sysctl.h", [
+			`undefined_macro, [
+				"CONFIG_LCTX"; (* darwin9 *)
+				"COUNT_SYSCALLS"]; (* darwin9 *)
+			`unparsible_macro, [
+				"CTL_NAMES"]]; (* darwin9 / partial initializer *)
 		"sys/time.h", [
 			`unparsible_macro, [
 				"FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
@@ -576,6 +582,14 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"CMSG_FIRSTHDR"; (* freebsd7 / accessing element of untyped parameter *)
 				"CMSG_NXTHDR"]]; (* freebsd7 / accessing element of untyped parameter *)
+		"sys/sysctl.h", [
+			`unparsible_macro, [
+				"CTL_HW_NAMES"; (* freebsd9 / partial initializer *)
+				"CTL_KERN_NAMES"; (* freebsd9 / partial initializer *)
+				"CTL_NAMES"; (* freebsd9 / partial initializer *)
+				"CTL_P1003_1B_NAMES"; (* freebsd9 / partial initializer *)
+				"CTL_USER_NAMES"; (* freebsd9 / partial initializer *)
+				"CTL_VFS_NAMES"]]; (* freebsd9 / partial initializer *)
 		"sys/time.h", [
 			`unparsible_macro, [
 				"bintime_cmp"; (* freebsd9 / parameterized operator *)

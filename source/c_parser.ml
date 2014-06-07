@@ -2446,7 +2446,8 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let rec loop rs xs = (
 				begin match xs with
-				| lazy (`cons (cm_p, (`comma as cm_e), xs)) ->
+				| lazy (`cons (cm_p, (`comma as cm_e),
+					(lazy (`cons (_, `ident _, _)) as xs))) -> (* last comma would be parsed in parse_enum_specifier *)
 					let comma = cm_p, cm_e in
 					let second, xs = parse_enumerator_or_error error lang typedefs xs in
 					let `some (ps, ()) = (`some rs) & (`some comma) &^ second in
