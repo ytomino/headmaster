@@ -1344,7 +1344,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"GC_EXTRA_PARAMS"]]; (* formal parameter list *)
 		"gc/gc_config_macros.h", [
 			`unparsible_macro, [
-				"GC_ATTR_ALLOC_SIZE"]]; (* parameterized attribute *)
+				"GC_ATTR_ALLOC_SIZE"; (* parameterized attribute *)
+				"GC_ATTR_NONNULL"]]; (* parameterized attribute *)
 		"gc/gc_typed.h", [
 			`unparsible_macro, [
 				"GC_WORD_OFFSET"]]; (* parameterized field *)
