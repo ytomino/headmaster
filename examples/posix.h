@@ -1,7 +1,9 @@
 #if defined(__APPLE__)
+#define _DONT_USE_CTYPE_INLINE_
 #include <stdint.h> /* uint32_t for sys/socket.h */
-#endif
-#if defined (__linux__)
+#elif defined(__FreeBSD__)
+#define _DONT_USE_CTYPE_INLINE_
+#elif defined (__linux__)
 #include <limits.h> /* LONG_MAX for bits/posix1_lim.h */
 #endif
 #include <sys/types.h> /* before other system headers */
@@ -38,19 +40,25 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <dlfcn.h>
+#if !defined(__FreeBSD__) || __FreeBSD__ >= 8
+#include <spawn.h>
+#endif
 #if defined(__APPLE__)
 #include <crt_externs.h>
 #include <malloc/malloc.h>
-#include <spawn.h>
 #include <copyfile.h>
+#define _ARCHITECTURE_BYTE_ORDER_H_
+#include <mach-o/dyld.h>
+#undef _ARCHITECTURE_BYTE_ORDER_H_
+#undef _DONT_USE_CTYPE_INLINE_
 #elif defined(__FreeBSD__)
 #include <sys/param.h>
 #include <malloc_np.h>
 #include <pthread_np.h>
 #include <link.h>
+#undef _DONT_USE_CTYPE_INLINE_
 #elif defined(__linux__)
 #include <sys/statvfs.h>
-#include <spawn.h>
 #include <malloc.h>
 #include <link.h>
 #endif
