@@ -1962,8 +1962,12 @@ struct
 			| _, #int_prec, (`pointer `void) when Semantics.is_static_expression expr -> (* pointer literal to void *)
 				begin match Semantics.integer_of_expression expr with
 				| Some (_, value) ->
-					fprintf ff "System'To_Address (%s)"
-						(Integer.to_based_string ~base:10 value)
+					pp_print_string ff "void_ptr (";
+					pp_print_break ff 0 0;
+					pp_print_string ff "System'To_Address (";
+					pp_print_break ff 0 0;
+					pp_print_string ff (Integer.to_based_string ~base:10 value);
+					pp_print_string ff "))"
 				| None ->
 					assert false (* does not come here *)
 				end
@@ -1979,7 +1983,11 @@ struct
 				if paren then pp_open_paren ff ();
 				pp_expression ff ~mappings ~current ~outside:`relation expr;
 				pp_print_space ff ();
-				pp_print_string ff "/= System.Null_Address";
+				pp_print_string ff "/=";
+				pp_print_space ff ();
+				pp_print_string ff "void_ptr (";
+				pp_print_break ff 0 0;
+				pp_print_string ff "System'To_Address (0))";
 				if paren then pp_close_paren ff ()
 			| _, `pointer _, `bool ->
 				let paren = parenthesis_required ~outside ~inside:`relation in
