@@ -23,7 +23,7 @@ TEST=test_scanner
 
 $(TEST)$(EXEEXT): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -g -safe-string -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
 	-ln -s $(SOURCEDIR) .
 	ocamlbuild -X $(BUILDDIR) -I source $(TEST).byte

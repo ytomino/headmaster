@@ -36,11 +36,11 @@ struct
 	
 	let filename_without_ext_of_package_name (name: string): string = (
 		if name = "" then "c" else
-		let s = String.copy name in
-		for i = 0 to String.length s - 1 do
-			if s.[i] = '.' then s.[i] <- '-'
+		let s = Bytes.of_string name in
+		for i = 0 to Bytes.length s - 1 do
+			if Bytes.get s i = '.' then Bytes.set s i '-'
 		done;
-		"c-" ^ s
+		"c-" ^ (Bytes.unsafe_to_string s)
 	);;
 	
 	let spec_filename (name: string): string = (

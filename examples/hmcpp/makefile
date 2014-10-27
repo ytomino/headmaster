@@ -30,7 +30,7 @@ HFLAGS=
 
 $(EXENAME): hmcpp.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -O -g -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
 	-ln -s $(SOURCEDIR) .
 	ocamlbuild -X $(BUILDDIR) -I source hmcpp.native
@@ -41,10 +41,10 @@ test: $(EXENAME)
 	./$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 $(BUILDDIR)/gmp.cmxa:
-	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
+	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
 
 $(BUILDDIR)/unicode.cmxa:
-	make -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+	make -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
 
 clean:
 	-$(RMDIR) $(BUILDDIR)

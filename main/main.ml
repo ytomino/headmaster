@@ -255,7 +255,7 @@ begin match options.to_lang with
 		print_string filename;
 		print_string "...";
 		let f = open_out filename in
-		let ff = Format.make_formatter (output f) (fun () -> flush f) in
+		let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 		begin try
 			T.pp_notification ff version;
 			T.pp_dir_package_spec ff ~name:x;
@@ -279,7 +279,7 @@ begin match options.to_lang with
 		print_string ads_filename;
 		print_string "...";
 		let f = open_out ads_filename in
-		let ff = Format.make_formatter (output f) (fun () -> flush f) in
+		let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 		begin try
 			T.pp_notification ff version;
 			T.pp_translated_package_spec
@@ -309,7 +309,7 @@ begin match options.to_lang with
 			print_string adb_filename;
 			print_string "...";
 			let f = open_out adb_filename in
-			let ff = Format.make_formatter (output f) (fun () -> flush f) in
+			let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 			begin try
 				T.pp_notification ff version;
 				T.pp_translated_package_body

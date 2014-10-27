@@ -287,12 +287,12 @@ let ada_package_name (h: string): string = (
 	begin try
 		StringMap.find h special_package_name_mapping
 	with Not_found ->
-		let p = String.copy (Filename.chop_suffix h ".h") in
-		for i = 0 to String.length p - 1 do
-			if p.[i] = '/' then p.[i] <- '.' else
-			if p.[i] = '-' then p.[i] <- '_'
+		let p = Bytes.of_string (Filename.chop_suffix h ".h") in
+		for i = 0 to Bytes.length p - 1 do
+			if Bytes.get p i = '/' then Bytes.set p i '.' else
+			if Bytes.get p i = '-' then Bytes.set p i '_'
 		done;
-		let p = ada_name_by_substitute p in
+		let p = ada_name_by_substitute (Bytes.unsafe_to_string p) in
 		(* resolving for confliction with reserved word *)
 		let rec nested_package_loop p s = (
 			let s, sr = take_package_name s in

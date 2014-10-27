@@ -26,7 +26,7 @@ EXENAME=headmaster$(EXEEXT)
 
 $(EXENAME): main.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -O -g -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
+	$(OCAMLMAKE) -o $@ -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
 else
 	-ln -s ../source .
 	ocamlbuild -X $(BUILDDIR) -I source -I source/ada main.native
@@ -34,10 +34,10 @@ else
 endif
 
 $(BUILDDIR)/gmp.cmxa:
-	make -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
+	make -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
 
 $(BUILDDIR)/unicode.cmxa:
-	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
 
 man: man1/headmaster.1
 

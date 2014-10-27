@@ -157,7 +157,7 @@ List.iter (fun x ->
 	print_string filename;
 	print_newline ();
 	let f = open_out filename in
-	let ff = Format.make_formatter (output f) (fun () -> flush f) in
+	let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 	T.pp_dir_package_spec ff ~name:x;
 	Format.pp_print_flush ff ();
 	close_out f;
@@ -173,7 +173,7 @@ StringMap.iter (fun package items ->
 	let ads_filename = Filename.concat destdir (T.spec_filename package) in
 	print_string ads_filename;
 	let f = open_out ads_filename in
-	let ff = Format.make_formatter (output f) (fun () -> flush f) in
+	let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 	begin try
 		T.pp_translated_package_spec
 			ff
@@ -203,7 +203,7 @@ StringMap.iter (fun package items ->
 		let adb_filename = Filename.concat destdir (T.body_filename package) in
 		print_string adb_filename;
 		let f = open_out adb_filename in
-		let ff = Format.make_formatter (output f) (fun () -> flush f) in
+		let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 		begin try
 			T.pp_translated_package_body
 				ff

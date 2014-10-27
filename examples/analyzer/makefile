@@ -27,7 +27,7 @@ HFLAGS=
 
 $(TEST)$(EXEEXT): $(TEST).ml
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -g -safe-string -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
 	-ln -s $(SOURCEDIR) .
 	ocamlbuild -X $(BUILDDIR) -I source $(TEST).byte

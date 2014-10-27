@@ -2,12 +2,12 @@
 
 let rev_string s = (
 	let length = String.length s in
-	let r = String.create length in
+	let r = Bytes.create length in
 	let h = length - 1 in
 	for i = 0 to h do
-		r.[i] <- s.[h - i]
+		Bytes.set r i s.[h - i]
 	done;
-	r
+	Bytes.unsafe_to_string r
 );;
 
 module Integer = struct
