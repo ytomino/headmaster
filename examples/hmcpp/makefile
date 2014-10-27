@@ -30,7 +30,7 @@ HFLAGS=
 
 $(EXENAME): hmcpp.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -O -g -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -O -g -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
 	-ln -s $(SOURCEDIR) .
 	ocamlbuild -X $(BUILDDIR) -I source hmcpp.native
