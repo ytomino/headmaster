@@ -126,6 +126,20 @@ struct
 		end
 	);;
 	
+	let rec has_has_include (xs: 'a Parser.in_t): bool = (
+		begin match xs with
+		| lazy (`cons (_, it, xs)) ->
+			begin match it with
+			| `ident ("__has_include__" | "__has_include_next__") ->
+				true
+			| _ ->
+				has_has_include xs
+			end
+		| lazy (`nil _) ->
+			false
+		end
+	);;
+	
 	let is_alias_of_other_macro
 		(macros: Preprocessor.define_map)
 		(macro: Preprocessor.define_item)
@@ -183,6 +197,7 @@ struct
 				let xs = macro.Preprocessor.df_contents in
 				let has_arguments = macro.Preprocessor.df_has_arguments in
 				if has_arguments && has_sharps xs then ps, (`any "has # or ##") else (* exclude macros having # or ## *)
+				if has_arguments && has_has_include xs then ps, (`any "has __has_include__ or __has_include_next__") else
 				let has_error = ref false in
 				let dummy_error _ _ = has_error := true in
 				let xs = lazy (Preprocessor.preprocess
