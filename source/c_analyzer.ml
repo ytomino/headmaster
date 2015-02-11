@@ -33,7 +33,7 @@ struct
 	let not_had_bit_width_int (size: int): string =
 		"this environment does not have " ^ string_of_int (size * 8) ^ " bit-integer.";;
 	let inapplicable_attribute_mode: string =
-		"attribute \"__mode__\" can not be applied to not int type.";
+		"attribute \"__mode__\" can not be applied to not int type.";;
 	
 	(* in *)
 	
