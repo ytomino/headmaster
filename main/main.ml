@@ -58,7 +58,7 @@ let option_spec =
 		=> (fun options -> {options with lang = `cxx});
 	case "D" ~long:"destdir" ~desc:"Specify destination directory"
 		=>? (fun arg options -> {options with dest_dir = arg});
-	case "f" ~long:"from" ~desc:"Specify source language (c/c++/objc/objc++)"
+	case "x" ~long:"from" ~desc:"Specify source language (c/c++/objc/objc++)"
 		=>? (fun arg options ->
 			let lang =
 				begin match arg with

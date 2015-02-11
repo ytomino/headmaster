@@ -36,7 +36,7 @@ let option_spec =
 		=> (fun options -> {options with lang = `c});
 	case "c++"
 		=> (fun options -> {options with lang = `cxx});
-	case "f" ~long:"from" ~desc:"Specify source language (c/c++/objc/objc++)"
+	case "x" ~long:"from" ~desc:"Specify source language (c/c++/objc/objc++)"
 		=>? (fun arg options ->
 			let lang =
 				begin match arg with

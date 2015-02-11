@@ -26,7 +26,7 @@ OPTIONS
 -------
 
 -D DIR, --destdir DIR    | Specify destination directory
--f LANG, --from LANG     | Specify source language. (default: c)
+-x LANG, --from LANG     | Specify source language. (default: c)
                          | Currently, the choices are "c", "c++", "objc" or "objc++",
                          | but it is only affected reserved words.
 --gcc COMMAND            | Specify using gcc (default) and command location.
