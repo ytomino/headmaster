@@ -30,7 +30,7 @@ module type DeclaringType = sig
 	val is_function_conflicted:
 		Semantics.function_item ->
 		Semantics.namespace ->
-		[`error | `same | `precedence of Semantics.named_item | `none];;
+		[`error | `same | `precedence of Semantics.function_item | `none];;
 	
 end;;
 
@@ -107,7 +107,7 @@ struct
 	let is_function_conflicted
 		(item: function_item)
 		(namespace: namespace)
-		: [`error | `same | `precedence of named_item | `none] =
+		: [`error | `same | `precedence of function_item | `none] =
 	(
 		let id, `function_type prototype, alias =
 			begin match item with
@@ -119,15 +119,19 @@ struct
 		begin match StringMap.find_option id namespace.ns_namespace with
 		| Some previous ->
 			begin match previous with
-			| `named (_, _, `extern ((`function_type previous_prototype), _), _)
-			| `named (_, _, `function_definition (`extern_inline, `function_type previous_prototype, _), _) as previous ->
+			| `named (_, _, `extern ((`function_type previous_prototype), prev_alias), _) as previous ->
 				if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype = `just then (
-					begin match previous with
-					| `named (_, _, `extern (_, prev_alias), _) when prev_alias <> alias ->
+					if prev_alias <> alias then (
 						`precedence previous
-					| _ ->
+					) else (
 						`same (* no error when same prototype *)
-					end
+					)
+				) else (
+					`error (* prototype mismatch *)
+				)
+			| `named (_, _, `function_definition (`inline, `function_type previous_prototype, _), _) ->
+				if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype = `just then (
+					`same (* no error when same prototype *)
 				) else (
 					`error (* prototype mismatch *)
 				)

@@ -464,12 +464,12 @@ struct
 	
 	(* body requirement *)
 	
-	let body_required_for_single_item (item: Semantics.source_item): bool = (
+	let body_required_for_single_item ~(including_expression: bool) (item: Semantics.source_item): bool = (
 		begin match item with
 		| `named (_, _, `function_definition (sc, _, _), _) ->
 			begin match sc with
-			| `extern_inline -> false (* use extern version *)
-			| `static | `none -> true (* static be placed into body *)
+			| `extern | `inline -> false (* use extern version *)
+			| `static | `static_inline | `extern_inline -> true
 			end
 		| `named (_, _, `defined_element_access _, _) ->
 			true
@@ -477,15 +477,16 @@ struct
 		| `named (_, _, `defined_generic_statement _, _) ->
 			false (* unimplemented *)
 		| `named (_, _, `defined_expression expr, _) ->
-			not (Semantics.is_static_expression expr)
-			&& (match expr with `ref_object _, _ -> false | _ -> true)
+			including_expression || (
+				not (Semantics.is_static_expression expr)
+				&& (match expr with `ref_object _, _ -> false | _ -> true))
 		| _ ->
 			false
 		end
 	);;
 	
 	let body_required (items: Semantics.source_item list): bool = (
-		List.exists body_required_for_single_item items
+		List.exists (body_required_for_single_item ~including_expression:false) items
 	);;
 	
 	(* expression /statment *)
@@ -2846,6 +2847,12 @@ struct
 				fprintf ff "@ --  %s renames _Thread_local (macro)" name
 			| `extern__Thread_local ->
 				fprintf ff "@ --  %s renames extern _Thread_local (macro)" name
+			| `inline ->
+				fprintf ff "@ --  %s renames inline (macro)" name
+			| `static_inline ->
+				fprintf ff "@ --  %s renames static inline (macro)" name
+			| `extern_inline ->
+				fprintf ff "@ --  %s renames extern inline (macro)" name
 			end
 		| `named (_, _, `defined_type_specifier _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
@@ -3057,24 +3064,20 @@ struct
 			ignore (pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype);
 			pp_print_string ff ";";
 			pp_close_box ff ();
-			begin match storage_class with
-			| `extern_inline ->
+			if body_required_for_single_item ~including_expression:false (item :> Semantics.source_item) then (
+				pp_pragma_convention ff attrs.Semantics.at_conventions ada_name;
+				begin match storage_class with
+				| `extern_inline | `inline | `static_inline ->
+					pp_pragma_inline ff ~always:(attrs.Semantics.at_inline = `always_inline) ada_name
+				| `static ->
+					() (* pragma No_Inline is unimplemented *)
+				| `extern ->
+					assert false (* does not come here *)
+				end
+			) else (
 				(* use extern, ignore body *)
 				pp_pragma_import ff attrs.Semantics.at_conventions ada_name name
-			| `static ->
-				pp_pragma_convention ff attrs.Semantics.at_conventions ada_name;
-				begin match attrs.Semantics.at_inline with
-				| `inline ->
-					pp_pragma_inline ff ada_name
-				| `always_inline ->
-					pp_pragma_inline ff ~always:true ada_name
-				| `noinline | `none ->
-					()
-				end
-			| `none ->
-				fprintf ff "@ **** %s / unimplemented. ****\n" name;
-				assert false
-			end
+			)
 		| `named (_, name, `defined_operator op, _) ->
 			begin match op with
 			| `and_assign | `or_assign | `xor_assign as op ->
@@ -3135,6 +3138,12 @@ struct
 				fprintf ff "@ --  %s (alias of _Thread_local)" name
 			| `extern__Thread_local ->
 				fprintf ff "@ --  %s (alias of extern _Thread_local)" name
+			| `inline ->
+				fprintf ff "@ --  %s (alias of inline)" name
+			| `static_inline ->
+				fprintf ff "@ --  %s (alias of static inline)" name
+			| `extern_inline ->
+				fprintf ff "@ --  %s (alias of extern inline)" name
 			end
 		| `named (_, name, `defined_type_specifier ts, _) ->
 			begin match ts with
@@ -3282,9 +3291,7 @@ struct
 		begin match item with
 		| `named (ps, name, `function_definition (storage_class, (`function_type prototype), stmts), _) ->
 			begin match storage_class with
-			| `extern_inline ->
-				()
-			| `static ->
+			| `static | `static_inline | `extern_inline ->
 				let opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let ada_name = ada_name_of current ps name `namespace name_mapping in
 				let _, args, _, _ = prototype in
@@ -3329,9 +3336,8 @@ struct
 				pp_statement_list ff ~mappings ~current
 					~null_statement:true stmts;
 				pp_end ff ~label:ada_name ()
-			| `none ->
-				fprintf ff "@ **** %s / unimplemented. ****\n" name;
-				assert false
+			| `extern | `inline ->
+				assert false (* does not come here *)
 			end
 		| `named (ps, name, `defined_element_access (t, route), _) ->
 			let opaque_mapping, name_mapping, anonymous_mapping = mappings in
@@ -3437,19 +3443,7 @@ struct
 		: unit =
 	(
 		let ptrdiff_t = Semantics.find_ptrdiff_t predefined_types in
-		let items_having_bodies = List.filter (
-			begin fun (item: Semantics.source_item) ->
-				begin match item with
-				| `named (_, _, `function_definition (`extern_inline, _, _), _) (* use extern, ignore body *)
-				| `named (_, _, `defined_generic_expression _, _) (* unimplemented for translating function macro *)
-				| `named (_, _, `defined_generic_statement _, _) ->
-					false
-				| _ ->
-					true
-				end
-			end)
-			items
-		in
+		let items_having_bodies = List.filter (body_required_for_single_item ~including_expression:true) items in
 		(* anonymous enums *)
 		let anonymous_enums = Finding.find_all_anonymous_enum [] items in
 		(* used casts *)
@@ -3652,7 +3646,7 @@ struct
 								pp_anonymous_type ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~anonymous_enums
 									~current ~hidden_packages item;
 								anonymous_mapping
-							| `named (_, _, `function_definition (`extern_inline, _, _), _) as item when extern_exists_before item items ->
+							| `named (_, _, `function_definition (`inline, _, _), _) as item when extern_exists_before item items ->
 								anonymous_mapping
 							| `named _ as item ->
 								pp_named ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping) ~enum_of_element
@@ -3721,7 +3715,7 @@ struct
 	(
 		let has_asm =
 			List.exists (fun item ->
-				body_required_for_single_item item && Finding.asm_exists_in_source_item item
+				body_required_for_single_item ~including_expression:false item && Finding.asm_exists_in_source_item item
 			) items
 		in
 		let with_packages =
@@ -3743,7 +3737,7 @@ struct
 						| #Semantics.anonymous_type as item ->
 							let hash = hash_name item in
 							(item, (current, hash)) :: anonymous_mapping
-						| `named _ as item when body_required_for_single_item item ->
+						| `named _ as item when body_required_for_single_item ~including_expression:false item ->
 							pp_named_body ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~current:current item;
 							anonymous_mapping
 						| _ ->

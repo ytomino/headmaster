@@ -34,6 +34,10 @@ struct
 		"this environment does not have " ^ string_of_int (size * 8) ^ " bit-integer.";;
 	let inapplicable_attribute_mode: string =
 		"attribute \"__mode__\" can not be applied to not int type.";;
+	let storage_class_specifier_is_duplicated: string =
+		"storage-class-specifier was duplicated.";;
+	let bad_combination_of_storage_class_specifier_and_function_specifier: string =
+		"the combination of storage-class-specifier and function-specifier is bad.";;
 	
 	(* in *)
 	
@@ -641,9 +645,8 @@ struct
 			| `error ->
 				attributes
 			end
-		| `inline _ ->
-			if attributes.at_inline = `always_inline then attributes else
-			{attributes with at_inline = `inline}
+		| `gnu_inline ->
+			{attributes with at_gnu_inline = true}
 		| `leaf ->
 			{attributes with at_leaf = true}
 		| `malloc ->
@@ -1489,7 +1492,7 @@ struct
 		(source: source_item list)
 		(alignment: alignment)
 		(x: Syntax.declaration_specifiers p)
-		: derived_types * namespace * source_item list * ([storage_class | `none] * all_type * attributes) =
+		: derived_types * namespace * source_item list * ([storage_class | function_definition_specifier | `none] * all_type * attributes) =
 	(
 		let rec extract (derived_types, namespace, source, attributes, storage_class, type_specs, qualifiers) spec = (
 			let result, next =
@@ -1503,7 +1506,8 @@ struct
 					let qualifiers = handle_type_qualifier error qualifiers q in
 					(derived_types, namespace, source, attributes, storage_class, type_specs, qualifiers), next
 				| `function_specifier (fs, next) ->
-					(derived_types, namespace, source, (handle_function_specifier error attributes fs), storage_class, type_specs, qualifiers), next
+					let storage_class = handle_function_specifier error storage_class fs in
+					(derived_types, namespace, source, attributes, storage_class, type_specs, qualifiers), next
 				| `attributes (attr, next) ->
 					(derived_types, namespace, source, (handle_attribute error attributes attr), storage_class, type_specs, qualifiers), next
 				| `extension (_, next) ->
@@ -1528,7 +1532,7 @@ struct
 		(derived_types: derived_types)
 		(namespace: namespace)
 		(source: source_item list)
-		(storage_class: [storage_class | `none])
+		(storage_class: [storage_class | function_definition_specifier | `none])
 		(base_type: all_type)
 		(attributes: attributes)
 		(alias: [`alias of string | `none])
@@ -1711,17 +1715,21 @@ struct
 			| `_Thread_local ->
 				error (fst x) "unimplemented!";
 				assert false
+			| `extern_inline | `inline | `static_inline ->
+				error (fst x) "unimplemented!";
+				derived_types, namespace, source, None
 			end
 		| None ->
 			derived_types, namespace, source, None
 		end
 	) and handle_storage_class
 		(error: ranged_position -> string -> unit)
-		(storage_class: [storage_class | `none])
+		(storage_class: [storage_class | function_definition_specifier | `none])
 		(x: Syntax.storage_class_specifier p)
-		: [storage_class | `none] =
+		: [> storage_class | function_definition_specifier] =
 	(
-		if storage_class = `none then (
+		begin match storage_class with
+		| `none ->
 			begin match snd x with
 			| `TYPEDEF -> `typedef
 			| `EXTERN -> `extern
@@ -1730,12 +1738,21 @@ struct
 			| `REGISTER -> `register
 			| `__thread -> `_Thread_local
 			end
-		) else if storage_class = `extern && snd x = `__thread then (
-			`extern__Thread_local
-		) else (
-			error (fst x) "storage-class-specifier was duplicated.";
+		| `extern ->
+			begin match snd x with
+			| `__thread ->
+				`extern__Thread_local
+			| _ ->
+				error (fst x) storage_class_specifier_is_duplicated;
+				storage_class
+			end
+		| `typedef | `register |`auto | `static | `_Thread_local | `extern__Thread_local ->
+			error (fst x) storage_class_specifier_is_duplicated;
 			storage_class
-		)
+		| `static_inline |`extern_inline | `inline ->
+			error (fst x) bad_combination_of_storage_class_specifier_and_function_specifier;
+			storage_class
+		end
 	) and handle_type_specifier
 		(error: ranged_position -> string -> unit)
 		(predefined_types: predefined_types)
@@ -2203,15 +2220,21 @@ struct
 			{set with tq_volatile = true}
 		end
 	) and handle_function_specifier
-		(_: ranged_position -> string -> unit)
-		(attributes: attributes)
+		(error: ranged_position -> string -> unit)
+		(storage_class: [storage_class | function_definition_specifier | `none])
 		(x: Syntax.function_specifier p)
-		: attributes =
+		: [> storage_class | function_definition_specifier] =
 	(
 		begin match snd x with
 		| `INLINE | `__inline | `__inline__ ->
-			if attributes.at_inline = `always_inline then attributes else
-			{attributes with at_inline = `inline}
+			begin match storage_class with
+			| `extern | `extern_inline -> `extern_inline
+			| `static | `static_inline -> `static_inline
+			| `auto | `none | `inline -> `inline
+			| `register | `typedef | `_Thread_local | `extern__Thread_local as storage_class ->
+				error (fst x) bad_combination_of_storage_class_specifier_and_function_specifier;
+				storage_class
+			end
 		end
 	) and handle_declarator
 		(error: ranged_position -> string -> unit)
@@ -3131,17 +3154,19 @@ struct
 			| Some (ps, id, t, attr) ->
 				begin match t with
 				| `function_type prototype as t ->
-					let st =
+					let st: function_definition_specifier =
 						begin match storage_class with
-						| `static ->
-							`static
+						| `extern  | `static | `static_inline as storage_class ->
+							storage_class
+						| `extern_inline ->
+							if attr.at_gnu_inline then `inline else `extern_inline
+						| `inline ->
+							if attr.at_gnu_inline then `extern_inline else `inline
 						| `none ->
-							`none
-						| `extern when attr.at_inline <> `none ->
-							`extern_inline
-						| `extern | `typedef | `auto | `register | `_Thread_local | `extern__Thread_local ->
+							`extern
+						| `typedef | `auto | `register | `_Thread_local | `extern__Thread_local ->
 							error (fst x) "bad storage-class was found in function-definition.";
-							`none
+							`extern
 						end
 					in
 					let derived_types, source, body =

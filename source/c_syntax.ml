@@ -59,7 +59,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `fastcall
 		| `format of string p * [`l_paren] e * identifier e * [`comma] e * assignment_expression e * [`comma] e * assignment_expression e * [`r_paren] e
 		| `format_arg of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
-		| `inline of string
+		| `gnu_inline
 		| `leaf
 		| `malloc
 		| `may_alias

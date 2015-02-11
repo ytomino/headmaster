@@ -40,8 +40,8 @@ clean:
 	make -C $< test H=../use-expat.h GCC=i686-pc-freebsd7-gcc
 	make -C $< test H=../use-gc.h HFLAGS=`pkg-config --cflags-only-I bdw-gc`
 	make -C $< test H=../use-gc.h GCC=i686-pc-freebsd7-gcc
-	make -C $< test H=../use-gmp.h
-	make -C $< test H=../use-gmp.h GCC=i686-pc-freebsd7-gcc
+	make -C $< test GCC='gcc -std=gnu99' H=../use-gmp.h
+	make -C $< test GCC='i686-pc-freebsd7-gcc -std=gnu99' H=../use-gmp.h
 	make -C $< test H=../use-iconv.h
 	make -C $< test H=../use-iconv.h GCC=i686-pc-freebsd7-gcc
 	make -C $< test H=../use-openssl.h

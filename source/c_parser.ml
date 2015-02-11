@@ -735,7 +735,7 @@ struct
 				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
 				`some (ps, `format_arg (n, l_paren, arg, r_paren)), xs
 			| "__gnu_inline__" ->
-				`some (p4, `inline attr_keyword), xs
+				`some (p4, `gnu_inline), xs
 			| "__leaf__" ->
 				`some (p4, `leaf), xs
 			| "__malloc__" ->

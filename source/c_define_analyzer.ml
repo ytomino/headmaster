@@ -247,7 +247,7 @@ struct
 					let rec only_no_type
 						(storage_class, type_qualifiers, type_specifiers, attributes)
 						(x: Syntax.declaration_specifiers)
-						: ([storage_class | `none] * type_qualifier_set * type_specifier_set * attributes) option =
+						: ([storage_class | function_definition_specifier | `none] * type_qualifier_set * type_specifier_set * attributes) option =
 					(
 						let do_next result next = (
 							begin match next with
@@ -273,7 +273,7 @@ struct
 							let type_qualifiers = handle_type_qualifier redirect_error type_qualifiers tq in
 							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
 						| `function_specifier (fs, next) ->
-							let attributes = handle_function_specifier redirect_error attributes fs in
+							let storage_class = handle_function_specifier redirect_error storage_class fs in
 							do_next (storage_class, type_qualifiers, type_specifiers, attributes) next
 						| `attributes (attr, next) ->
 							let attributes = handle_attribute redirect_error attributes attr in
@@ -293,7 +293,7 @@ struct
 						| None ->
 							(* storage class *)
 							begin match storage_class with
-							| #storage_class as storage_class ->
+							| (#storage_class | #function_definition_specifier) as storage_class ->
 								if type_qualifiers <> no_type_qualifier_set || type_specifiers <> no_type_specifier_set then (
 									error def_p (is_an_alias_of_plural_kinds_of_declaration_specifiers name)
 								);

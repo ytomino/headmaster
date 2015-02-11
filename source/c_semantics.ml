@@ -42,7 +42,8 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_dllimport: bool;
 		at_dllexport: bool;
 		at_format: [`none | `like of string * int * int | `arg of int];
-		at_inline: [`none | `noinline | `inline | `always_inline];
+		at_gnu_inline: bool;
+		at_inline: [`none | `noinline | `always_inline];
 		at_leaf: bool;
 		at_malloc: bool;
 		at_may_alias: bool;
@@ -88,6 +89,13 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		| `register
 		| `_Thread_local
 		| `extern__Thread_local];;
+	
+	type function_definition_specifier = [
+		| `extern
+		| `static
+		| `extern_inline (* definition *)
+		| `inline (* inlining or using an external symbol *)
+		| `static_inline];;
 	
 	type literal_value = [
 		| `int_literal of int_prec * Integer.t
@@ -171,10 +179,10 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		| `extern of all_type * [`alias of string | `none]
 		| `variable of all_type * expression option
 		| `function_forward of [`static | `builtin] * function_type
-		| `function_definition of [`static | `extern_inline | `none] * function_type * statement list
+		| `function_definition of function_definition_specifier * function_type * statement list
 		| `defined_operator of iso646_operator
 		| `defined_attributes
-		| `defined_storage_class of storage_class
+		| `defined_storage_class of [storage_class | function_definition_specifier]
 		| `defined_type_specifier of [`imaginary | `complex]
 		| `defined_type_qualifier of [`const | `restrict | `volatile]
 		| `defined_typedef of all_type
@@ -205,7 +213,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 	and function_var = [
 		| `extern of function_type * [`alias of string | `none]
 		| `function_forward of [`static | `builtin] * function_type
-		| `function_definition of [`static | `extern_inline | `none] * function_type * statement list]
+		| `function_definition of function_definition_specifier * function_type * statement list]
 	and expression_var = [
 		| literal_value
 		| `enumerator of enum_item
@@ -330,7 +338,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 	
 	type named_type = named_type_var with_name;;
 	
-	type function_definition = [`function_definition of [`static | `extern_inline | `none] * function_type * statement list];;
+	type function_definition = [`function_definition of function_definition_specifier * function_type * statement list];;
 	type function_definition_item = function_definition with_name;;
 	type function_item = function_var with_name;;
 	
@@ -542,6 +550,7 @@ struct
 		at_dllimport = false;
 		at_dllexport = false;
 		at_format = `none;
+		at_gnu_inline = false;
 		at_inline = `none;
 		at_leaf = false;
 		at_malloc = false;
