@@ -1,6 +1,7 @@
 open C_filename;;
 open C_literals;;
 open C_semantics;;
+open C_version;;
 open Position;;
 
 let builtin_position: ranged_position =
@@ -27,6 +28,7 @@ module type TypingType = sig
 	module Literals: LiteralsType;;
 	module Semantics: SemanticsType
 		with module Literals := Literals;;
+	module Language: LanguageType;;
 	
 	(* type compatibility *)
 	
@@ -44,7 +46,6 @@ module type TypingType = sig
 	(* predefined types *)
 	
 	val ready_predefined_types:
-		language ->
 		sizeof ->
 		language_typedef ->
 		Semantics.predefined_types;;
@@ -171,9 +172,11 @@ module Typing
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
 		with module Literals := Literals)
+	(Language: LanguageType)
 	: TypingType
 		with module Literals := Literals
-		with module Semantics := Semantics =
+		with module Semantics := Semantics
+		with module Language := Language =
 struct
 	open Literals;;
 	open Semantics;;
@@ -258,7 +261,7 @@ struct
 	
 	(* predefined types *)
 	
-	let ready_predefined_types (lang: language) (sizeof: sizeof) (typedef: language_typedef): predefined_types = (
+	let ready_predefined_types (sizeof: sizeof) (typedef: language_typedef): predefined_types = (
 		let `sizeof_bool sizeof_bool,
 			`sizeof_short sizeof_short,
 			`sizeof_int sizeof_int,
@@ -300,7 +303,7 @@ struct
 			((`complex `long_double), sizeof_long_double * 2) ::
 			(`char, 1) ::
 			(`__builtin_va_list, sizeof_intptr) :: (
-				begin match lang with
+				begin match Language.lang with
 				| `c | `objc ->
 					[]
 				| `cxx | `objcxx ->
@@ -322,7 +325,7 @@ struct
 			let find t = (fst (List.find (find_f t) predefined_types) :> all_type) in
 			(`named (builtin_position, "ptrdiff_t", `typedef (find typedef_ptrdiff_t), no_attributes)) ::
 			(`named (builtin_position, "size_t", `typedef (find typedef_size_t), no_attributes)) :: (
-				begin match lang with
+				begin match Language.lang with
 				| `c | `objc ->
 					(`named (builtin_position, "wchar_t", `typedef (find typedef_wchar_t), no_attributes)) :: []
 				| `cxx | `objcxx ->

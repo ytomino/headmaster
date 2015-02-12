@@ -1,4 +1,5 @@
 open C_literals;;
+open C_version;;
 
 let snd_of_fst_table list = (
 	let table = Hashtbl.create (List.length list) in

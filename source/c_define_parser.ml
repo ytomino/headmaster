@@ -47,7 +47,6 @@ module type DefineParserType = sig
 	val parse_define:
 		(ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
-		language ->
 		TypedefSet.t ->
 		Preprocessor.define_map ->
 		Preprocessor.define_item ->
@@ -56,7 +55,6 @@ module type DefineParserType = sig
 	val map:
 		(ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
-		language ->
 		TypedefSet.t ->
 		Preprocessor.define_map ->
 		define Syntax.p StringMap.t;;
@@ -173,7 +171,6 @@ struct
 	let parse_define
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
-		(lang: language)
 		(typedefs: TypedefSet.t)
 		(macros: Preprocessor.define_map)
 		(macro: Preprocessor.define_item)
@@ -203,7 +200,6 @@ struct
 				let xs = lazy (Preprocessor.preprocess
 					dummy_error
 					is_known_error
-					lang
 					(fun ~current ?next _ _ _ ->
 						ignore current;
 						ignore next;
@@ -238,14 +234,14 @@ struct
 									if is_type = `typedef then TypedefSet.add k v else v
 								) args typedefs
 							in
-							let expr, xr = has_error := false; Parser.parse_expression_or_error dummy_error lang typedefs xs in
+							let expr, xr = has_error := false; Parser.parse_expression_or_error dummy_error typedefs xs in
 							if not !has_error && LazyList.is_empty xr && expr <> `error then (
 								begin match expr with
 								| `some expr -> ps, `function_expr (args, varargs, snd expr)
 								| `error -> assert false
 								end
 							) else
-							let stmt, xr = has_error := false; Parser.parse_statement_or_error ~semicolon_need:false dummy_error lang typedefs xs in
+							let stmt, xr = has_error := false; Parser.parse_statement_or_error ~semicolon_need:false dummy_error typedefs xs in
 							if not !has_error && LazyList.is_empty xr && stmt <> `error then (
 								begin match stmt with
 								| `some stmt -> ps, `function_stmt (args, varargs, snd stmt)
@@ -272,14 +268,14 @@ struct
 								| None -> assert false
 								end
 							) else
-							let spec, xr = has_error := false; Parser.parse_declaration_specifiers_option dummy_error lang typedefs xs in
+							let spec, xr = has_error := false; Parser.parse_declaration_specifiers_option dummy_error typedefs xs in
 							if not !has_error && LazyList.is_empty xr && spec <> `none then (
 								begin match spec with
 								| `some spec -> ps, `declaration_specifiers (snd spec)
 								| `none -> assert false
 								end
 							) else
-							let expr, xr = has_error := false; Parser.parse_initializer_or_error dummy_error lang typedefs xs in
+							let expr, xr = has_error := false; Parser.parse_initializer_or_error dummy_error typedefs xs in
 							if not !has_error && LazyList.is_empty xr && expr <> `error then (
 								begin match expr with
 								| `some expr -> ps, `initializer_t (snd expr)
@@ -307,12 +303,11 @@ struct
 	let map
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
-		(lang: language)
 		(typedefs: TypedefSet.t)
 		(items: Preprocessor.define_map)
 		: define p StringMap.t =
 	(
-		StringMap.map (parse_define error is_known_error lang typedefs items) items
+		StringMap.map (parse_define error is_known_error typedefs items) items
 	);;
 	
 end;;

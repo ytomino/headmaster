@@ -1,4 +1,4 @@
-open C_literals;;
+open C_version;;
 open Environment;;
 
 let gcc_lang (lang: [< language]): string = (

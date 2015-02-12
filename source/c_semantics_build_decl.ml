@@ -1,14 +1,17 @@
 open C_literals;;
 open C_semantics;;
 open C_semantics_build_type;;
+open C_version;;
 
 module type DeclaringType = sig
 	module Literals: LiteralsType;;
 	module Semantics: SemanticsType
 		with module Literals := Literals;;
+	module Language: LanguageType;;
 	module Typing: TypingType
 		with module Literals := Literals
-		with module Semantics := Semantics;;
+		with module Semantics := Semantics
+		with module Language := Language;;
 	
 	(* attributes *)
 	
@@ -38,13 +41,16 @@ module Declaring
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
 		with module Literals := Literals)
+	(Language: LanguageType)
 	(Typing: TypingType
 		with module Literals := Literals
-		with module Semantics := Semantics)
+		with module Semantics := Semantics
+		with module Language := Language)
 	: DeclaringType
 		with module Literals := Literals
 		with module Semantics := Semantics
-		with module Typing := Typing =
+		with module Typing := Typing
+		with module Language := Language =
 struct
 	open Semantics;;
 	

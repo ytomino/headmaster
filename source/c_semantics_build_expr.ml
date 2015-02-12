@@ -1,6 +1,7 @@
 open C_literals;;
 open C_semantics;;
 open C_semantics_build_type;;
+open C_version;;
 
 let rec list_make n e =
 	if n = 0 then [] else
@@ -10,9 +11,11 @@ module type ExpressingType = sig
 	module Literals: LiteralsType;;
 	module Semantics: SemanticsType
 		with module Literals := Literals;;
+	module Language: LanguageType;;
 	module Typing: TypingType
 		with module Literals := Literals
-		with module Semantics := Semantics;;
+		with module Semantics := Semantics
+		with module Language := Language;;
 	
 	(* typing for unary operators *)
 	
@@ -58,13 +61,16 @@ module Expressing
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
 		with module Literals := Literals)
+	(Language: LanguageType)
 	(Typing: TypingType
 		with module Literals := Literals
-		with module Semantics := Semantics)
+		with module Semantics := Semantics
+		with module Language := Language)
 	: ExpressingType
 		with module Literals := Literals
 		with module Semantics := Semantics
-		with module Typing := Typing =
+		with module Typing := Typing
+		with module Language := Language =
 struct
 	open Literals;;
 	open Semantics;;

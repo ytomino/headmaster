@@ -42,7 +42,6 @@ module type PreprocessorType = sig
 	val preprocess:
 		(ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_preprocessor] -> bool) ->
-		language ->
 		(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
 		state_t ->
 		define_map ->
@@ -666,7 +665,6 @@ struct
 	let preprocess
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_preprocessor] -> bool)
-		(_: language)
 		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim)
 		: state_t -> define_map -> macro_argument_map -> in_t -> out_prim =
 	(

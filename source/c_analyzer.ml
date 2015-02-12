@@ -6,6 +6,7 @@ open C_semantics_build_expr;;
 open C_semantics_build_type;;
 open C_syntax;;
 open C_syntax_traversing;;
+open C_version;;
 open Position;;
 
 module Analyzer
@@ -13,12 +14,13 @@ module Analyzer
 	(Syntax: SyntaxType
 		with module Literals := Literals)
 	(Semantics: SemanticsType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	(Language: LanguageType) =
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
-	module Typing = Typing (Literals) (Semantics);;
-	module Declaring = Declaring (Literals) (Semantics) (Typing);;
-	module Expressing = Expressing (Literals) (Semantics) (Typing);;
+	module Typing = Typing (Literals) (Semantics) (Language);;
+	module Declaring = Declaring (Literals) (Semantics) (Language) (Typing);;
+	module Expressing = Expressing (Literals) (Semantics) (Language) (Typing);;
 	open Literals;;
 	open Semantics;;
 	
@@ -3232,7 +3234,6 @@ struct
 	
 	let analyze
 		(error: ranged_position -> string -> unit)
-		(lang: language)
 		(sizeof: sizeof)
 		(typedef: language_typedef)
 		(builtin: (string *
@@ -3242,7 +3243,7 @@ struct
 		: predefined_types * derived_types * namespace * (source_item list * extra_info) StringMap.t * mapping_options =
 	(
 		(* predefined types *)
-		let predefined_types = Typing.ready_predefined_types lang sizeof typedef in
+		let predefined_types = Typing.ready_predefined_types sizeof typedef in
 		(* builtin functions *)
 		let derived_types, namespace, builtin_source =
 			Declaring.ready_builtin_functions predefined_types [] empty_namespace builtin
@@ -3276,5 +3277,6 @@ module type AnalyzerType = sig
 		with module Literals := Literals;;
 	module Semantics: SemanticsType
 		with module Literals := Literals;;
-	include module type of Analyzer (Literals) (Syntax) (Semantics);;
+	module Language: LanguageType;;
+	include module type of Analyzer (Literals) (Syntax) (Semantics) (Language);;
 end;;

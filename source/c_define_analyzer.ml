@@ -2,6 +2,7 @@ open C_analyzer;;
 open C_literals;;
 open C_semantics;;
 open C_syntax;;
+open C_version;;
 open Position;;
 
 type known_errors_of_define_analzer = [
@@ -13,6 +14,7 @@ module type DefineAnalyzerType = sig
 		with module Literals := Literals;;
 	module Semantics: SemanticsType
 		with module Literals := Literals;;
+	module Language: LanguageType;;
 	
 	type define = [
 		| `operator of iso646_operator
@@ -53,14 +55,17 @@ module DefineAnalyzer
 		with module Literals := Literals)
 	(Semantics: SemanticsType
 		with module Literals := Literals)
+	(Language: LanguageType)
 	(Analyzer: AnalyzerType
 		with module Literals := Literals
 		with module Syntax := Syntax
-		with module Semantics := Semantics)
+		with module Semantics := Semantics
+		with module Language := Language)
 	: DefineAnalyzerType
 		with module Literals := Literals
 		with module Syntax := Syntax
-		with module Semantics := Semantics =
+		with module Semantics := Semantics
+		with module Language := Language =
 struct
 	open Semantics;;
 	open Analyzer;;

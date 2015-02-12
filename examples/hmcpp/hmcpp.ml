@@ -1,9 +1,9 @@
 open C_filename;;
 open C_lexical;;
 open C_lexical_output;;
-open C_literals;;
 open C_preprocessor;;
 open C_scanner;;
+open C_version;;
 open Environment;;
 open Environment_gcc;;
 open Known_errors;;
@@ -119,8 +119,12 @@ module Literals = struct
 	let round_to_double = Gmp.f_of_f ~prec:double_prec;;
 end;;
 
+module Language = struct
+	let lang = options.lang;;
+end;;
+
 module LE = LexicalElement (Literals);;
-module S = Scanner (Literals) (LE);;
+module S = Scanner (Literals) (LE) (Language);;
 module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
 module O = LexicalOutput (Literals) (LE);;
 
@@ -129,16 +133,16 @@ let is_known_error = make_is_known_error env.en_target remove_include_dir;;
 
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let file = TextFile.of_file ~random_access:false ~tab_width:options.tab_width name in
-	S.scan error ignore options.lang file
+	S.scan error ignore file
 );;
 
 let read_include_file = make_include read_file env;;
 
 let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
-	lazy (S.scan error ignore options.lang file S.make_nil);;
+	lazy (S.scan error ignore file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error options.lang read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -153,7 +157,7 @@ let predefined = (
 
 let source_tokens: PP.in_t = lazy (read_file options.source_filename S.make_nil);;
 let source_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error options.lang read_include_file `top_level predefined StringMap.empty source_tokens);;
+	error is_known_error read_include_file `top_level predefined StringMap.empty source_tokens);;
 
 type state = [`home | `word | `symbol of string];;
 let state: (position * state) ref = ref (("", 0, 0, 0), `home);;

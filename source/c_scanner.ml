@@ -1,12 +1,14 @@
 open C_lexical;;
 open C_lexical_scanner;;
 open C_literals;;
+open C_version;;
 open Position;;
 
 module type ScannerType = sig
 	module Literals: LiteralsType;;
 	module LexicalElement: LexicalElementType
 		with module Literals := Literals;;
+	module Language: LanguageType;;
 	
 	module NumericScanner: NumericScannerType
 		with module Literals := Literals
@@ -20,7 +22,6 @@ module type ScannerType = sig
 	val scan:
 		(ranged_position -> string -> unit) ->
 		(unit -> unit) ->
-		language ->
 		TextFile.t ->
 		(ranged_position -> prim) ->
 		prim;;
@@ -31,9 +32,11 @@ module Scanner
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType
 		with module Literals := Literals)
+	(Language: LanguageType)
 	: ScannerType
 		with module Literals := Literals
-		with module LexicalElement := LexicalElement =
+		with module LexicalElement := LexicalElement
+		with module Language := Language =
 struct
 	open Literals;;
 	module NumericScanner = NumericScanner (Literals) (LexicalElement);;
@@ -76,7 +79,6 @@ struct
 	let scan
 		(error: ranged_position -> string -> unit)
 		(finalize: unit -> unit)
-		(lang: language)
 		(source: TextFile.t)
 		(next: ranged_position -> prim): prim =
 	(
@@ -288,7 +290,7 @@ struct
 						`cons ((p1, p1), `period, lazy (
 							`cons ((p2, p2), `period, lazy (process state index))))
 					end
-				| '*' when cxx lang ->
+				| '*' when cxx Language.lang ->
 					let p2 = TextFile.position source index in
 					let index = TextFile.succ source index in
 					`cons ((p1, p2), `period_ref, lazy (process state index))
@@ -304,7 +306,7 @@ struct
 					let p2 = TextFile.position source index in
 					let index = TextFile.succ source index in
 					`cons ((p1, p2), `r_bracket, lazy (process state index))
-				| ':' when cxx lang ->
+				| ':' when cxx Language.lang ->
 					let p2 = TextFile.position source index in
 					let index = TextFile.succ source index in
 					`cons ((p1, p2), `d_colon, lazy (process state index))
@@ -373,7 +375,7 @@ struct
 				| '>' ->
 					let index = TextFile.succ source index in
 					begin match TextFile.get source index with
-					| '*' when cxx lang ->
+					| '*' when cxx Language.lang ->
 						let p3 = TextFile.position source index in
 						let index = TextFile.succ source index in
 						`cons ((p1, p3), `arrow_ref, lazy (process state index))
@@ -700,10 +702,10 @@ struct
 					`cons ((p1, p2), `wchars_literal s, lazy (process state index))
 				) else (
 					let p2 = TextFile.prev_position source index in
-					let element = rw_of_string lang s in (* implies reserved_word, extended_word, identifier *)
+					let element = rw_of_string Language.lang s in (* implies reserved_word, extended_word, identifier *)
 					`cons ((p1, p2), (element :> LexicalElement.t), lazy (process state index))
 				)
-			| '@' when objc lang ->
+			| '@' when objc Language.lang ->
 				let state = nx state in
 				let p1 = TextFile.position source index in
 				let index = TextFile.succ source index in

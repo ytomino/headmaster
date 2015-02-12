@@ -4,12 +4,12 @@ open C_define_analyzer;;
 open C_define_parser;;
 open C_filename;;
 open C_lexical;;
-open C_literals;;
 open C_parser;;
 open C_preprocessor;;
 open C_scanner;;
 open C_semantics;;
 open C_syntax;;
+open C_version;;
 open Environment;;
 open Environment_gcc;;
 open Known_errors;;
@@ -165,31 +165,35 @@ module Literals = struct
 	let round_to_double = Mpfr.fr_of_fr ~prec:double_prec ~mode:`N;;
 end;;
 
+module Language = struct
+	let lang = options.lang;;
+end;;
+
 module LE = LexicalElement (Literals);;
 module AST = Syntax (Literals);;
 module SEM = Semantics (Literals);;
-module S = Scanner (Literals) (LE);;
+module S = Scanner (Literals) (LE) (Language);;
 module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
 module P = Parser (Literals) (LE) (AST);;
 module DP = DefineParser (Literals) (LE) (PP) (AST) (P);;
-module A = Analyzer (Literals) (AST) (SEM);;
-module DA = DefineAnalyzer (Literals) (AST) (SEM) (A);;
+module A = Analyzer (Literals) (AST) (SEM) (Language);;
+module DA = DefineAnalyzer (Literals) (AST) (SEM) (Language) (A);;
 
 let remove_include_dir = make_remove_include_dir env;;
 let is_known_error = make_is_known_error env.en_target remove_include_dir;;
 
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let file = TextFile.of_file ~random_access:false ~tab_width:options.tab_width name in
-	S.scan error ignore options.lang file
+	S.scan error ignore file
 );;
 
 let read_include_file = make_include read_file env;;
 
 let predefined_tokens: PP.in_t =
 	let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
-	lazy (S.scan error ignore options.lang file S.make_nil);;
+	lazy (S.scan error ignore file S.make_nil);;
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error options.lang read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
+	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
 let predefined = (
 	begin match predefined_tokens' with
@@ -217,19 +221,19 @@ let source_tokens: PP.in_t =
 	loop (List.rev options.source_filenames) dummy_ps;;
 
 let source_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error options.lang read_include_file `top_level predefined StringMap.empty source_tokens);;
+	error is_known_error read_include_file `top_level predefined StringMap.empty source_tokens);;
 
 let (tu: AST.translation_unit),
 	(typedefs: P.typedef_set),
-	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error options.lang source_tokens';;
+	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error source_tokens';;
 
-let defines: DP.define AST.p StringMap.t = DP.map error is_known_error options.lang typedefs defined_tokens;;
+let defines: DP.define AST.p StringMap.t = DP.map error is_known_error typedefs defined_tokens;;
 
 let (predefined_types: SEM.predefined_types),
 	(derived_types: SEM.derived_types),
 	(namespace: SEM.namespace),
 	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t),
-	(mapping_options: SEM.mapping_options) = A.analyze error options.lang env.en_sizeof env.en_typedef env.en_builtin tu;;
+	(mapping_options: SEM.mapping_options) = A.analyze error env.en_sizeof env.en_typedef env.en_builtin tu;;
 
 let (derived_types: SEM.derived_types),
 	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) = DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
