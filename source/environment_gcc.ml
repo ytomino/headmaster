@@ -56,6 +56,7 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 	let predefined = Buffer.create 4096 in
 	let include_path = ref [] in
 	let sys_include_path = ref [] in
+	let gnu_inline = ref false in
 	(* execute cpp *)
 	let command = command ^ " -E -dM -v -x " ^ gcc_lang lang ^ " /dev/null" in
 	let (p_in, _, p_err) as ps = Unix.open_process_full command (Unix.environment ()) in
@@ -130,6 +131,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 						double_mantissa := int_of_string value
 					| "__LDBL_MANT_DIG__" ->
 						long_double_mantissa := int_of_string value
+					| "__GNUC_GNU_INLINE__" ->
+						gnu_inline := true
 					| _ ->
 						()
 					end
@@ -299,7 +302,8 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 		en_predefined = Buffer.contents predefined;
 		en_builtin = builtin;
 		en_include = List.rev !include_path;
-		en_sys_include = List.rev !sys_include_path}
+		en_sys_include = List.rev !sys_include_path;
+		en_gnu_inline = !gnu_inline}
 	in
 	result
 );;

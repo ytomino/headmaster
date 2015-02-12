@@ -60,6 +60,7 @@ end;;
 
 module Language = struct
 	let lang = `c;;
+	let gnu_inline = env.en_gnu_inline;;
 end;;
 
 module LE = LexicalElement (Literals);;

@@ -3161,9 +3161,9 @@ struct
 						| `extern  | `static | `static_inline as storage_class ->
 							storage_class
 						| `extern_inline ->
-							if attr.at_gnu_inline then `inline else `extern_inline
+							if attr.at_gnu_inline || Language.gnu_inline then `inline else `extern_inline
 						| `inline ->
-							if attr.at_gnu_inline then `extern_inline else `inline
+							if attr.at_gnu_inline || Language.gnu_inline then `extern_inline else `inline
 						| `none ->
 							`extern
 						| `typedef | `auto | `register | `_Thread_local | `extern__Thread_local ->

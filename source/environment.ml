@@ -34,7 +34,8 @@ type environment = {
 	en_predefined: string;
 	en_builtin: (string * type_for_builtin list * type_for_builtin) list;
 	en_include: string list;
-	en_sys_include: string list};;
+	en_sys_include: string list;
+	en_gnu_inline: bool};;
 
 type include_from = [`user | `system];;
 

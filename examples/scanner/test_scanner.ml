@@ -18,9 +18,9 @@ let error (ps: ranged_position) (m: string): unit = (
 module Test (L: LiteralsType) = struct
 	module E = LexicalElement (L);;
 	module S = Scanner (L) (E);;
-	module Sc = S (struct let lang = `c;; end);;
-	module Sobjc = S (struct let lang = `objc;; end);;
-	module Scxx = S (struct let lang = `cxx;; end);;
+	module Sc = S (struct let lang = `c;; let gnu_inline = false;; end);;
+	module Sobjc = S (struct let lang = `objc;; let gnu_inline = false;; end);;
+	module Scxx = S (struct let lang = `cxx;; let gnu_inline = false;; end);;
 	assert (
 		match lazy (Sc.scan error ignore (read "") Sc.make_nil) with
 		| lazy (`nil ((("<test>", 0, 1, 1), _), _)) ->

@@ -18,4 +18,5 @@ let objc (lang: language): bool = (
 
 module type LanguageType = sig
 	val lang: language;;
+	val gnu_inline: bool;;
 end;;
