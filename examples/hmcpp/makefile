@@ -17,6 +17,12 @@ PREFIX=.
 endif
 BINDIR=$(PREFIX)/bin
 
+ifneq ($(wildcard ../../.git),)
+HEAD=$(wildcard ../../.git/*HEAD) $(wildcard ../../.git/refs/heads/master)
+else
+HEAD=
+endif
+
 export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
 
@@ -28,7 +34,7 @@ HFLAGS=
 
 .PHONY: $(EXENAME) test clean
 
-$(EXENAME): hmcpp.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
+$(EXENAME): hmcpp.ml version.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
 	$(OCAMLMAKE) -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
@@ -36,6 +42,12 @@ else
 	ocamlbuild -X $(BUILDDIR) -I source hmcpp.native
 	ln -sf hmcpp.native $(EXENAME)
 endif
+
+version.ml: ../../main/version.ml
+	-ln -s $< $@
+
+../../main/version.ml: ../../main/version.txt $(HEAD)
+	make -C ../../main version.ml
 
 test: $(EXENAME)
 	./$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)

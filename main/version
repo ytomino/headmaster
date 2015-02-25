@@ -1,0 +1,6 @@
+#!/bin/sh
+if [[ -d ../.git ]]; then
+	printf "%s-%s (devel)" $(cat version.txt) $(git log -1 --format=%h)
+else
+	printf "%s (experimental)" $(cat version.txt)
+fi

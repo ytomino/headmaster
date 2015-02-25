@@ -5,3 +5,5 @@
 /main.native
 /man1
 /source
+/version.ml
+/version.rst

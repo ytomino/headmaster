@@ -2,13 +2,15 @@
 headmaster
 ==========
 
+.. include:: version.rst
+
 ------------------------
 translate C header files
 ------------------------
 
 :Author: Yuta Tomino
 :Date: 2010-2014
-:Version: 0.26
+:Version: |version|
 :Manual section: 1
 :Manual group: preprocessor
 
