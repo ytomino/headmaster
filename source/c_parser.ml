@@ -2,6 +2,7 @@ open C_lexical;;
 open C_lexical_firstset;;
 open C_literals;;
 open C_syntax;;
+open C_version;;
 open Position;;
 
 module TypedefSet = struct
@@ -16,7 +17,8 @@ module Parser
 	(LexicalElement: LexicalElementType
 		with module Literals := Literals)
 	(Syntax: SyntaxType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	(Language: LanguageType) =
 struct
 	module FirstSet = FirstSet (Literals);;
 	open Literals;;
@@ -1918,7 +1920,8 @@ struct
 			let next, xs = parse_declaration_specifiers_option ~has_type error typedefs xs in
 			let `some (ps, ()) = (`some q) &^ next in
 			(ps, `type_qualifier (q, next)), xs
-		| lazy (`cons (spec_p, (#FirstSet.function_specifier as spec_e), xs)) ->
+		| lazy (`cons (spec_p, (`INLINE | `__inline | `__inline__ as spec_k), xs)) ->
+			let spec_e = if Language.gnu_inline then `gnu_inline spec_k else `inline spec_k in
 			let spec = (spec_p, spec_e) in
 			let next, xs = parse_declaration_specifiers_option ~has_type error typedefs xs in
 			let `some (ps, ()) = (`some spec) &^ next in
@@ -3443,5 +3446,6 @@ module type ParserType = sig
 		with module Literals := Literals;;
 	module Syntax: SyntaxType
 		with module Literals := Literals;;
-	include module type of Parser (Literals) (LexicalElement) (Syntax);;
+	module Language: LanguageType;;
+	include module type of Parser (Literals) (LexicalElement) (Syntax) (Language);;
 end;;

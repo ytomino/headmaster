@@ -290,6 +290,29 @@ struct
 		derived_types, t
 	);;
 	
+	(* function specifier *)
+	
+	type gnu_inline = [`gnu_inline | `gnu_extern_inline];;
+	
+	let fixup_gnu_inline
+		(attributes: attributes)
+		(storage_class: [storage_class | function_definition_specifier | gnu_inline | `none])
+		: [storage_class | function_definition_specifier | `none] =
+	(
+		begin match storage_class with
+		| `gnu_inline ->
+			`extern_inline
+		| `gnu_extern_inline ->
+			`inline
+		| `inline ->
+			if attributes.at_gnu_inline then `extern_inline else `inline
+		| `extern_inline ->
+			if attributes.at_gnu_inline then `inline else `extern_inline
+		| #storage_class | `static_inline | `none as x ->
+			x
+		end
+	);;
+	
 	(* analyzing *)
 	
 	let rec handle_pragma
@@ -1525,6 +1548,7 @@ struct
 		) in
 		let attributes = Declaring.attributes_of_alignment alignment in
 		let derived_types, namespace, source, attributes, storage_class, specs, qualifiers = extract (derived_types, namespace, source, attributes, `none, (no_type_specifier_set, None), no_type_qualifier_set) x in
+		let storage_class = fixup_gnu_inline attributes storage_class in
 		let type_by_spec = get_type_by_specifier_set error predefined_types (fst x) attributes.at_mode specs in
 		let derived_types, type_by_qualifiers = get_type_by_qualifier_set error derived_types (fst x) type_by_spec qualifiers in
 		derived_types, namespace, source, (storage_class, type_by_qualifiers, attributes)
@@ -1726,9 +1750,9 @@ struct
 		end
 	) and handle_storage_class
 		(error: ranged_position -> string -> unit)
-		(storage_class: [storage_class | function_definition_specifier | `none])
+		(storage_class: [storage_class | function_definition_specifier | gnu_inline | `none])
 		(x: Syntax.storage_class_specifier p)
-		: [> storage_class | function_definition_specifier] =
+		: [> storage_class | function_definition_specifier | gnu_inline] =
 	(
 		begin match storage_class with
 		| `none ->
@@ -1751,7 +1775,7 @@ struct
 		| `typedef | `register |`auto | `static | `_Thread_local | `extern__Thread_local ->
 			error (fst x) storage_class_specifier_is_duplicated;
 			storage_class
-		| `static_inline |`extern_inline | `inline ->
+		| `static_inline |`extern_inline | `inline | #gnu_inline ->
 			error (fst x) bad_combination_of_storage_class_specifier_and_function_specifier;
 			storage_class
 		end
@@ -2223,17 +2247,26 @@ struct
 		end
 	) and handle_function_specifier
 		(error: ranged_position -> string -> unit)
-		(storage_class: [storage_class | function_definition_specifier | `none])
+		(storage_class: [storage_class | function_definition_specifier | gnu_inline | `none])
 		(x: Syntax.function_specifier p)
-		: [> storage_class | function_definition_specifier] =
+		: [> storage_class | function_definition_specifier | gnu_inline] =
 	(
 		begin match snd x with
-		| `INLINE | `__inline | `__inline__ ->
+		| `inline _ ->
 			begin match storage_class with
 			| `extern | `extern_inline -> `extern_inline
 			| `static | `static_inline -> `static_inline
-			| `auto | `none | `inline -> `inline
-			| `register | `typedef | `_Thread_local | `extern__Thread_local as storage_class ->
+			| `none | `inline -> `inline
+			| `auto | `register | `typedef | `_Thread_local | `extern__Thread_local | #gnu_inline as storage_class ->
+				error (fst x) bad_combination_of_storage_class_specifier_and_function_specifier;
+				storage_class
+			end
+		| `gnu_inline _ ->
+			begin match storage_class with
+			| `extern | `gnu_extern_inline -> `gnu_extern_inline
+			| `static | `static_inline -> `static_inline (* static inline has same semantics *)
+			| `none | `gnu_inline -> `gnu_inline
+			| `auto | `register | `typedef | `_Thread_local | `extern__Thread_local | `inline | `extern_inline as storage_class ->
 				error (fst x) bad_combination_of_storage_class_specifier_and_function_specifier;
 				storage_class
 			end
@@ -3158,12 +3191,8 @@ struct
 				| `function_type prototype as t ->
 					let st: function_definition_specifier =
 						begin match storage_class with
-						| `extern  | `static | `static_inline as storage_class ->
+						| `extern  | `static | `inline | `static_inline | `extern_inline as storage_class ->
 							storage_class
-						| `extern_inline ->
-							if attr.at_gnu_inline || Language.gnu_inline then `inline else `extern_inline
-						| `inline ->
-							if attr.at_gnu_inline || Language.gnu_inline then `extern_inline else `inline
 						| `none ->
 							`extern
 						| `typedef | `auto | `register | `_Thread_local | `extern__Thread_local ->

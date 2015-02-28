@@ -310,9 +310,8 @@ module Syntax (Literals: LiteralsType) = struct
 		| `__restrict__] (* extended *)
 	and function_specifier = [
 		(* (6.7.4) function-specifier *)
-		| `INLINE
-		| `__inline (* extended *)
-		| `__inline__] (* extended *)
+		| `inline of [`INLINE | `__inline | `__inline__]
+		| `gnu_inline of [`INLINE | `__inline | `__inline__]] (* gcc semantics *)
 	and declarator =
 		(* (6.7.5) declarator *)
 		pointer opt * direct_declarator e * attribute_list opt

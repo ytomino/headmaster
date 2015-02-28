@@ -252,7 +252,7 @@ struct
 					let rec only_no_type
 						(storage_class, type_qualifiers, type_specifiers, attributes)
 						(x: Syntax.declaration_specifiers)
-						: ([storage_class | function_definition_specifier | `none] * type_qualifier_set * type_specifier_set * attributes) option =
+						: ([storage_class | function_definition_specifier | gnu_inline | `none] * type_qualifier_set * type_specifier_set * attributes) option =
 					(
 						let do_next result next = (
 							begin match next with
@@ -297,6 +297,7 @@ struct
 							derived_types, source
 						| None ->
 							(* storage class *)
+							let storage_class = fixup_gnu_inline attributes storage_class in
 							begin match storage_class with
 							| (#storage_class | #function_definition_specifier) as storage_class ->
 								if type_qualifiers <> no_type_qualifier_set || type_specifiers <> no_type_specifier_set then (

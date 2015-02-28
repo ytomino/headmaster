@@ -3,6 +3,7 @@ open C_literals;;
 open C_parser;;
 open C_preprocessor;;
 open C_syntax;;
+open C_version;;
 open Position;;
 
 let list_combination
@@ -35,6 +36,7 @@ module type DefineParserType = sig
 		with module LexicalElement := LexicalElement;;
 	module Syntax: SyntaxType
 		with module Literals := Literals;;
+	module Language: LanguageType;;
 	
 	type define = [
 		| `operator of iso646_operator
@@ -70,15 +72,18 @@ module DefineParser
 		with module LexicalElement := LexicalElement)
 	(Syntax: SyntaxType
 		with module Literals := Literals)
+	(Language: LanguageType)
 	(Parser: ParserType
 		with module Literals := Literals
 		with module LexicalElement := LexicalElement
-		with module Syntax := Syntax)
+		with module Syntax := Syntax
+		with module Language := Language)
 	: DefineParserType
 		with module Literals := Literals
 		with module LexicalElement := LexicalElement
 		with module Preprocessor := Preprocessor
-		with module Syntax := Syntax =
+		with module Syntax := Syntax
+		with module Language := Language =
 struct
 	
 	(* error messages *)

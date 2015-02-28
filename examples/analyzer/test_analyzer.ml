@@ -68,8 +68,8 @@ module AST = Syntax (Literals);;
 module SEM = Semantics (Literals);;
 module S = Scanner (Literals) (LE) (Language);;
 module PP = Preprocessor (Literals) (LE) (S.NumericScanner);;
-module P = Parser (Literals) (LE) (AST);;
-module DP = DefineParser (Literals) (LE) (PP) (AST) (P);;
+module P = Parser (Literals) (LE) (AST) (Language);;
+module DP = DefineParser (Literals) (LE) (PP) (AST) (Language) (P);;
 module A = Analyzer (Literals) (AST) (SEM) (Language);;
 module DA = DefineAnalyzer (Literals) (AST) (SEM) (Language) (A);;
 
