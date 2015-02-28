@@ -2242,7 +2242,7 @@ struct
 			{set with tq_const = true}
 		| `RESTRICT | `__restrict | `__restrict__ ->
 			{set with tq_restrict = true}
-		| `VOLATILE ->
+		| `VOLATILE | `__volatile__ ->
 			{set with tq_volatile = true}
 		end
 	) and handle_function_specifier

@@ -10,6 +10,13 @@ module Syntax (Literals: LiteralsType) = struct
 	
 	type identifier = [`ident of string];;
 	
+	type const = [`CONST | `__const];;
+	type inline = [`INLINE | `__inline | `__inline__];;
+	type restrict = [`RESTRICT | `__restrict | `__restrict__];;
+	type signed = [`SIGNED | `__signed__];;
+	type volatile = [`VOLATILE | `__volatile__];;
+	type __asm = [`__asm | `__asm__];;
+	
 	(* pragma *)
 	type pragma = [`sharp_PRAGMA] p * pragma_directive e
 	and pragma_directive = [
@@ -88,7 +95,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `weak
 		| `weak_import]
 	(* inline assembler *)
-	and inline_assembler = [`__asm | `__asm__] p * [`VOLATILE | `__volatile__] opt * [`l_paren] e * [`chars_literal of string] e * ia_out opt * [`r_paren] e * [`semicolon] e
+	and inline_assembler = __asm p * volatile opt * [`l_paren] e * [`chars_literal of string] e * ia_out opt * [`r_paren] e * [`semicolon] e
 	and ia_out = [`colon] p * ia_argument_list opt * ia_in opt
 	and ia_in = [`colon] p * ia_argument_list opt * ia_destructive opt
 	and ia_argument_list = [
@@ -249,8 +256,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `LONG
 		| `FLOAT
 		| `DOUBLE
-		| `SIGNED
-		| `__signed__ (* extended *)
+		| signed
 		| `UNSIGNED
 		| `_BOOL
 		| `_IMAGINARY
@@ -302,16 +308,13 @@ module Syntax (Literals: LiteralsType) = struct
 		| `with_repr of string p * [`assign] p * constant_expression e]
 	and type_qualifier = [
 		(* (6.7.3) type-qualifier *)
-		| `CONST
-		| `__const (* extended *)
-		| `RESTRICT
-		| `VOLATILE
-		| `__restrict (* extended *)
-		| `__restrict__] (* extended *)
+		| const
+		| restrict
+		| volatile]
 	and function_specifier = [
 		(* (6.7.4) function-specifier *)
-		| `inline of [`INLINE | `__inline | `__inline__]
-		| `gnu_inline of [`INLINE | `__inline | `__inline__]] (* gcc semantics *)
+		| `inline of inline
+		| `gnu_inline of inline] (* gcc semantics *)
 	and declarator =
 		(* (6.7.5) declarator *)
 		pointer opt * direct_declarator e * attribute_list opt
@@ -443,7 +446,7 @@ module Syntax (Literals: LiteralsType) = struct
 		declaration_specifiers p * declarator e * declaration_list opt * compound_statement e
 	and aliased_declaration =
 		(* extended *)
-		declaration_specifiers p * declarator e * [`__asm | `__asm__] p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e * attribute_list opt * [`semicolon] e
+		declaration_specifiers p * declarator e * __asm p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e * attribute_list opt * [`semicolon] e
 	and declaration_list = [
 		(* (6.9.1) declaration-list *)
 		| `nil of declaration

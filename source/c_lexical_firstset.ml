@@ -100,9 +100,10 @@ struct
 		| `CONST
 		| `__const
 		| `RESTRICT
-		| `VOLATILE
 		| `__restrict
-		| `__restrict__];;
+		| `__restrict__
+		| `VOLATILE
+		| `__volatile__];;
 	type function_specifier = [
 		| `INLINE
 		| `__inline
