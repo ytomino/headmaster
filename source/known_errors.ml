@@ -40,6 +40,67 @@ type known_error = [
 
 let known_error_table: (string * (string * (known_error * string list) list) list) list = [
 	"*-apple-darwin*", [
+		"AvailabilityInternal.h", [
+			`unparsible_macro, [
+				"__AVAILABILITY_INTERNAL_DEPRECATED_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_1_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_2_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_1_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_2_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_2_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_NA_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_8_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_8_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_8_DEP__MAC_NA_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_9_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_10_9_DEP__MAC_NA_MSG"; (* darwin13 / parameterized attribute *)
+				"__AVAILABILITY_INTERNAL__MAC_NA_DEP__MAC_NA_MSG"]]; (* darwin13 / parameterized attribute *)
 		"AvailabilityMacros.h", [
 			`undefined_macro, [
 				"__i386__"; (* darwin10 *)
@@ -50,6 +111,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"dirent.h", [
 			`uninterpretable_macro, [
 				"dirfd"]]; (* darwin9 / accessing element of untyped parameter *)
+		"i386/_mcontext.h", [
+			`uninterpretable_macro, [
+				"I386_MCONTEXT_SIZE"]]; (* darwin13 / struct mcontext is undefined *)
 		"i386/_structs.h", [
 			`unparsible_macro, [
 				"__DARWIN_FD_COPY"; (* darwin9 / bcopy was undefined, #include <string.h> *)
@@ -89,6 +153,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"host_get_io_master_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_kextd_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_lockd_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+				"host_get_telemetry_port"; (* darwin13 / host_get_special_port is undefined *)
 				"host_get_unfreed_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_user_notification_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_amfid_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
@@ -99,6 +164,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"host_set_gssd_port"; (* darwin12 / host_set_special_port is undefined *)
 				"host_set_kextd_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_lockd_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+				"host_set_telemetry_port"; (* darwin13 / host_set_special_port is undefined *)
 				"host_set_unfreed_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_user_notification_port"]]; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 		"mach/kmod.h", [
@@ -165,6 +231,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"IN6_IS_ADDR_V4MAPPED"; (* darwin9 / accessing element of untyped parameter *)
 				"__IPV6_ADDR_MC_SCOPE"]]; (* darwin9 / accessing element of untyped parameter *)
 		"pthread.h", [
+			`undefined_macro, [
+				"__IPHONE_OS_VERSION_MIN_REQUIRED"]; (* darwin13 *)
 			`unparsible_macro, [
 				"pthread_cleanup_pop"; (* darwin10 / partial statement *)
 				"pthread_cleanup_push"]]; (* darwin10 / partial statement *)
@@ -172,6 +240,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"snprintf"; (* darwin10 / varargs macro *)
 				"sprintf"]]; (* darwin10 / varargs macro *)
+		"secure/_string.h", [
+			`undefined_macro, [
+				"__IPHONE_OS_VERSION_MIN_REQUIRED"]]; (* darwin13 *)
 		"stdint.h", [
 			`undefined_macro, [
 				"__LP64__"]]; (* darwin9 *)
@@ -199,6 +270,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__CAST_AWAY_QUALIFIER"; (* darwin10 / parameterized type qualifier *)
 				"__COPYRIGHT"; (* darwin9 / generic declaration *)
 				"__DARWIN_NO_LONG_LONG"; (* darwin9 / "defined" used out of preprocessor *)
+				"__deprecated_msg"; (* darwin13 / parameterized attribute *)
 				"__IDSTRING"; (* darwin9 / generic declaration *)
 				"__printflike"; (* darwin9 / parameterized attribute *)
 				"__PROJECT_VERSION"; (* darwin9 / generic declaration *)
@@ -343,6 +415,19 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"FD_CLR"; (* darwin9 / accessing element of untyped parameter *)
 				"FD_SET"]]; (* darwin9 / accessing element of untyped parameter *)
+		"sys/_types/_fd_clr.h", [
+			`uninterpretable_macro, [
+				"FD_CLR"]]; (* darwin13 / accessing element of untyped parameter *)
+		"sys/_types/_fd_def.h", [
+			`uninterpretable_macro, [
+				"__DARWIN_FD_CLR"; (* darwin13 / accessing element of untyped parameter *)
+				"__DARWIN_FD_SET"]]; (* darwin13 / accessing element of untyped parameter *)
+		"sys/_types/_fd_set.h", [
+			`uninterpretable_macro, [
+				"FD_SET"]]; (* darwin13 / accessing element of untyped parameter *)
+		"sys/_types/___offsetof.h", [
+			`unparsible_macro, [
+				"__offsetof"]]; (* darwin13 / parameterized field *)
 		"sys/ucred.h", [
 			`unparsible_macro, [
 				"cr_gid"]]; (* darwin10 / alias of element and dereferencing *)

@@ -638,8 +638,18 @@ struct
 			{attributes with at_conventions = `cdecl}
 		| `const _ ->
 			{attributes with at_const = true}
-		| `deprecated _ ->
-			{attributes with at_deprecated = true}
+		| `deprecated (_, param) ->
+			begin match param with
+			| `some (_, (_, msg_param, _)) ->
+				begin match msg_param with
+				| `some (_, `chars_literal msg) ->
+					{attributes with at_deprecated = `msg msg}
+				| `error ->
+					attributes
+				end
+			| `none ->
+				{attributes with at_deprecated = `deprecated}
+			end
 		| `dllimport _ ->
 			{attributes with at_dllimport = true}
 		| `dllexport _ ->

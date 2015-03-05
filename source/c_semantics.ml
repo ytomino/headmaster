@@ -38,7 +38,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_blocks: [`none | `byref];
 		at_const: bool;
 		at_conventions: calling_convention;
-		at_deprecated: bool;
+		at_deprecated: [`none | `deprecated | `msg of string];
 		at_dllimport: bool;
 		at_dllexport: bool;
 		at_format: [`none | `like of string * int * int | `arg of int];
@@ -546,7 +546,7 @@ struct
 		at_blocks = `none;
 		at_const = false;
 		at_conventions = `cdecl;
-		at_deprecated = false;
+		at_deprecated = `none;
 		at_dllimport = false;
 		at_dllexport = false;
 		at_format = `none;

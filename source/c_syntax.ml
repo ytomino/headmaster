@@ -60,7 +60,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `blocks of string p * [`l_paren] e * [`BYREF] e * [`r_paren] e
 		| `cdecl of string
 		| `const of string
-		| `deprecated of string
+		| `deprecated of string p * ([`l_paren] p * [`chars_literal of string] e * [`r_paren] e) opt
 		| `dllimport of string
 		| `dllexport of string
 		| `fastcall

@@ -702,7 +702,19 @@ struct
 			| "__const__" ->
 				`some (p4, `const attr_keyword), xs
 			| "deprecated" | "__deprecated__" ->
-				`some (p4, `deprecated attr_keyword), xs
+				let n = p4, attr_keyword in
+				begin match xs with
+				| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
+					let l_paren = lp_p, lp_e in
+					let arg, xs = parse_chars_literal_or_error error typedefs xs in
+					let r_paren, xs = parse_r_paren_or_error error xs in
+					let `some (param_p, ()) = (`some l_paren) &^ arg &^ r_paren in
+					let param = `some (param_p, (l_paren, arg, r_paren)) in
+					let `some (ps, ()) = (`some n) & param in
+					`some (ps, `deprecated (n, param)), xs
+				| _ ->
+					`some (p4, `deprecated (n, `none)), xs
+				end
 			| "dllimport" | "__dllimport__" ->
 				`some (p4, `dllimport attr_keyword), xs
 			| "dllexport" | "__dllexport__" ->
