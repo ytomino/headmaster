@@ -88,7 +88,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `transparent_union
 		| `unavailable
 		| `unused of string
-		| `used
+		| `used of string
 		| `vector_size of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `visibility of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
 		| `warn_unused_result of string

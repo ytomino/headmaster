@@ -744,7 +744,7 @@ struct
 			{attributes with at_unavailable = true}
 		| `unused _ ->
 			{attributes with at_used = `unused}
-		| `used ->
+		| `used _ ->
 			{attributes with at_used = `used}
 		| `vector_size (_, _, arg, _) ->
 			begin match arg with

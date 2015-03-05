@@ -74,7 +74,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"i386_ptob"; (* darwin9 / pmap_paddr_t is undefined *)
 				"i386_round_page"; (* darwin9 / pmap_paddr_t is undefined *)
 				"i386_trunc_page"; (* darwin9 / pmap_paddr_t is undefined *)
-				"machine_btop"]]; (* darwin9 / pmap_paddr_t is undefined *)
+				"machine_btop"; (* darwin9 / pmap_paddr_t is undefined *)
+				"machine_ptob"]]; (* darwin12 / pmap_paddr_t is undefined *)
 		"mach/host_special_ports.h", [
 			`unparsible_macro, [
 				"host_get_amfid_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
@@ -82,6 +83,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"host_get_automountd_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_chud_port"; (* darwin10 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_dynamic_pager_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
+				"host_get_gssd_port"; (* darwin12 / host_get_special_port is undefined *)
 				"host_get_host_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_host_priv_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_get_io_master_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
@@ -94,6 +96,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"host_set_automountd_port";  (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_chud_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_dynamic_pager_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+				"host_set_gssd_port"; (* darwin12 / host_set_special_port is undefined *)
 				"host_set_kextd_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_lockd_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_unfreed_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
@@ -205,6 +208,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"sys/dirent.h", [
 			`unparsible_macro, [
 				"__DARWIN_STRUCT_DIRENTRY"]]; (* darwin9 / partial declaration *)
+		"sys/event.h", [
+			`undefined_macro, [
+				"CONFIG_EMBEDDED"]]; (* darwin12 *)
 		"sys/mount.h", [
 			`undefined_macro, [
 				"COMPAT_GETFSSTAT"]; (* darwin9 *)
@@ -344,6 +350,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__strfmonlike"; (* darwin10 / parameterized attribute *)
 				"__strftimelike"]]; (* darwin10 / parameterized attribute *)
+		"uuid/uuid.h", [
+			`unparsible_macro, [
+				"UUID_DEFINE"]]; (* darwin12 / parameterized declaration *)
 		predefined_name, [
 			`unparsible_macro, [
 				"__USER_LABEL_PREFIX__"]]]; (* darwin10 *)

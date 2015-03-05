@@ -805,8 +805,8 @@ struct
 				`some (p4, `unavailable), xs
 			| "unused" | "__unused__" ->
 				`some (p4, `unused attr_keyword), xs
-			| "__used__" ->
-				`some (p4, `used), xs
+			| "used" | "__used__" ->
+				`some (p4, `used attr_keyword), xs
 			| "__vector_size__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
@@ -831,6 +831,9 @@ struct
 				error p4 ("unknown attribute \"" ^ attr_keyword ^ "\".");
 				`error, xs
 			end
+		| lazy (`cons (p4, `CONST, xs)) ->
+			let attr_keyword = string_of_rw `CONST in
+			`some (p4, `const attr_keyword), xs
 		| _ ->
 			error (LazyList.hd_a xs) "identifier was expected.";
 			`error, xs
