@@ -702,15 +702,38 @@ struct
 					`cons ((p1, p2), `wchars_literal s, lazy (process state index))
 				) else (
 					let p2 = TextFile.prev_position source index in
-					let element =
-						begin match rw_of_string Language.lang s with (* implies reserved_word, extended_word, identifier *)
-						| `ident s when state = `pp ->
-							(ppw_of_string s :> LexicalElement.t)
+					begin match rw_of_string Language.lang s with (* implies reserved_word, extended_word, identifier *)
+					| `ident s when state = `pp ->
+						begin match ppw_of_string s with
+						| `__has_include | `__has_include_next as element ->
+							let index = TextFile.succ_while Triming.is_space source index in
+							if TextFile.get source index = '(' then (
+								let p3 = TextFile.position source index in
+								let index = TextFile.succ source index in
+								let index = TextFile.succ_while Triming.is_space source index in
+								begin match TextFile.get source index with
+								| '\"' | '<' ->
+									let p4 = TextFile.position source index in
+									Buffer.reset buf;
+									let index = read_header_to_buffer buf index in
+									let header = Buffer.contents buf in (* empty if error *)
+									let p5 = TextFile.prev_position source index in
+									`cons ((p1, p2), element, lazy (
+										`cons ((p3, p3), `l_paren, lazy (
+											`cons ((p4, p5), `directive_parameter header, lazy (process `pp index))))))
+								| _ ->
+									`cons ((p1, p2), element, lazy (
+										`cons ((p3, p3), `l_paren, lazy (process state index))))
+								end
+							) else (
+								`cons ((p1, p2), element, lazy (process state index))
+							)
 						| _ as element ->
-							(element :> LexicalElement.t)
+							`cons ((p1, p2), (element :> LexicalElement.t), lazy (process state index))
 						end
-					in
-					`cons ((p1, p2), element, lazy (process state index))
+					| _ as element ->
+						`cons ((p1, p2), (element :> LexicalElement.t), lazy (process state index))
+					end
 				)
 			| '@' when objc Language.lang ->
 				let state = nx state in

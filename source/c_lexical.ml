@@ -366,10 +366,14 @@ let rw_of_string (lang: language) (s: string): [reserved_word | `ident of string
 (* preprocessor keywords *)
 
 type preprocessor_word = [
-	| `DEFINED];;
+	| `DEFINED
+	| `__has_include
+	| `__has_include_next];;
 
 let preprocessor_word_table = [
-	"defined", `DEFINED];;
+	"defined", `DEFINED;
+	"__has_include", `__has_include;
+	"__has_include_next", `__has_include_next];;
 
 let string_of_ppw_table = fst_of_snd_table preprocessor_word_table;;
 let ppw_of_string_table = snd_of_fst_table preprocessor_word_table;;

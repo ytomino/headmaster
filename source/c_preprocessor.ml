@@ -123,7 +123,9 @@ struct
 	let pragma_syntax_error (s: string): string =
 		"#pragma " ^ s ^ " syntax error.";;
 	let defined_syntax_error: string =
-		"defined expression requires single name of macro.";;
+		"defined expression requires one macro name.";;
+	let has_include_syntax_error (s: string): string =
+		s ^ " expression requires one header file name.";;
 	
 	(* literals *)
 	
@@ -214,6 +216,25 @@ struct
 		&& equals_args left.df_args right.df_args
 		&& left.df_varargs = right.df_varargs
 		&& equals_in left.df_contents right.df_contents
+	);;
+	
+	(* include *)
+	
+	let extract_filename (s: string): string * include_from = (
+		let s_length = String.length s in
+		let from =
+			if s_length <= 2 then (
+				assert false
+			) else if s.[0] = '<' && s.[s_length - 1] = '>' then (
+				`system
+			) else if s.[0] = '\"' && s.[s_length - 1] = '\"' then (
+				`user
+			) else (
+				assert false
+			)
+		in
+		let filename = String.sub s 1 (s_length - 2) in
+		filename, from
 	);;
 	
 	(* line *)
@@ -1058,20 +1079,8 @@ struct
 					begin match xs with
 					| lazy (`cons (_, `directive_parameter s,
 						lazy (`cons (_, `end_of_line, xs)))) ->
-						let s_length = String.length s in
-						let from =
-							if s_length <= 2 then (
-								assert false
-							) else if s.[0] = '<' && s.[s_length - 1] = '>' then (
-								`system
-							) else if s.[0] = '\"' && s.[s_length - 1] = '\"' then (
-								`user
-							) else (
-								assert false
-							)
-						in
+						let filename, from = extract_filename s in
 						begin try
-							let filename = String.sub s 1 (s_length - 2) in
 							let included: in_t =
 								let (current, _, _, _), _ = ps in
 								let next = token = `sharp_INCLUDE_NEXT in
@@ -1207,6 +1216,30 @@ struct
 							process `in_macro_expr predefined macro_arguments xs))
 					| _ ->
 						error ps defined_syntax_error;
+						process `in_macro_expr predefined macro_arguments xs
+					end
+				| `__has_include | `__has_include_next as token when state = `in_macro_expr ->
+					begin match xs with
+					| lazy (`cons (_, `l_paren,
+						lazy (`cons (_, `directive_parameter s,
+							lazy (`cons ((_, _), `r_paren, xs)))))) ->
+						let filename, from = extract_filename s in
+						let has =
+							begin try
+								let (current, _, _, _), _ = ps in
+								let next = token = `__has_include_next in
+								let _: in_prim = read ~current ~next from filename (fun _ -> `nil (ps, ())) in
+								Integer.one
+							with Not_found ->
+								Integer.zero
+							end
+						in
+						let image = Integer.to_based_string ~base:10 has in
+						let value = `numeric_literal (image, `int_literal (`signed_int, has)) in
+						`cons (ps, value, lazy (
+							process `in_macro_expr predefined macro_arguments xs))
+					| _ ->
+						error ps (has_include_syntax_error (string_of_ppw token));
 						process `in_macro_expr predefined macro_arguments xs
 					end
 				| `__STDC__ ->
