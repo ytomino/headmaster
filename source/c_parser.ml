@@ -803,6 +803,13 @@ struct
 				`some (ps, `regparm (n, l_paren, arg, r_paren)), xs
 			| "__returns_twice__" ->
 				`some (p4, `returns_twice), xs
+			| "section" | "__section__" ->
+				let n = p4, attr_keyword in
+				let l_paren, xs = parse_l_paren_or_error error xs in
+				let arg, xs = parse_chars_literal_or_error error typedefs xs in
+				let r_paren, xs = parse_r_paren_or_error error xs in
+				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				`some (ps, `section (n, l_paren, arg, r_paren)), xs
 			| "selectany" ->
 				`some (p4, `selectany), xs
 			| "sentinel" ->

@@ -740,6 +740,13 @@ struct
 			end
 		| `returns_twice ->
 			{attributes with at_returns_twice = true}
+		| `section (_, _, arg, _) ->
+			begin match arg with
+			| `some (_, `chars_literal arg) ->
+				{attributes with at_section = Some arg}
+			| `error ->
+				attributes
+			end
 		| `sentinel ->
 			{attributes with at_sentinel = true}
 		| `selectany ->

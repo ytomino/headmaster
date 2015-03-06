@@ -56,6 +56,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_pure: bool;
 		at_regparm: int option;
 		at_returns_twice: bool;
+		at_section: string option;
 		at_sentinel: bool;
 		at_selectany: bool;
 		at_thread_local: bool; (* _Thread_local *)
@@ -564,6 +565,7 @@ struct
 		at_pure = false;
 		at_regparm = None;
 		at_returns_twice = false;
+		at_section = None;
 		at_sentinel = false;
 		at_selectany = false;
 		at_thread_local = false;
