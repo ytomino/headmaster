@@ -27,6 +27,8 @@ struct
 				string_of_rw w
 			| #objc_directive as w ->
 				string_of_objcdirective w
+			| #preprocessor_word as w ->
+				string_of_ppw w
 			| #preprocessor_directive as w ->
 				"#" ^ string_of_ppdirective w
 			| `directive_parameter s ->

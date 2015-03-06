@@ -363,6 +363,37 @@ let rw_of_string (lang: language) (s: string): [reserved_word | `ident of string
 	end
 );;
 
+(* preprocessor keywords *)
+
+type preprocessor_word = [
+	| `DEFINED];;
+
+let preprocessor_word_table = [
+	"defined", `DEFINED];;
+
+let string_of_ppw_table = fst_of_snd_table preprocessor_word_table;;
+let ppw_of_string_table = snd_of_fst_table preprocessor_word_table;;
+
+let string_of_ppw (s: preprocessor_word): string = (
+	Hashtbl.find string_of_ppw_table s
+);;
+
+let ppw_of_string (s: string): [preprocessor_word | `ident of string] = (
+	begin try
+		let result: preprocessor_word = Hashtbl.find ppw_of_string_table s in
+		(result :> [preprocessor_word | `ident of string])
+	with Not_found ->
+		`ident s
+	end
+);;
+
+let string_of_rw_or_ppw (s: [reserved_word | preprocessor_word]): string = (
+	begin match s with
+	| #reserved_word as rw -> string_of_rw rw
+	| #preprocessor_word as ppw -> string_of_ppw ppw
+	end
+);;
+
 (* preprocessor directives *)
 
 type preprocessor_directive = [
@@ -425,6 +456,7 @@ module LexicalElement (Literals: LiteralsType) = struct
 		| reserved_word
 		| extended_word
 		| objc_directive
+		| preprocessor_word
 		| preprocessor_directive
 		| `directive_parameter of string
 		| `end_of_line

@@ -33,7 +33,7 @@ module type PreprocessorType = sig
 	
 	type macro_argument_map = macro_argument_item StringMap.t
 	and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
-	and concatable_element = [reserved_word
+	and concatable_element = [reserved_word | preprocessor_word
 		| `ident of string
 		| `numeric_literal of string * LexicalElement.numeric_literal];;
 	
@@ -92,6 +92,8 @@ struct
 		"macro name is missing for #ifndef";;
 	let redefined_extended_word (s: string): string =
 		"extended keyword " ^ s ^ " is re-defined.";;
+	let redefined_preprocessor_word (s: string): string =
+		"preprocessor keyword " ^ s ^ " is re-defined.";;
 	let redefined_compiler_macro (s: string): string =
 		"compiler macro " ^ s ^ " is re-defined.";;
 	let vanished_macro (s: string): string =
@@ -165,7 +167,7 @@ struct
 	
 	type macro_argument_map = macro_argument_item StringMap.t
 	and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
-	and concatable_element = [reserved_word
+	and concatable_element = [reserved_word | preprocessor_word
 		| `ident of string
 		| `numeric_literal of string * LexicalElement.numeric_literal];;
 	
@@ -789,7 +791,7 @@ struct
 					match it1 with
 					| `ident name1 -> name1
 					| `numeric_literal (name1, _) -> name1
-					| #reserved_word as rw -> string_of_rw rw
+					| #reserved_word | #preprocessor_word as w -> string_of_rw_or_ppw w
 				in
 				begin match xs with
 				| lazy (`cons (_, `ident name2, xs)) when StringMap.mem name2 macro_arguments ->
@@ -847,8 +849,7 @@ struct
 				begin match token with
 				| `sharp_DEFINE ->
 					assert (state <> `in_macro_expr);
-					begin match xs with
-					| lazy (`cons (name_ps, `ident name, xs)) ->
+					let process_define name_ps name xs =
 						let new_item, xs =
 							let (_, (name_file, name_lpos, _, _)) = name_ps in
 							begin match xs with
@@ -918,6 +919,10 @@ struct
 							predefined
 						in
 						process state predefined StringMap.empty xs
+					in
+					begin match xs with
+					| lazy (`cons (name_ps, `ident name, xs)) ->
+						process_define name_ps name xs
 					| lazy (`cons (name_ps, (#extended_word as ew), xs)) ->
 						let filename, _, _, _ = fst name_ps in
 						let name = string_of_rw ew in
@@ -926,6 +931,16 @@ struct
 						);
 						let xs = skip_line xs in
 						process state predefined StringMap.empty xs
+					| lazy (`cons (name_ps, (#preprocessor_word as ew), xs)) ->
+						let filename, _, _, _ = fst name_ps in
+						let name = string_of_ppw ew in
+						if filename <> predefined_name then (
+							error name_ps (redefined_preprocessor_word name);
+							let xs = skip_line xs in
+							process state predefined StringMap.empty xs
+						) else (
+							process_define name_ps name xs
+						)
 					| lazy (`cons (name_ps, (#compiler_macro as be_defined), xs)) ->
 						let filename, _, _, _ = fst name_ps in
 						let name = string_of_rw be_defined in
@@ -946,8 +961,8 @@ struct
 						let predefined = StringMap.remove name predefined in
 						let xs = take_end_of_line error xs in
 						process state predefined StringMap.empty xs
-					| lazy (`cons (_, (#reserved_word as rw), xs)) -> (* implies #extended_word *)
-						let name = string_of_rw rw in
+					| lazy (`cons (_, (#reserved_word | #preprocessor_word as w), xs)) ->
+						let name = string_of_rw_or_ppw w in
 						let predefined = StringMap.remove name predefined in
 						let xs = take_end_of_line error xs in
 						process state predefined StringMap.empty xs
@@ -972,8 +987,8 @@ struct
 					| lazy (`cons (_, #compiler_macro, xs)) ->
 						let xs = take_end_of_line error xs in
 						process_if true xs
-					| lazy (`cons (_, (#reserved_word as rw), xs)) ->
-						let name = string_of_rw rw in
+					| lazy (`cons (_, (#reserved_word | #preprocessor_word as w), xs)) ->
+						let name = string_of_rw_or_ppw w in
 						let cond = StringMap.mem name predefined in
 						let xs = take_end_of_line error xs in
 						process_if cond xs
@@ -992,8 +1007,8 @@ struct
 					| lazy (`cons (_, #compiler_macro, xs)) ->
 						let xs = take_end_of_line error xs in
 						process_if false xs
-					| lazy (`cons (_, (#reserved_word as rw), xs)) ->
-						let name = string_of_rw rw in
+					| lazy (`cons (_, (#reserved_word | #preprocessor_word as w), xs)) ->
+						let name = string_of_rw_or_ppw w in
 						let cond = not (StringMap.mem name predefined) in
 						let xs = take_end_of_line error xs in
 						process_if cond xs
@@ -1160,7 +1175,7 @@ struct
 						error ps one_identifier_is_required_for_shap;
 						process state predefined macro_arguments xs
 					end
-				| `ident "defined" when state = `in_macro_expr ->
+				| `DEFINED when state = `in_macro_expr ->
 					begin match xs with
 					| lazy (`cons (_, `l_paren,
 						lazy (`cons (_, `ident name,
@@ -1173,11 +1188,11 @@ struct
 						`cons ((p1, p2), value, lazy (
 							process `in_macro_expr predefined macro_arguments xs))
 					| lazy (`cons (_, `l_paren,
-						lazy (`cons (_, (#extended_word as ew),
+						lazy (`cons (_, (#extended_word | #preprocessor_word as w),
 							lazy (`cons ((_, p2), `r_paren, xs))))))
-					| lazy (`cons ((_, p2), (#extended_word as ew), xs)) ->
+					| lazy (`cons ((_, p2), (#extended_word | #preprocessor_word as w), xs)) ->
 						let (p1, _) = ps in
-						let name = string_of_rw ew in
+						let name = string_of_rw_or_ppw w in
 						let cond = leinteger_of_bool (StringMap.mem name predefined) in
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
@@ -1266,6 +1281,20 @@ struct
 						if StringMap.mem s_rw predefined then (
 							process_replace ps token s_rw xs
 						) else (
+							`cons (ps, token, lazy (
+								process state predefined macro_arguments xs))
+						)
+					end
+				| #preprocessor_word as ppw -> (* not in preprocessor expression *)
+					begin match xs with
+					| lazy (`cons (ds_p, `d_sharp, xs)) ->
+						process_d_sharp ps (`ident (string_of_ppw ppw)) ds_p xs
+					| _ ->
+						let s_ppw = string_of_ppw ppw in
+						if StringMap.mem s_ppw predefined then (
+							process_replace ps token s_ppw xs
+						) else (
+							let token = `ident s_ppw in (* take it as identifier *)
 							`cons (ps, token, lazy (
 								process state predefined macro_arguments xs))
 						)
