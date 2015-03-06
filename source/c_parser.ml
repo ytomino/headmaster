@@ -690,7 +690,7 @@ struct
 				`some (p4, `always_inline attr_keyword), xs
 			| "__artificial__" ->
 				`some (p4, `artificial), xs
-			| "__blocks__" ->
+			| "blocks" | "__blocks__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_keyword_or_error ["byref", `BYREF] error xs in
@@ -732,7 +732,7 @@ struct
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^ l_paren &^ arg1 &^ comma1 &^ arg2 &^ comma2 &^ arg3 &^ r_paren in
 				`some (ps, `format (n, l_paren, arg1, comma1, arg2, comma2, arg3, r_paren)), xs
-			| "__format_arg__" ->
+			| "format_arg" | "__format_arg__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
@@ -747,7 +747,7 @@ struct
 				`some (p4, `malloc), xs
 			| "__may_alias__" ->
 				`some (p4, `may_alias), xs
-			| "__mode__" ->
+			| "mode" | "__mode__" ->
 				let modes: (string * bit_width_mode) list = [
 					"__QI__", `__QI__;
 					"__HI__", `__HI__;
@@ -783,7 +783,7 @@ struct
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `objc_gc (n, l_paren, arg, r_paren)), xs
-			| "__optimize__" ->
+			| "optimize" | "__optimize__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_chars_literal_or_error error typedefs xs in
@@ -794,7 +794,7 @@ struct
 				`some (p4, `packed attr_keyword), xs
 			| "__pure__" ->
 				`some (p4, `pure), xs
-			| "__regparm__" ->
+			| "regparm" | "__regparm__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
@@ -819,7 +819,7 @@ struct
 				`some (p4, `unused attr_keyword), xs
 			| "used" | "__used__" ->
 				`some (p4, `used attr_keyword), xs
-			| "__vector_size__" ->
+			| "vector_size" | "__vector_size__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
