@@ -40,6 +40,8 @@ struct
 		"storage-class-specifier was duplicated.";;
 	let bad_combination_of_storage_class_specifier_and_function_specifier: string =
 		"the combination of storage-class-specifier and function-specifier is bad.";;
+	let attribute_requires_string_literal(s: string): string =
+		 ("__attribute__((" ^ s ^ "(...))) requires string literal.");;
 	
 	(* in *)
 	
@@ -638,12 +640,18 @@ struct
 			{attributes with at_conventions = `cdecl}
 		| `const _ ->
 			{attributes with at_const = true}
-		| `deprecated (_, param) ->
+		| `deprecated ((_, attr_name), param) ->
 			begin match param with
-			| `some (_, (_, msg_param, _)) ->
-				begin match msg_param with
-				| `some (_, `chars_literal msg) ->
-					{attributes with at_deprecated = `msg msg}
+			| `some (_, (_, arg, _)) ->
+				begin match arg with
+				| `some (arg_p, arg_e) ->
+					begin match arg_e with
+					| `chars_literal msg ->
+						{attributes with at_deprecated = `msg msg}
+					| _ ->
+						error arg_p (attribute_requires_string_literal attr_name);
+						attributes
+					end
 				| `error ->
 					attributes
 				end
@@ -715,10 +723,16 @@ struct
 			| `error ->
 				attributes
 			end
-		| `optimize (_, _, arg, _) ->
+		| `optimize ((_, attr_name), _, arg, _) ->
 			begin match arg with
-			| `some (_, `chars_literal arg) ->
-				{attributes with at_optimize = Some arg}
+			| `some (arg_p, arg_e) ->
+				begin match arg_e with
+				| `chars_literal options ->
+					{attributes with at_optimize = Some options}
+				| _ ->
+					error arg_p (attribute_requires_string_literal attr_name);
+					attributes
+				end
 			| `error ->
 				attributes
 			end
@@ -740,10 +754,16 @@ struct
 			end
 		| `returns_twice ->
 			{attributes with at_returns_twice = true}
-		| `section (_, _, arg, _) ->
+		| `section ((_, attr_name), _, arg, _) ->
 			begin match arg with
-			| `some (_, `chars_literal arg) ->
-				{attributes with at_section = Some arg}
+			| `some (arg_p, arg_e) ->
+				begin match arg_e with
+				| `chars_literal section_name ->
+					{attributes with at_section = Some section_name}
+				| _ ->
+					error arg_p (attribute_requires_string_literal attr_name);
+					attributes
+				end
 			| `error ->
 				attributes
 			end

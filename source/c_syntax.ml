@@ -60,7 +60,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `blocks of string p * [`l_paren] e * [`BYREF] e * [`r_paren] e
 		| `cdecl of string
 		| `const of string
-		| `deprecated of string p * ([`l_paren] p * [`chars_literal of string] e * [`r_paren] e) opt
+		| `deprecated of string p * ([`l_paren] p * assignment_expression e * [`r_paren] e) opt
 		| `dllimport of string
 		| `dllexport of string
 		| `fastcall
@@ -76,12 +76,12 @@ module Syntax (Literals: LiteralsType) = struct
 		| `noreturn of string
 		| `nothrow
 		| `objc_gc of string p * [`l_paren] e * [`WEAK] e * [`r_paren] e
-		| `optimize of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
+		| `optimize of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `packed of string
 		| `pure
 		| `regparm of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `returns_twice
-		| `section of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
+		| `section of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `selectany
 		| `sentinel
 		| `stdcall
@@ -91,7 +91,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `unused of string
 		| `used of string
 		| `vector_size of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
-		| `visibility of string p * [`l_paren] e * [`chars_literal of string] e * [`r_paren] e
+		| `visibility of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `warn_unused_result of string
 		| `weak
 		| `weak_import]

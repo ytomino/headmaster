@@ -41,6 +41,7 @@ module type DefineParserType = sig
 	type define = [
 		| `operator of iso646_operator
 		| `declaration_specifiers of Syntax.declaration_specifiers
+		| `generic_declaration_specifiers of (string Syntax.p * [`typedef | `value]) list * Syntax.declaration_specifiers
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
 		| `function_stmt of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
@@ -168,6 +169,7 @@ struct
 	type define = [
 		| `operator of iso646_operator
 		| `declaration_specifiers of Syntax.declaration_specifiers
+		| `generic_declaration_specifiers of (string p * [`typedef | `value]) list * Syntax.declaration_specifiers
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
 		| `function_stmt of (string p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
@@ -250,6 +252,13 @@ struct
 							if not !has_error && LazyList.is_empty xr && stmt <> `error then (
 								begin match stmt with
 								| `some stmt -> ps, `function_stmt (args, varargs, snd stmt)
+								| `error -> assert false
+								end
+							) else
+							let spec, xr = has_error := false; Parser.parse_declaration_specifiers_or_error dummy_error typedefs xs in
+							if not !has_error && LazyList.is_empty xr && spec <> `error then (
+								begin match spec with
+								| `some spec -> ps, `generic_declaration_specifiers (args, snd spec)
 								| `error -> assert false
 								end
 							) else (

@@ -706,7 +706,7 @@ struct
 				begin match xs with
 				| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
 					let l_paren = lp_p, lp_e in
-					let arg, xs = parse_chars_literal_or_error error typedefs xs in
+					let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 					let r_paren, xs = parse_r_paren_or_error error xs in
 					let `some (param_p, ()) = (`some l_paren) &^ arg &^ r_paren in
 					let param = `some (param_p, (l_paren, arg, r_paren)) in
@@ -786,7 +786,7 @@ struct
 			| "optimize" | "__optimize__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
-				let arg, xs = parse_chars_literal_or_error error typedefs xs in
+				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
 				`some (ps, `optimize (n, l_paren, arg, r_paren)), xs
@@ -806,7 +806,7 @@ struct
 			| "section" | "__section__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
-				let arg, xs = parse_chars_literal_or_error error typedefs xs in
+				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
 				`some (ps, `section (n, l_paren, arg, r_paren)), xs
@@ -836,7 +836,7 @@ struct
 			| "visibility" | "__visibility__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
-				let arg, xs = parse_chars_literal_or_error error typedefs xs in
+				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
 				`some (ps, `visibility (n, l_paren, arg, r_paren)), xs
@@ -1982,6 +1982,25 @@ struct
 			`some r, xs
 		| _ ->
 			`none, xs
+		end
+	) and parse_declaration_specifiers_or_error
+		?(has_type: bool = false)
+		(error: ranged_position -> string -> unit)
+		(typedefs: typedef_set)
+		(xs: 'a in_t)
+		: declaration_specifiers e * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
+			`some r, xs
+		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
+			`some r, xs
+		| _ ->
+			`error, xs
 		end
 	) and parse_init_declarator_list_option
 		(error: ranged_position -> string -> unit)

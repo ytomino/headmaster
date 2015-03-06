@@ -40,67 +40,6 @@ type known_error = [
 
 let known_error_table: (string * (string * (known_error * string list) list) list) list = [
 	"*-apple-darwin*", [
-		"AvailabilityInternal.h", [
-			`unparsible_macro, [
-				"__AVAILABILITY_INTERNAL_DEPRECATED_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_1_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_2_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_0_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_1_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_2_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_1_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_2_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_2_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_3_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_3_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_4_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_4_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_5_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_5_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_6_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_6_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_10_7_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_7_DEP__MAC_NA_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_8_DEP__MAC_10_8_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_8_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_8_DEP__MAC_NA_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_9_DEP__MAC_10_9_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_10_9_DEP__MAC_NA_MSG"; (* darwin13 / parameterized attribute *)
-				"__AVAILABILITY_INTERNAL__MAC_NA_DEP__MAC_NA_MSG"]]; (* darwin13 / parameterized attribute *)
 		"AvailabilityMacros.h", [
 			`undefined_macro, [
 				"__i386__"; (* darwin10 *)
@@ -267,15 +206,12 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__const"; (* darwin10 *)
 				"__restrict"]; (* darwin10 *)
 			`unparsible_macro, [
-				"__CAST_AWAY_QUALIFIER"; (* darwin10 / parameterized type qualifier *)
+				"__CAST_AWAY_QUALIFIER"; (* darwin10 / parameterized type qualifier in expression *)
 				"__COPYRIGHT"; (* darwin9 / generic declaration *)
 				"__DARWIN_NO_LONG_LONG"; (* darwin9 / "defined" used out of preprocessor *)
-				"__deprecated_msg"; (* darwin13 / parameterized attribute *)
 				"__IDSTRING"; (* darwin9 / generic declaration *)
-				"__printflike"; (* darwin9 / parameterized attribute *)
 				"__PROJECT_VERSION"; (* darwin9 / generic declaration *)
 				"__RCSID"; (* darwin9 / generic declaration *)
-				"__scanflike"; (* darwin9 / parameterized attribute *)
 				"__SCCSID"]]; (* darwin9 / generic declaration *)
 		"sys/dirent.h", [
 			`unparsible_macro, [
@@ -431,10 +367,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"sys/ucred.h", [
 			`unparsible_macro, [
 				"cr_gid"]]; (* darwin10 / alias of element and dereferencing *)
-		"_types.h", [
-			`unparsible_macro, [
-				"__strfmonlike"; (* darwin10 / parameterized attribute *)
-				"__strftimelike"]]; (* darwin10 / parameterized attribute *)
 		"uuid/uuid.h", [
 			`unparsible_macro, [
 				"UUID_DEFINE"]]; (* darwin12 / parameterized declaration *)
@@ -520,26 +452,17 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__const"; (* freebsd7 *)
 				"__restrict"]; (* freebsd7 *)
 			`unparsible_macro, [
-				"_Alignas"; (* freebsd9 / parameterized attribute *)
-				"__aligned"; (* freebsd7 / parameterized attribute *)
 				"__CONCAT"; (* freebsd7 / ## *)
 				"__containerof"; (* freebsd9 / accessing element of untyped parameter *)
 				"__COPYRIGHT"; (* freebsd7 / generic declaration *)
 				"__FBSDID"; (* freebsd7 / generic declaration *)
-				"__format_arg"; (* freebsd7 / parameterized attribute *)
 				"__IDSTRING"; (* freebsd7 / generic declaration *)
-				"__nonnull"; (* freebsd7 / parameterized attribute *)
 				"__offsetof"; (* freebsd7 / parameterized field *)
-				"__printflike"; (* freebsd7 / parameterized attribute *)
 				"__rangeof"; (* freebsd7 / parameterized field *)
 				"__RCSID"; (* freebsd7 / generic declaration *)
 				"__RCSID_SOURCE"; (* freebsd7 / generic declaration *)
-				"__scanflike"; (* freebsd7 / parameterized attribute *)
 				"__SCCSID"; (* freebsd7 / generic declaration *)
-				"__section"; (* freebsd7 / parameterized attribute *)
-				"_Static_assert"; (* freebsd9 / generic declaration *)
-				"__strfmonlike"; (* freebsd9 / parameterized attribute *)
-				"__strftimelike"]; (* freebsd9 / parameterized attribute *)
+				"_Static_assert"]; (* freebsd9 / generic declaration *)
 			`uninterpretable_macro, [
 				"_Alignof"; (* freebsd9 / generic expression with parameterized type *)
 				"__generic"]]; (* freebsd9 / generic expression with parameterized type *)
@@ -718,7 +641,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__ASSERT_VOID_CAST"]]; (* partial cast *)
 		"bits/cmathcalls.h", [
 			`unparsible_macro, [
-				"_Mdouble_complex_"]]; (* parameterized type specifier *)
+				"_Mdouble_complex_"]]; (* type specifier with an identifier to redefine *)
 		"bits/dlfcn.h", [
 			`unparsible_macro, [
 				"DL_CALL_FCT"]]; (* parameterized argument expression list *)
@@ -880,9 +803,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__ASMNAME"; (* # *)
 				"__ASMNAME2"; (* # *)
-				"__attribute_format_arg__"; (* parameterized attribute *)
-				"__attribute_format_strfmon__"; (* parameterized attribute *)
-				"__errordecl"; (* parameterized attribute *)
+				"__errordecl"; (* parameterized declaration *)
 				"__extern_always_inline"; (* __inline and attributes *)
 				"__flexarr"; (* [] *)
 				"__fortify_function"; (* attribute and storage class *)
@@ -891,8 +812,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__LDBL_REDIR_NTH"; (* parameterized partial declaration *)
 				"__LDBL_REDIR1"; (* parameterized partial declaration *)
 				"__LDBL_REDIR1_NTH"; (* parameterized partial declaration *)
-				"__nonnull"; (* parameterized attribute *)
-				"__NTH"; (* parameterized attribute *)
+				"__nonnull"; (* parameterized attribute with paren *)
+				"__NTH"; (* attribute with an identifier *)
 				"__ptr_t"; (* declaration specifier and pointer *)
 				"__REDIRECT_LDBL"; (* parameterized partial declaration *)
 				"__REDIRECT_NTH_LDBL"; (* parameterized partial declaration *)
@@ -984,19 +905,11 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`redefine_extended_word, [
 				"__int64"];
 			`unparsible_macro, [
-				"_CRT_ALIGN"; (* parameterized attribute *)
-				"_CRT_DEPRECATE_TEXT"; (* parameterized attribute *)
+				"_CRT_DEPRECATE_TEXT"; (* __declspec *)
 				"_CRT_glob"; (* _dowildcard is undefined *)
 				"_CRT_WIDE"; (* ## *)
-				"__MINGW_ATTRIB_NONNULL"; (* parameterized attribute *)
 				"__MINGW_BROKEN_INTERFACE"; (* parameterized pragma *)
-				"__UNUSED_PARAM"]]; (* parameterized attribute *)
-		"_mingw_mac.h", [
-			`unparsible_macro, [
-				"__MINGW_GNU_PRINTF"; (* parameterized attribute *)
-				"__MINGW_GNU_SCANF"; (* parameterized attribute *)
-				"__MINGW_MS_PRINTF"; (* parameterized attribute *)
-				"__MINGW_MS_SCANF"]]; (* parameterized attribute *)
+				"__UNUSED_PARAM"]]; (* attribute with an identifier *)
 		"_mingw_secapi.h", [
 			`unparsible_macro, [
 				"__CRT_SECURE_CPP_OVERLOAD_SECURE_NAMES_0_2_"; (* parameterized declaraton *)
@@ -1218,7 +1131,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"C_ASSERT"; (* static assert *)
 				"CacheLineFlush"; (* _mm_clflush *)
 				"CONTAINING_RECORD"; (* parameterized field *)
-				"DECLSPEC_ALIGN"; (* parameterized attribute *)
 				"FIELD_OFFSET"; (* parameterized field *)
 				"IFACEMETHODIMP_"; (* storage class and parameterized type *)
 				"IFACEMETHODIMPV_"; (* storage class and parameterized type *)
@@ -1436,10 +1348,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"GC_EXTRAS"; (* parameter list *)
 				"GC_EXTRA_PARAMS"]]; (* formal parameter list *)
-		"gc/gc_config_macros.h", [
-			`unparsible_macro, [
-				"GC_ATTR_ALLOC_SIZE"; (* parameterized attribute *)
-				"GC_ATTR_NONNULL"]]; (* parameterized attribute *)
 		"gc/gc_typed.h", [
 			`unparsible_macro, [
 				"GC_WORD_OFFSET"]]; (* parameterized field *)
@@ -1497,10 +1405,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"BAD_CAST"]]; (* typename with paren *)
 		"libxml/xmlversion.h", [
 			`unparsible_macro, [
-				"ATTRIBUTE_ALLOC_SIZE"; (* parameterized attribute *)
-				"ATTRIBUTE_PRINTF"; (* parameterized attribute *)
-				"LIBXML_ATTR_ALLOC_SIZE"; (* parameterized attribute *)
-				"LIBXML_ATTR_FORMAT"; (* parameterized attribute *)
 				"LIBXML_TEST_VERSION"]]; (* extra semicolon *)
 		(* MPC *)
 		"mpc.h", [
