@@ -32,6 +32,7 @@ type known_error = [
 	| `redefine_macro
 	| `redefine_compiler_macro
 	| `redefine_extended_word
+	| `redefine_preprocessor_word
 	| `push_defined_macro
 	(* for define parser *)
 	| `unparsible_macro
@@ -451,6 +452,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`redefine_extended_word, [
 				"__const"; (* freebsd7 *)
 				"__restrict"]; (* freebsd7 *)
+			`redefine_preprocessor_word, [
+				"__has_include"]; (* freebsd9 *)
 			`unparsible_macro, [
 				"__CONCAT"; (* freebsd7 / ## *)
 				"__containerof"; (* freebsd9 / accessing element of untyped parameter *)

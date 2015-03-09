@@ -9,6 +9,7 @@ type known_errors_of_preprocessor = [
 	| `redefine_macro
 	| `redefine_compiler_macro
 	| `redefine_extended_word
+	| `redefine_preprocessor_word
 	| `push_defined_macro];;
 
 module type PreprocessorType = sig
@@ -956,7 +957,9 @@ struct
 						let filename, _, _, _ = fst name_ps in
 						let name = string_of_ppw ew in
 						if filename <> predefined_name then (
-							error name_ps (redefined_preprocessor_word name);
+							if not (is_known_error name_ps name `redefine_preprocessor_word) then (
+								error name_ps (redefined_preprocessor_word name)
+							);
 							let xs = skip_line xs in
 							process state predefined StringMap.empty xs
 						) else (
