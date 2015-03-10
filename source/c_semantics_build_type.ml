@@ -32,7 +32,7 @@ module type TypingType = sig
 	
 	(* type compatibility *)
 	
-	type compatibility = [`just | `compatible | `error];;
+	type compatibility = [`just | `typedef | `compatible | `error];;
 	
 	val type_ABI_compatibility:
 		dest:Semantics.all_type ->
@@ -183,12 +183,13 @@ struct
 	
 	(* type compatibility *)
 	
-	type compatibility = [`just | `compatible | `error];;
+	type compatibility = [`just | `typedef | `compatible | `error];;
 	
 	let min_compatibility (x: compatibility) (y: compatibility): compatibility = (
 		begin match x, y with
 		| `error, _ | _, `error -> `error
 		| `compatible, _ | _, `compatible -> `compatible
+		| `typedef, _ | _, `typedef -> `typedef
 		| `just, `just -> `just
 		end
 	);;
@@ -207,10 +208,17 @@ struct
 		| `const dest, _ ->
 			let r2 = type_ABI_compatibility ~dest:(dest :> all_type) ~source in
 			min_compatibility `compatible r2
+		| `function_type source, `function_type dest ->
+			prototype_ABI_compatibility ~source ~dest
+		| `named (_, _, `typedef dest2, _), `named (_, _, `typedef source2, _) ->
+			let r = type_ABI_compatibility ~dest:dest2 ~source:source2 in
+			if r = `just && dest != source then `typedef else r
 		| `named (_, _, `typedef dest, _), _ ->
-			type_ABI_compatibility ~dest ~source
+			let r = type_ABI_compatibility ~dest ~source in
+			if r = `just then `typedef else r
 		| _, `named (_, _, `typedef source, _) ->
-			type_ABI_compatibility ~dest ~source
+			let r = type_ABI_compatibility ~dest ~source in
+			if r = `just then `typedef else r
 		| _ ->
 			`error
 		end

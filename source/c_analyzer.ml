@@ -482,7 +482,7 @@ struct
 										| `named (_, _, `function_definition (_, original_t, _), _) as func ->
 											let `function_type original_prototype = original_t in
 											begin match Typing.prototype_ABI_compatibility ~dest:prototype ~source:original_prototype with
-											| `compatible ->
+											| `compatible | `typedef ->
 												let mapping_options = {mapping_options with mo_language_mappings =
 													StringMap.modify (fun x ->
 														let overload =

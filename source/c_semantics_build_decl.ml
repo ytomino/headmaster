@@ -126,21 +126,23 @@ struct
 		| Some previous ->
 			begin match previous with
 			| `named (_, _, `extern ((`function_type previous_prototype), prev_alias), _) as previous ->
-				if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype = `just then (
+				begin match Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype with
+				| `just | `typedef ->
 					if prev_alias <> alias then (
 						`precedence previous
 					) else (
 						`same (* no error when same prototype *)
 					)
-				) else (
+				| `compatible | `error ->
 					`error (* prototype mismatch *)
-				)
+				end
 			| `named (_, _, `function_definition (`inline, `function_type previous_prototype, _), _) ->
-				if Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype = `just then (
+				begin match Typing.prototype_ABI_compatibility ~dest:prototype ~source:previous_prototype with
+				| `just | `typedef ->
 					`same (* no error when same prototype *)
-				) else (
+				| `compatible | `error ->
 					`error (* prototype mismatch *)
-				)
+				end
 			| _ ->
 				`error
 			end
