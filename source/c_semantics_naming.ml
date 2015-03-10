@@ -155,11 +155,31 @@ struct
 			StringMap.fold (fun k (items, _) r ->
 				if items = [] then r else
 				let rel_filename, module_name = StringMap.find k filename_mapping in
-				begin try (* same filenames are possible by #pragma include_next *)
-					let _, xs = StringMap.find rel_filename r in
-					let xs = List.append items xs in
+				begin match StringMap.find_option rel_filename r with
+				| Some (_, items2) ->
+					(* same filenames are possible by #pragma include_next *)
+					let rec insert_loop_1 xs ys = (
+						begin match xs with
+						| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = rel_filename ->
+							List.rev_append ys (x :: List.append items2 xr) (* items would include_next items2 *)
+						| x :: xr ->
+							insert_loop_1 xr (x :: ys)
+						| [] ->
+							List.append items items2 (* the order is not clear *)
+						end
+					) and insert_loop_2 xs ys = (
+						begin match xs with
+						| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = rel_filename ->
+							List.rev_append ys (x :: List.append items xr) (* items2 would include_next items *)
+						| x :: xr ->
+							insert_loop_2 xr (x :: ys)
+						| [] ->
+							insert_loop_1 items [] (* items may include_next items2 *)
+						end
+					) in
+					let xs = insert_loop_2 items2 [] in
 					StringMap.add rel_filename (module_name, xs) r
-				with Not_found ->
+				| None ->
 					StringMap.add rel_filename (module_name, items) r
 				end
 			) sources StringMap.empty
