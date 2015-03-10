@@ -1385,6 +1385,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"mpq_out_str"; (* #include <stdio.h> *)
 				"mpz_inp_raw"; (* #include <stdio.h> *)
 				"mpz_inp_str"; (* #include <stdio.h> *)
+				"MPZ_ROINIT_N"; (* parameterized initializer *)
 				"mpz_out_raw"; (* #include <stdio.h> *)
 				"mpz_out_str"]; (* #include <stdio.h> *)
 			`uninterpretable_macro, [
