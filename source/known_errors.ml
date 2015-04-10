@@ -220,6 +220,11 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"sys/event.h", [
 			`undefined_macro, [
 				"CONFIG_EMBEDDED"]]; (* darwin12 *)
+		"sys/ioctl.h", [
+			`undefined_macro, [
+				"BSD_KERNEL_PRIVATE"; (* darwin10 *)
+				"COMPAT_43"; (* darwin9 *)
+				"COMPAT_43_TTY"]]; (* darwin9 *)
 		"sys/mount.h", [
 			`undefined_macro, [
 				"COMPAT_GETFSSTAT"]; (* darwin9 *)
