@@ -1,4 +1,4 @@
-DIRS=$(patsubst %/makefile,%,$(wildcard */makefile))
+DIRS=$(patsubst %/Makefile,%,$(wildcard */Makefile))
 BDIRS=$(addsuffix .build,$(DIRS))
 CDIRS=$(addsuffix .clean,$(DIRS))
 TDIRS=$(addsuffix .tests,$(DIRS))
