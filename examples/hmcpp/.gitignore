@@ -1,7 +1,4 @@
-/build
-/_build
-/hmcpp
-/hmcpp.exe
-/hmcpp.native
+/*.build/
+/bin
 /source
 /version.ml

@@ -1,3 +1,6 @@
+HOST=$(shell gcc -dumpmachine)
+TARGET=$(HOST)
+
 ifneq ($(ComSpec),)
 EXEEXT=.exe
 RM=del
@@ -8,8 +11,10 @@ RM=rm
 RMDIR=rm -rf
 endif
 
-BUILDDIR=build
+BUILDDIR=$(TARGET).build
 SOURCEDIR=../source
+BINLN=bin
+
 ifneq ($(HOMELOCAL),)
 PREFIX=$(HOMELOCAL)
 else
@@ -26,17 +31,19 @@ endif
 export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
 
-EXENAME=headmaster$(EXEEXT)
+EXENAME=$(BUILDDIR)/headmaster$(EXEEXT)
 
-.PHONY: $(EXENAME) man testman clean install
+.PHONY: $(EXENAME) all man testman clean install
+
+all: $(EXENAME) man $(BINLN)
 
 $(EXENAME): main.ml version.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
 	$(OCAMLMAKE) -o $@ -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
 else
 	-ln -s ../source .
-	ocamlbuild -X $(BUILDDIR) -I source -I source/ada main.native
-	ln -sf main.native $(EXENAME)
+	ocamlbuild -build-dir $(BUILDDIR) -X bin -I source -I source/ada main.native
+	cd $(BUILDDIR) && ln -sf main.native $(notdir $(EXENAME))
 endif
 
 version.ml: version.txt $(HEAD)
@@ -47,6 +54,9 @@ $(BUILDDIR)/gmp.cmxa:
 
 $(BUILDDIR)/unicode.cmxa:
 	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
+
+$(BINLN):
+	ln -s $(BUILDDIR) $@
 
 man: man1/headmaster.1
 
@@ -63,11 +73,10 @@ testman: man1/headmaster.1
 clean:
 	-$(RMDIR) $(BUILDDIR)
 	-$(RMDIR) man1
-	-$(RM) $(EXENAME)
 ifeq ($(OCAMLMAKE),)
 	-$(RM) source
-	ocamlbuild -clean
 endif
+	-$(RM) version.ml version.rst bin
 	make -C ../lib/gmp-ocaml clean
 	make -C ../lib/unicode-ocaml clean
 

@@ -1,8 +1,5 @@
-/build
-/_build
-/headmaster
-/headmaster.exe
-/main.native
+/*.build/
+/bin
 /man1
 /source
 /version.ml

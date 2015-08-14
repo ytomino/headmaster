@@ -1,3 +1,6 @@
+HOST=$(shell gcc -dumpmachine)
+TARGET=$(HOST)
+
 ifneq ($(ComSpec),)
 EXEEXT=.exe
 RM=del
@@ -8,8 +11,10 @@ RM=rm
 RMDIR=rm -rf
 endif
 
-BUILDDIR=build
+BUILDDIR=$(TARGET).build
 SOURCEDIR=../../source
+BINLN=bin
+
 ifneq ($(HOMELOCAL),)
 PREFIX=$(HOMELOCAL)
 else
@@ -23,24 +28,26 @@ else
 HEAD=
 endif
 
-export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
+export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
 
-EXENAME=hmcpp$(EXEEXT)
+EXENAME=$(BUILDDIR)/hmcpp$(EXEEXT)
 
 GCC=gcc
 H=../c-lib.h
 HFLAGS=
 
-.PHONY: $(EXENAME) test clean
+.PHONY: $(EXENAME) all test clean
+
+all: $(EXENAME) $(BINLN)
 
 $(EXENAME): hmcpp.ml version.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -o $@ -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
 	-ln -s $(SOURCEDIR) .
-	ocamlbuild -X $(BUILDDIR) -I source hmcpp.native
-	ln -sf hmcpp.native $(EXENAME)
+	ocamlbuild -build-dir $(BUILDDIR) -X bin -I source hmcpp.native
+	cd $(BUILDDIR) && ln -sf hmcpp.native $(notdir $(EXENAME))
 endif
 
 version.ml: ../../main/version.ml
@@ -49,8 +56,11 @@ version.ml: ../../main/version.ml
 ../../main/version.ml: ../../main/version.txt $(HEAD)
 	make -C ../../main version.ml
 
+$(BINLN):
+	ln -s $(BUILDDIR) $@
+
 test: $(EXENAME)
-	./$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
+	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 $(BUILDDIR)/gmp.cmxa:
 	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
@@ -60,11 +70,10 @@ $(BUILDDIR)/unicode.cmxa:
 
 clean:
 	-$(RMDIR) $(BUILDDIR)
-	-$(RM) $(EXENAME)
 ifeq ($(OCAMLMAKE),)
 	-$(RM) source
-	ocamlbuild -clean
 endif
+	-$(RM) bin
 
 install: $(EXENAME)
 	install $(EXENAME) $(BINDIR)

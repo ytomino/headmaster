@@ -1,6 +1,3 @@
-/build
-/_build
-/test_parser
-/test_parser.exe
-/test_parser.byte
+/*.build/
+/bin
 /source

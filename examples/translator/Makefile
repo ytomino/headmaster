@@ -1,3 +1,6 @@
+HOST=$(shell gcc -dumpmachine)
+TARGET=$(HOST)
+
 ifneq ($(ComSpec),)
 EXEEXT=.exe
 RM=del
@@ -11,32 +14,38 @@ RLWRAP=rlwrap
 endif
 endif
 
-BUILDDIR=build
+BUILDDIR=$(TARGET).build
 SOURCEDIR=../../source
+BINLN=bin
 
-export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
+export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
 
 TEST=test_translator
+EXENAME=$(BUILDDIR)/$(TEST)$(EXEEXT)
 
 GCC=gcc
 H=../c-lib.h
 HFLAGS=
 
-.PHONY: $(TEST)$(EXEEXT) test interactive clean
+.PHONY: $(EXENAME) all test interactive clean
 
-$(TEST)$(EXEEXT): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
+all: $(EXENAME) $(BINLN)
+
+$(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -g -safe-string -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
+	$(OCAMLMAKE) -o $@ -g -safe-string -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
 else
 	-ln -s $(SOURCEDIR) .
-	ocamlbuild -X $(BUILDDIR) -I source -I source/ada $(TEST).byte
-	ln -sf $(TEST).byte $(TEST)$(EXEEXT)
+	ocamlbuild -build-dir $(BUILDDIR) -X bin -I source -I source/ada $(TEST).byte
+	cd $(BUILDDIR) && ln -sf $(TEST).byte $(notdir $(EXENAME))
 endif
 
-test: $(TEST)$(EXEEXT) import
-	-$(RM) import/*
-	./$(TEST)$(EXEEXT) --gcc "$(GCC)" $(HFLAGS) $(H)
+$(BINLN):
+	ln -s $(BUILDDIR) $@
+
+test: $(EXENAME) import
+	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 interactive:
 ifneq ($(OCAMLMAKE),)
@@ -53,10 +62,9 @@ import:
 	mkdir import
 
 clean:
-	-$(RMDIR) build
+	-$(RMDIR) $(BUILDDIR)
 	-$(RMDIR) import
-	-$(RM) $(TEST)$(EXEEXT)
 ifeq ($(OCAMLMAKE),)
 	-$(RM) source
-	ocamlbuild -clean
 endif
+	-$(RM) bin
