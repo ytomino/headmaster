@@ -1459,7 +1459,13 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"png_sprintf"; (* sprintf is undefined, #include <stdio.h> *)
 				"png_snprintf"; (* snprintf is undefined, #include <stdio.h> *)
 				"png_snprintf2"; (* snprintf is undefined, #include <stdio.h> *)
-				"png_snprintf6"]]]];; (* snprintf is undefined, #include <stdio.h> *)
+				"png_snprintf6"]]; (* snprintf is undefined, #include <stdio.h> *)
+		"zconf.h", [
+			`undefined_macro, [
+				"_LARGEFILE64_SOURCE"]]; (* 1.2.5 *)
+		"zlib.h", [
+			`undefined_macro, [
+				"_FILE_OFFSET_BITS"]]]];; (* 1.2.5 *)
 
 let make_is_known_error
 	(target: string)
