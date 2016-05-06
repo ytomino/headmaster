@@ -35,7 +35,7 @@ EXENAME=$(BUILDDIR)/headmaster$(EXEEXT)
 
 .PHONY: $(EXENAME) all man testman clean install
 
-all: $(EXENAME) man $(BINLN)
+all: $(EXENAME) man | $(BINLN)
 
 $(EXENAME): main.ml version.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
@@ -60,8 +60,10 @@ $(BINLN):
 
 man: man1/headmaster.1
 
-man1/headmaster.1: headmaster.1.rst version.rst
-	-mkdir man1
+man1:
+	mkdir man1
+
+man1/headmaster.1: headmaster.1.rst version.rst | man1
 	rst2man.py $< $@
 
 version.rst: version.txt $(HEAD)
