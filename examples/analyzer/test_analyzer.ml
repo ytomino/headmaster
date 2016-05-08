@@ -43,7 +43,7 @@ let error (ps: ranged_position) (m: string): unit = (
 	Printf.printf "%s:%d:%d: %s\n" (compact_filename f) l c m
 );;
 
-let env: environment = gcc_env !gcc_command `c;;
+let env: environment = gcc_env !gcc_command ~nostdinc:false ~x:`c;;
 let env = {env with
 	en_include = "." :: env.en_include;
 	en_sys_include = List.rev_append !sys_include_dirs env.en_sys_include};;

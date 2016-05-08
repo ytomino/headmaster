@@ -37,7 +37,12 @@ let bytes_of_digits (d: int): int = (
 	16
 );;
 
-let gcc_env (command: string) (lang: [< language]): environment = (
+let gcc_env
+	(gcc: string)
+	~(nostdinc: bool)
+	~(x: [< language])
+	: environment =
+(
 	let target = ref "" in
 	let sizeof_short = ref 0 in
 	let sizeof_int = ref 0 in
@@ -58,7 +63,15 @@ let gcc_env (command: string) (lang: [< language]): environment = (
 	let sys_include_path = ref [] in
 	let gnu_inline = ref false in
 	(* execute cpp *)
-	let command = command ^ " -E -dM -v -x " ^ gcc_lang lang ^ " /dev/null" in
+	let command =
+		let command = Buffer.create 256 in
+		Buffer.add_string command gcc;
+		Buffer.add_string command " -E -dM -v -x ";
+		Buffer.add_string command (gcc_lang x);
+		if nostdinc then Buffer.add_string command " -nostdinc";
+		Buffer.add_string command " /dev/null";
+		Buffer.contents command
+	in
 	let (p_in, _, p_err) as ps = Unix.open_process_full command (Unix.environment ()) in
 	let in_eof = ref false in
 	let err_eof = ref false in

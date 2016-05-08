@@ -33,6 +33,6 @@ let print_env (env: environment): unit = (
 	print_newline ();
 );;
 
-let env = gcc_env !gcc_command `c in
+let env = gcc_env !gcc_command ~nostdinc:false ~x:`c in
 print_string ("* " ^ !gcc_command ^ " *\n");
 print_env env;;

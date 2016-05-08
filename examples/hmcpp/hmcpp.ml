@@ -16,6 +16,7 @@ type options = {
 	gcc_command: string;
 	include_dirs: string list;
 	sys_include_dirs: string list;
+	nostdinc: bool;
 	lang: language;
 	usage: bool;
 	version: bool};;
@@ -26,6 +27,7 @@ let initial_options = {
 	gcc_command = "gcc";
 	include_dirs = [];
 	sys_include_dirs = [];
+	nostdinc = false;
 	lang = `c;
 	usage = false;
 	version = false};;
@@ -54,13 +56,15 @@ let option_spec =
 	case "h" ~long:"help" ~desc:"Display this information"
 		=> (fun options -> {options with usage = true});
 	case "I" ~long:"include" ~desc:"Add path to user header search path list"
-		=>? (fun arg options -> {options with
-			include_dirs = arg :: options.include_dirs}
+		=>? (fun arg options ->
+			{options with include_dirs = arg :: options.include_dirs}
 		);
 	case "isystem" ~desc:"Add path to system header search path list"
-		=>? (fun arg options -> {options with
-			sys_include_dirs = arg :: options.sys_include_dirs}
+		=>? (fun arg options ->
+			{options with sys_include_dirs = arg :: options.sys_include_dirs}
 		);
+	case "nostdinc" ~desc:"Do not search standard system include directories"
+		=> (fun options -> {options with nostdinc = true});
 	case "objc"
 		=> (fun options -> {options with lang = `objc});
 	case "objc++"
@@ -103,7 +107,8 @@ let error (ps: ranged_position) (m: string): unit = (
 	output_char stderr '\n'
 );;
 
-let env: environment = gcc_env options.gcc_command options.lang;;
+let env: environment =
+	gcc_env options.gcc_command ~nostdinc:options.nostdinc ~x:options.lang;;
 let env = {env with
 	en_sys_include = List.rev_append options.include_dirs (
 		List.rev_append options.sys_include_dirs env.en_sys_include)};;
