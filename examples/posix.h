@@ -7,22 +7,22 @@
 #include <limits.h> /* LONG_MAX for bits/posix1_lim.h */
 #endif
 #include <sys/types.h> /* before other system headers */
+#include <sys/ucontext.h> /* before signal.h */
+#include <sys/resource.h> /* before sys/time.h */
 #include <sys/time.h>
+#include <sys/uio.h>
 #include <sys/syscall.h>
 #if defined(__APPLE__)
-#include <sys/vm.h> /* before sys/vm.h */
+#include <sys/vm.h> /* before sys/sysctl.h */
+#include <sys/attr.h> /* before unistd.h */
 #endif
 #include <sys/sysctl.h>
-#include <sys/ucontext.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #if defined (__linux__)
 #include <stdlib.h> /* before sys/wait.h */
 #endif
-#include <sys/resource.h>
 #include <sys/wait.h>
-#include <pwd.h>
-#include <grp.h>
 #if defined(__linux__)
 #include <sys/stat.h> /* before fcntl.h */
 #include <fcntl.h>
@@ -31,36 +31,69 @@
 #include <sys/stat.h>
 #endif
 #include <sys/file.h>
-#include <sys/socket.h>
+#if defined(__linux__)
+#define _SYS_SOCKET_H
+#include <bits/socket.h> /* before netinet/in.h */
+#include <netinet/in.h> /* before sys/socket.h */
+#undef _SYS_SOCKET_H
+#endif
+#include <sys/socket.h> /* before sys/mount.h */
+#include <netdb.h>
+#if !defined(__linux__)
+#include <netinet/in.h> /* after netdb.h in FreeBSD */
+#endif
 #include <sys/mount.h>
+#if defined(__linux__)
+#include <sys/statfs.h>
+#endif
 #include <dirent.h>
 #include <fnmatch.h>
 #include <termios.h>
-#include <netdb.h>
-#include <netinet/in.h>
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#define _SYS_SOCKIO_H_ /* sys/sockio.h has many bad macros */
+#endif
+#include <sys/ioctl.h>
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#undef _SYS_SOCKIO_H_
+#endif
 #include <pthread.h>
 #include <dlfcn.h>
 #if !defined(__FreeBSD__) || __FreeBSD__ >= 8
 #include <spawn.h>
 #endif
+#if !defined(__linux__)
+#if defined(__FreeBSD__)
+#include <stdio.h> /* before wchar.h in FreeBSD */
+#endif
+#include <wchar.h> /* before iconv.h in FreeBSD, after malloc.h in Linux */
+#include <pwd.h>
+#include <grp.h>
+#endif
 #if defined(__APPLE__)
-#include <crt_externs.h>
+#undef _DONT_USE_CTYPE_INLINE_
 #include <malloc/malloc.h>
 #include <copyfile.h>
-#define _ARCHITECTURE_BYTE_ORDER_H_
+#include <mach/mach_time.h>
+#define _ARCHITECTURE_BYTE_ORDER_H_ /* headmaster can not translate some inline functions */
 #include <mach-o/dyld.h>
 #undef _ARCHITECTURE_BYTE_ORDER_H_
-#undef _DONT_USE_CTYPE_INLINE_
+#include <crt_externs.h> /* after mach-o/dyld.h */
 #elif defined(__FreeBSD__)
+#undef _DONT_USE_CTYPE_INLINE_
 #include <sys/param.h>
 #include <malloc_np.h>
 #include <pthread_np.h>
 #include <link.h>
-#undef _DONT_USE_CTYPE_INLINE_
 #elif defined(__linux__)
 #include <sys/statvfs.h>
-#include <malloc.h>
 #include <link.h>
+#undef __USE_GNU /* avoiding circular dependency between libio.h and stdio.h */
+#undef __USE_XOPEN2K8 /* avoiding circular dependency between wchar.h and stdio.h */
+#include <libio.h> /* before stdio.h */
+#undef _SC_NPROCESSORS_ONLN
+#include <malloc.h>
+#include <pwd.h> /* after stdio.h in Linux */
+#include <grp.h>
 #endif
 
 #pragma instance pthread_rwlock_t "PTHREAD_RWLOCK_INITIALIZER"
