@@ -367,9 +367,6 @@ struct
 			| `function_definition (_, (#Semantics.function_type as ft), _) ->
 				let `function_type prototype = ft in
 				Dependency.of_prototype ~of_argument prototype
-			| `defined_element_access (_, route) ->
-				let result_type = Semantics.tail_type_of_element_access route in
-				Dependency.of_item (result_type :> Semantics.all_item)
 			| `defined_expression (_, e_type) ->
 				Dependency.of_item (e_type :> Semantics.all_item)
 			| _ ->
@@ -471,8 +468,6 @@ struct
 			| `extern | `inline -> false (* use extern version *)
 			| `static | `static_inline | `extern_inline -> true
 			end
-		| `named (_, _, `defined_element_access _, _) ->
-			true
 		| `named (_, _, `defined_generic_expression _, _)
 		| `named (_, _, `defined_generic_statement _, _) ->
 			false (* unimplemented *)
@@ -487,21 +482,6 @@ struct
 	
 	let body_required (items: Semantics.source_item list): bool = (
 		List.exists (body_required_for_single_item ~including_expression:false) items
-	);;
-	
-	(* expression /statment *)
-	
-	let prototype_for_element_access
-		(ps: ranged_position)
-		(t: Semantics.struct_or_union_type)
-		(route: Semantics.struct_item list)
-		: Semantics.prototype =
-	(
-		let result_type = Semantics.tail_type_of_element_access route in
-		let args = [
-			`named (ps, "Object", `variable ((t :> Semantics.all_type), None), Semantics.no_attributes)]
-		in
-		`cdecl, args, `none, result_type
 	);;
 	
 	(* pretty printer *)
@@ -2882,9 +2862,14 @@ struct
 				| `named (_, tag, `opaque_union, _) -> tag, "union"
 			in
 			fprintf ff "@ --  %s renames %s %s" name kind tag
-		| `named (source_ps, _, `defined_element_access (t, route), _) ->
-			let prototype = prototype_for_element_access source_ps t route in
-			pp_subprogram_alias source_name prototype
+		| `named (_, _, `defined_element_access (_, route), _) ->
+			let route_s =
+				List.fold_left (fun route_s (field_name, _, _, _) ->
+					route_s ^ "." ^ field_name
+				) "" route
+			in
+			let route_s = omit_long_word (51 - String.length name) route_s in
+			fprintf ff "@ --  .%s renames %s (accessor)" name route_s
 		| `named (_, _, `defined_expression expr, _) ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
@@ -3176,17 +3161,14 @@ struct
 				omit_long_word (59 - String.length name) target_type_name
 			in
 			fprintf ff "@ --  subtype %s is %s;" name target_type_name
-		| `named (ps, name, `defined_element_access (t, route), _) ->
-			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			let name = ada_name_of current ps name `namespace name_mapping in
-			pp_print_space ff ();
-			pp_open_box ff indent;
-			let prototype = prototype_for_element_access ps t route in
-			ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
-			pp_print_string ff ";";
-			pp_close_box ff ();
-			pp_pragma_inline ff ~always:true name
+		| `named (_, name, `defined_element_access (_, route), _) ->
+			let route_s =
+				List.fold_left (fun route_s (field_name, _, _, _) ->
+					route_s ^ "." ^ field_name
+				) "" route
+			in
+			let route_s = omit_long_word (51 - String.length name) route_s in
+			fprintf ff "@ --  .%s renames %s (accessor)" name route_s
 		| `named (ps, name, `defined_expression expr, _) ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let name = ada_name_of current ps name `namespace name_mapping in
@@ -3339,42 +3321,6 @@ struct
 			| `extern | `inline ->
 				assert false (* does not come here *)
 			end
-		| `named (ps, name, `defined_element_access (t, route), _) ->
-			let opaque_mapping, name_mapping, anonymous_mapping = mappings in
-			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			let name = ada_name_of current ps name `namespace name_mapping in
-			pp_print_space ff ();
-			pp_open_box ff indent;
-			let prototype = prototype_for_element_access ps t route in
-			ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
-			fprintf ff " is";
-			pp_close_box ff ();
-			pp_begin ff ();
-			pp_return ff (Some (
-				begin fun ff () ->
-					pp_print_string ff "Object";
-					let (_: Semantics.all_type) =
-						List.fold_left (fun (t: Semantics.all_type) field ->
-							let items =
-								begin match t with
-								| `anonymous (_, `struct_type (_, items))
-								| `anonymous (_, `union items)
-								| `named (_, _, `struct_type (_, items), _)
-								| `named (_, _, `union items, _) ->
-									items
-								| _ ->
-									assert false (* does not come here *)
-								end
-							in
-							let field_map, _ = name_mapping_for_struct_items items in
-							let name, field_t, _, _ = field in
-							fprintf ff ".%s" (StringMap.find name field_map);
-							field_t
-						) (t :> Semantics.all_type) route
-					in
-					()
-				end));
-			pp_end ff ~label:name ()
 		| `named (_, name, `defined_generic_expression _, _) ->
 			fprintf ff "@ **** %s / unimplemented. ****\n" name;
 			assert false
