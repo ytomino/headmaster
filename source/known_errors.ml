@@ -774,7 +774,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"pthread_cleanup_pop"; (* partial statement *)
 				"pthread_cleanup_pop_restore_np"; (* partial statement *)
 				"pthread_cleanup_push"; (* partial statement *)
-				"pthread_cleanup_push_defer_np"]]; (* partial statement *)
+				"pthread_cleanup_push_defer_np"; (* partial statement *)
+				"__PTHREAD_SPINS"]]; (* partial initializer *)
 		"sched.h", [
 			`unparsible_macro, [
 				"sched_priority"]; (* __sched_priority is undefined *)
@@ -811,6 +812,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__ASMNAME"; (* # *)
 				"__ASMNAME2"; (* # *)
+				"__attribute_alloc_size__"; (* parameterized attribute with paren *)
 				"__errordecl"; (* parameterized declaration *)
 				"__extern_always_inline"; (* __inline and attributes *)
 				"__flexarr"; (* [] *)
