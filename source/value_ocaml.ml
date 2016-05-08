@@ -24,7 +24,7 @@ module Integer = struct
 				loop base s (succ i) (r * base + n)
 			)
 		) in
-		loop base (String.uppercase s) 0 0
+		loop base (String.uppercase_ascii s) 0 0
 	);;
 	let to_based_string ~base x = (
 		let rec loop base buf x = (
@@ -71,7 +71,7 @@ module Integer64 = struct
 				loop base s (Pervasives.succ i) (Int64.add (Int64.mul r base) (Int64.of_int n))
 			)
 		) in
-		loop (Int64.of_int base) (String.uppercase s) 0 0L
+		loop (Int64.of_int base) (String.uppercase_ascii s) 0 0L
 	);;
 	let to_based_string ~base x = (
 		let rec loop base buf x = (

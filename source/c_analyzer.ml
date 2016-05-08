@@ -437,7 +437,7 @@ struct
 			| `language_mapping (_, lang, mapping) ->
 				begin match lang, mapping with
 				| `some lang, `some mapping ->
-					let lang = String.uppercase (snd lang) in
+					let lang = String.uppercase_ascii (snd lang) in
 					begin match snd mapping with
 					| `type_mapping (_, typename, _, repr) ->
 						begin match typename, repr with

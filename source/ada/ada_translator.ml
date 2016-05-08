@@ -44,11 +44,13 @@ struct
 	);;
 	
 	let spec_filename (name: string): string = (
-		filename_without_ext_of_package_name (String.lowercase name) ^ ".ads"
+		filename_without_ext_of_package_name (String.lowercase_ascii name) ^
+		".ads"
 	);;
 	
 	let body_filename (name: string): string = (
-		filename_without_ext_of_package_name (String.lowercase name) ^ ".adb"
+		filename_without_ext_of_package_name (String.lowercase_ascii name) ^
+		".adb"
 	);;
 	
 	let filename_mapping = Naming.filename_mapping ada_package_name;;
@@ -84,7 +86,7 @@ struct
 	let name_mapping = Naming.name_mapping
 		~long_f:(ada_name_by_substitute ~prefix:"C_" ~postfix:"")
 		~short_f:(ada_name_by_short ~prefix:"C_" ~postfix:"")
-		~foldcase:String.uppercase
+		~foldcase:String.uppercase_ascii
 		special_name_mapping;;
 	
 	let add_name_mapping_for_arguments = Naming.add_name_mapping_for_arguments
@@ -126,9 +128,12 @@ struct
 			if s = sub then level else
 			-1
 		) in
-		if (current = package_name && not (StringSet.mem (String.uppercase name) hiding))
-			|| package_name = "" then name else
-		if StringSet.mem package_name hidden_packages
+		if package_name = ""
+			|| (current = package_name
+				&& not (StringSet.mem (String.uppercase_ascii name) hiding))
+		then (
+			name
+		) else if StringSet.mem package_name hidden_packages
 			|| (
 				let p, pr = take_package_name package_name in
 				pr <> "" && (

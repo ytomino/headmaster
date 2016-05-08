@@ -11,7 +11,7 @@ let make_mapmap (list: (string * (string * string) list) list): string StringMap
 );;
 
 let set_of_fst (xs: (string * 'a) list): StringSet.t = (
-	List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase x) r)
+	List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase_ascii x) r)
 		StringSet.empty xs
 );;
 
@@ -254,7 +254,7 @@ let ada_name_by_substitute (s: string): string = (
 );;
 
 let escape_ada_reserved_word ~(prefix: string) ~(postfix: string) (s: string): string = (
-	if StringSet.mem (String.lowercase s) ada_reserved_words then (
+	if StringSet.mem (String.lowercase_ascii s) ada_reserved_words then (
 		prefix ^ s ^ postfix
 	) else (
 		s
