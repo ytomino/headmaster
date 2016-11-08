@@ -3367,6 +3367,8 @@ struct
 			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_external_declaration xs
+			| lazy (`cons (_, `semicolon, xs)) ->
+				loop rs typedefs xs (* ignore repeated ";" *)
 			| _ ->
 				error (LazyList.hd_a xs) "syntax error.";
 				let xs = LazyList.tl xs in (* skip current token *)
