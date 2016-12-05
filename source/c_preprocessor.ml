@@ -1188,37 +1188,72 @@ struct
 						process state predefined macro_arguments xs
 					end
 				| `DEFINED when state = `in_macro_expr ->
-					begin match xs with
-					| lazy (`cons (_, `l_paren,
-						lazy (`cons (_, `ident name,
-							lazy (`cons ((_, p2), `r_paren, xs))))))
-					| lazy (`cons ((_, p2), `ident name, xs)) ->
-						let (p1, _) = ps in
+					let expr, xs =
+						begin match xs with
+						| lazy (`cons (_, `l_paren,
+							lazy (`cons (_, (`ident _ | #extended_word | #preprocessor_word | #compiler_macro as e_item),
+								lazy (`cons ((_, p2), `r_paren, xs))))))
+						| lazy (`cons ((_, p2), (`ident _ | #extended_word | #preprocessor_word | #compiler_macro as e_item), xs)) ->
+							(* defined X or defined(X) *)
+							let (p1, _) = ps in
+							Some ((p1, p2), e_item), xs
+						| lazy (`cons (_, `l_paren,
+							lazy (`cons (_, (`ident _ | #reserved_word | #preprocessor_word as e1_item),
+								lazy (`cons (ds_p, `d_sharp,
+									lazy (`cons (_, (`ident _ | #reserved_word | #preprocessor_word as e2_item),
+										lazy (`cons (ps2, `r_paren, xs)))))))))) ->
+							(* defined(X ## Y) *)
+							let to_name item = (
+								begin match item with
+								| `ident name when StringMap.mem name macro_arguments ->
+									let arg = StringMap.find name macro_arguments in
+									begin match arg with
+									| Some (None, _, (`ident name | `numeric_literal (name, _))), _ -> (* ## use unexpanded token *)
+										name
+									| None, lazy (`cons (_, (`ident name | `numeric_literal (name, _)), lazy (`nil _))) ->
+										name
+									| None, lazy (`nil _) ->
+										""
+									| _ ->
+										error ds_p two_identifiers_are_required_for_d_shap;
+										""
+									end
+								| `ident name ->
+									name
+								| #reserved_word | #preprocessor_word as w ->
+									string_of_rw_or_ppw w
+								end
+							) in
+							let name1 = to_name e1_item in
+							let name2 = to_name e2_item in
+							let merged_ps: ranged_position = merge_positions ps ps2 in
+							Some (merged_ps, (rescan error merged_ps (name1 ^ name2))), xs
+						| _ ->
+							error ps defined_syntax_error;
+							None, xs
+						end
+					in
+					begin match expr with
+					| Some (ps, `ident name) ->
 						let cond = leinteger_of_bool (StringMap.mem name predefined) in
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
-						`cons ((p1, p2), value, lazy (
+						`cons (ps, value, lazy (
 							process `in_macro_expr predefined macro_arguments xs))
-					| lazy (`cons (_, `l_paren,
-						lazy (`cons (_, (#extended_word | #preprocessor_word as w),
-							lazy (`cons ((_, p2), `r_paren, xs))))))
-					| lazy (`cons ((_, p2), (#extended_word | #preprocessor_word as w), xs)) ->
-						let (p1, _) = ps in
+					| Some (ps, (#extended_word | #preprocessor_word as w)) ->
 						let name = string_of_rw_or_ppw w in
 						let cond = leinteger_of_bool (StringMap.mem name predefined) in
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
-						`cons ((p1, p2), value, lazy (
+						`cons (ps, value, lazy (
 							process `in_macro_expr predefined macro_arguments xs))
-					| lazy (`cons (_, `l_paren,
-						lazy (`cons (_, #compiler_macro,
-							lazy (`cons ((_, p2), `r_paren, xs))))))
-					| lazy (`cons ((_, p2), #compiler_macro, xs)) ->
-						let (p1, _) = ps in
-						`cons ((p1, p2), the_one, lazy (
+					| Some (ps, #compiler_macro) ->
+						`cons (ps, the_one, lazy (
 							process `in_macro_expr predefined macro_arguments xs))
-					| _ ->
+					| Some (ps, _) ->
 						error ps defined_syntax_error;
+						process `in_macro_expr predefined macro_arguments xs
+					| None ->
 						process `in_macro_expr predefined macro_arguments xs
 					end
 				| `__has_include | `__has_include_next as token when state = `in_macro_expr ->
