@@ -266,7 +266,18 @@ struct
 					| 'L' | 'l' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						wrap (`int_literal (`signed_long_long, value)) index
+						begin match get source index with
+						| 'U' | 'u' as h ->
+							Buffer.add_char buf h;
+							let index = succ source index in
+							wrap (`int_literal (`unsigned_long_long, value)) index
+						| _ ->
+							wrap (`int_literal (`signed_long_long, value)) index
+						end
+					| 'U' | 'u' as h ->
+						Buffer.add_char buf h;
+						let index = succ source index in
+						wrap (`int_literal (`unsigned_long, value)) index
 					| _ ->
 						wrap (`int_literal (`signed_long, value)) index
 					end
