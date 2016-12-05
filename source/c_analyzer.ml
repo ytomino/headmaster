@@ -714,7 +714,7 @@ struct
 			end
 		| `noreturn _ ->
 			{attributes with at_noreturn = true}
-		| `nothrow ->
+		| `nothrow _ ->
 			{attributes with at_nothrow = true}
 		| `objc_gc (_, _, arg, _) ->
 			begin match arg with

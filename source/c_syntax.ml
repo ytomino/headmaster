@@ -74,7 +74,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `noinline of string
 		| `nonnull of string p * [`l_paren] e * argument_expression_list e * [`r_paren] e
 		| `noreturn of string
-		| `nothrow
+		| `nothrow of string
 		| `objc_gc of string p * [`l_paren] e * [`WEAK] e * [`r_paren] e
 		| `optimize of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `packed of string

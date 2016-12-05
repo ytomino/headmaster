@@ -774,8 +774,8 @@ struct
 				`some (ps, `nonnull (n, l_paren, args, r_paren)), xs
 			| "noreturn" | "__noreturn__" ->
 				`some (p4, `noreturn attr_keyword), xs
-			| "__nothrow__" ->
-				`some (p4, `nothrow), xs
+			| "nothrow" | "__nothrow__" ->
+				`some (p4, `nothrow attr_keyword), xs
 			| "objc_gc" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
