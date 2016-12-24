@@ -2871,10 +2871,9 @@ struct
 		) in
 		begin match snd x with
 		| `asm (_, volatile, _, code, in_args, _, _) ->
-			let handle_arg request (derived_types, source, rs) arg = (
-				let _, ((_, `chars_literal reg), _, expr, _) = arg in
-				begin match expr with
-				| `some expr ->
+			let handle_arg request (derived_types, source, rs) (arg: Syntax.ia_argument p) = (
+				begin match arg with
+				| _, (_, `some (_, `chars_literal reg), _, `some expr, _) ->
 					let derived_types, source, expr = handle_expression error predefined_types derived_types namespace source request expr in
 					begin match expr with
 					| Some expr ->
@@ -2882,7 +2881,7 @@ struct
 					| None ->
 						derived_types, source, rs
 					end
-				| `error ->
+				| _ ->
 					derived_types, source, rs
 				end
 			) in

@@ -922,7 +922,7 @@ struct
 		: ia_argument_list opt * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
+		| lazy (`cons (a, (`chars_literal _ | `l_bracket as it), xr)) ->
 			let rec loop (rs: ia_argument_list p) xs = (
 				begin match xs with
 				| lazy (`cons (comma_p, (`comma as comma_e), xs)) ->
@@ -943,15 +943,30 @@ struct
 	) and parse_ia_argument
 		(error: ranged_position -> string -> unit)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * [`chars_literal of string] * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * [`chars_literal of string | `l_bracket] * 'a in_t] lazy_t)
 		: ia_argument p * 'a in_t =
 	(
-		let a, xs = parse_chars_literal error typedefs xs in
-		let l_paren, xs = parse_l_paren_or_error error xs in
-		let arg, xs = parse_assignment_expression_or_error error typedefs xs in
-		let r_paren, xs = parse_r_paren_or_error error xs in
-		let `some (ps, ()) = (`some a) &^ l_paren &^ arg &^ r_paren in
-		(ps, (a, l_paren, arg, r_paren)), xs
+		begin match xs with
+		| lazy (`cons (a_p, (`chars_literal _ as a_e), xs)) ->
+			let a = a_p, a_e in
+			let l_paren, xs = parse_l_paren_or_error error xs in
+			let arg, xs = parse_assignment_expression_or_error error typedefs xs in
+			let r_paren, xs = parse_r_paren_or_error error xs in
+			let `some (ps, ()) = (`some a) &^ l_paren &^ arg &^ r_paren in
+			(ps, (`none, `some a, l_paren, arg, r_paren)), xs
+		| lazy (`cons (l_bracket_p, (`l_bracket as l_bracket_e), xs)) ->
+			let l_bracket = l_bracket_p, l_bracket_e in
+			let sym, xs = parse_identifier_or_error error xs in
+			let r_bracket, xs = parse_r_bracket_or_error error xs in
+			let `some (symbol_p, ()) = (`some l_bracket) &^ sym &^ r_bracket in
+			let symbol = symbol_p, (l_bracket, sym, r_bracket) in
+			let a, xs = parse_chars_literal_or_error error typedefs xs in
+			let l_paren, xs = parse_l_paren_or_error error xs in
+			let arg, xs = parse_assignment_expression_or_error error typedefs xs in
+			let r_paren, xs = parse_r_paren_or_error error xs in
+			let `some (ps, ()) = (`some symbol) &^ a &^ l_paren &^ arg &^ r_paren in
+			(ps, (`some symbol, a, l_paren, arg, r_paren)), xs
+		end
 	) and parse_ia_argument_or_error
 		(error: ranged_position -> string -> unit)
 		(typedefs: typedef_set)
@@ -959,7 +974,7 @@ struct
 		: ia_argument e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
+		| lazy (`cons (a, (`chars_literal _ | `l_bracket as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_ia_argument error typedefs xs in
 			`some r, xs
