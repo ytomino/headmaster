@@ -1094,6 +1094,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"_putc_nolock"; (* accessing element of untyped parameter *)
 				"_putchar_nolock"]]; (* accessing element of untyped parameter *)
 		"stdlib.h", [
+			`push_defined_macro, [
+				"_rotl";
+				"_rotr"];
 			`uninterpretable_macro, [
 				"_PTR_LD"]]; (* accessing element of untyped parameter *)
 		"stralign.h", [
@@ -1114,6 +1117,8 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"LPOINETPROTOCOLSINKSTACKABLE"]]; (* bug? misspell of LPIINTERNETPROTOCOLSINKStackable *)
 		"winbase.h", [
+			`undefined_macro, [
+				"NTDDI_WIN7SP1"];
 			`push_defined_macro, [
 				"GetEnvironmentStrings"];
 			`unparsible_macro, [
