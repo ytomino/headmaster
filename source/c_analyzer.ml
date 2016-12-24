@@ -2908,7 +2908,7 @@ struct
 							| `some (_, (_, `some destructive)) ->
 								let destructive = Traversing.fold_right_iarl (fun (_, `chars_literal reg) rs -> reg :: rs) destructive [] in
 								derived_types, source, in_args, out_args, destructive
-							| `some (_, (_, `error)) | `none ->
+							| `some (_, (_, `none)) | `none ->
 								derived_types, source, in_args, out_args, []
 							end
 						| `none ->

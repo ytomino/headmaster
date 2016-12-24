@@ -104,7 +104,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `cons of ia_argument_list p * [`comma] p * ia_argument e]
 	and ia_symbolic = [`l_bracket] p * identifier e * [`r_bracket] e
 	and ia_argument = ia_symbolic opt * [`chars_literal of string] e * [`l_paren] e * assignment_expression e * [`r_paren] e
-	and ia_destructive = [`colon] p * ia_register_list e
+	and ia_destructive = [`colon] p * ia_register_list opt
 	and ia_register_list = [
 		| `nil of [`chars_literal of string]
 		| `cons of ia_register_list p * [`comma] p * [`chars_literal of string] e]

@@ -991,17 +991,17 @@ struct
 		begin match xs with
 		| lazy (`cons (colon_p, (`colon as colon_e), xs)) ->
 			let colon = colon_p, colon_e in
-			let regs, xs = parse_ia_register_list_or_error error typedefs xs in
+			let regs, xs = parse_ia_register_list_option error typedefs xs in
 			let `some (ps, ()) = (`some colon) &^ regs in
 			`some (ps, (colon, regs)), xs
 		| _ ->
 			`none, xs
 		end
-	) and parse_ia_register_list_or_error
+	) and parse_ia_register_list_option
 		(error: ranged_position -> string -> unit)
 		(typedefs: typedef_set)
 		(xs: 'a in_t)
-		: ia_register_list e * 'a in_t =
+		: ia_register_list opt * 'a in_t =
 	(
 		let rec loop rs xs = (
 			begin match xs with
@@ -1020,8 +1020,7 @@ struct
 			let (first_p, first_e), xs = parse_chars_literal error typedefs xs in
 			loop (first_p, `nil first_e) xs
 		| _ ->
-			error (LazyList.hd_a xs) "inline-assembler destructive-registers syntax error.";
-			`error, xs
+			`none, xs
 		end
 	)
 	(* A.2.1 Expressions *)
