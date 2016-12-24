@@ -864,9 +864,13 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 	"*-w64-mingw*", [
 		"apiset.h", [
 			`unparsible_macro, [
+				"API_SET_HELPER_NAME"; (* ApiSetHelp is undefined *)
+				"API_SET_LEGACY_OVERRIDE_DEF"; (* XImplementation is undefined *)
 				"API_SET_LIBRARY"; (* partial parameterized declaration ??? *)
 				"API_SET_OVERRIDE_DEF"; (* partial parameterized declaration ??? *)
-				"API_SET_PRIVATE"]]; (* partial parameterized declaration ??? *)
+				"API_SET_PRIVATE"; (* partial parameterized declaration ??? *)
+				"API_SET_SCHEMA_NAME"; (* ApiSetSchema is undefined *)
+				"API_SET_STRING_U_X"]]; (* ## *)
 		"bcrypt.h", [
 			`unparsible_macro, [
 				"BCRYPT_INIT_AUTH_MODE_INFO"; (* multi-statements *)
@@ -876,6 +880,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"commdlg.h", [
 			`unparsible_macro, [
 				"CDSIZEOF_STRUCT"]]; (* parameterized field *)
+		"crtdefs.h", [
+			`unparsible_macro, [
+				"_CRT_SECURE_CPP_NOTHROW"]]; (* C++ throw *)
 		"ctype.h", [
 			`unparsible_macro, [
 				"_chvalidchk_l"; (* access element of opaque type *)
@@ -905,7 +912,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"REFGUID"; (* declaration specifier and pointer *)
 				"REFIID"; (* declaration specifier and pointer *)
 				"DEFINE_GUID"; (* parameterized declaration *)
-				"DEFINE_OLEGUID"]]; (* parameterized declaration *)
+				"DEFINE_OLEGUID"]; (* parameterized declaration *)
+			`uninterpretable_macro, [
+				"InlineIsEqualGUID"]]; (* accessing element of untyped parameter *)
 		"malloc.h", [
 			`unparsible_macro, [
 				"_malloca"; (* for the case of RC_INVOKED is defined *)
@@ -938,10 +947,16 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__MINGW_TYPEDEF_AW"; (* parameterized declaration *)
 				"__MINGW_TYPEDEF_UAW"]]; (* parameterized declaration *)
+		"minwinbase.h", [
+			`unparsible_macro, [
+				"EXCEPTION_POSSIBLE_DEADLOCK"]]; (* STATUS_POSSIBLE_DEADLOCK is undefined *)
 		"mstcpip.h", [
 			`redefine_macro, [
 				"SOCKET_SETTINGS_ALLOW_INSECURE";
 				"SOCKET_SETTINGS_GUARANTEE_ENCRYPTION"]];
+		"namedpipeapi.h", [
+			`unparsible_macro, [
+				"GetNamedPipeClientComputerName"]]; (* GetNamedPipeClientComputerNameW is undefined *)
 		"ntsecapi.h", [
 			`uninterpretable_macro, [
 				"MSV1_0_NTLM3_MIN_NT_RESPONSE_LENGTH"]]; (* use RTL_SIZEOF_THROUGH_FIELD *)
@@ -1143,9 +1158,13 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`push_defined_macro, [
 				"GetEnvironmentStrings"];
 			`unparsible_macro, [
-				"EXCEPTION_POSSIBLE_DEADLOCK"]; (* STATUS_POSSIBLE_DEADLOCK is undefined *)
+				"EXCEPTION_POSSIBLE_DEADLOCK"; (* STATUS_POSSIBLE_DEADLOCK is undefined *)
+				"MICROSOFT_WINDOWS_WINBASE_H_DEFINE_INTERLOCKED_CPLUSPLUS_OVERLOADS"]; (* "defined" used out of preprocessor *)
 			`uninterpretable_macro, [
 				"HasOverlappedIoCompleted"]]; (* accessing element of untyped parameter *)
+		"wincrypt.h", [
+			`unparsible_macro, [
+				"_CRYPT32WTEXT"]]; (* ## *)
 		"winerror.h", [
 			`unparsible_macro, [
 				"GetScode"; (* SCODE is undefined on WIN32_LEAN_AND_MEAN mode *)
@@ -1154,6 +1173,15 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"DiskGeometryGetDetect"; (* accessing element of untyped parameter *)
 				"DiskGeometryGetPartition"]]; (* accessing element of untyped parameter *)
+		"winnls.h", [
+			`uninterpretable_macro, [
+				"FILEMUIINFO_GET_CULTURE";
+				"FILEMUIINFO_GET_MAIN_TYPEID"; (* accessing element of untyped parameter *)
+				"FILEMUIINFO_GET_MAIN_TYPEIDS"; (* accessing element of untyped parameter *)
+				"FILEMUIINFO_GET_MAIN_TYPENAMES"; (* accessing element of untyped parameter *)
+				"FILEMUIINFO_GET_MUI_TYPEID"; (* accessing element of untyped parameter *)
+				"FILEMUIINFO_GET_MUI_TYPEIDS"; (* accessing element of untyped parameter *)
+				"FILEMUIINFO_GET_MUI_TYPENAMES"]]; (* accessing element of untyped parameter *)
 		"winnt.h", [
 			`undefined_macro, [
 				"_MSC_VER"];
