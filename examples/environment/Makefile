@@ -28,7 +28,7 @@ GCC=gcc
 
 .PHONY: $(EXENAME) all test interactive clean
 
-all: $(EXENAME) | $(BINLN)
+all: $(EXENAME) $(BINLN)
 
 $(EXENAME): $(TEST).ml
 ifneq ($(OCAMLMAKE),)
@@ -40,7 +40,7 @@ else
 endif
 
 $(BINLN):
-	ln -s $(BUILDDIR) $@
+	ln -sfh $(BUILDDIR) $@
 
 test: $(EXENAME)
 	$(EXENAME) --gcc "$(GCC)"

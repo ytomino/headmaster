@@ -39,9 +39,9 @@ HFLAGS=
 
 .PHONY: $(EXENAME) all test clean
 
-all: $(EXENAME) | $(BINLN)
+all: $(EXENAME) $(BINLN)
 
-$(EXENAME): hmcpp.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa | version.ml
+$(EXENAME): hmcpp.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa ../../main/version.ml version.ml
 ifneq ($(OCAMLMAKE),)
 	$(OCAMLMAKE) -o $@ -O -g -safe-string -w Aer-48 -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
 else
@@ -50,14 +50,14 @@ else
 	cd $(BUILDDIR) && ln -sf hmcpp.native $(notdir $(EXENAME))
 endif
 
-version.ml: ../../main/version.ml
+version.ml: | ../../main/version.ml
 	ln -s $< $@
 
 ../../main/version.ml: ../../main/version.txt $(HEAD)
 	make -C ../../main version.ml
 
 $(BINLN):
-	ln -s $(BUILDDIR) $@
+	ln -sfh $(BUILDDIR) $@
 
 test: $(EXENAME)
 	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)

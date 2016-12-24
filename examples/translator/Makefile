@@ -30,7 +30,7 @@ HFLAGS=
 
 .PHONY: $(EXENAME) all test interactive clean
 
-all: $(EXENAME) | $(BINLN)
+all: $(EXENAME) $(BINLN)
 
 $(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
 ifneq ($(OCAMLMAKE),)
@@ -42,7 +42,7 @@ else
 endif
 
 $(BINLN):
-	ln -s $(BUILDDIR) $@
+	ln -sfh $(BUILDDIR) $@
 
 test: $(EXENAME) | import
 	-rm import/*

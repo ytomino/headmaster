@@ -35,7 +35,7 @@ EXENAME=$(BUILDDIR)/headmaster$(EXEEXT)
 
 .PHONY: $(EXENAME) all man testman clean install
 
-all: $(EXENAME) man | $(BINLN)
+all: $(EXENAME) man $(BINLN)
 
 $(EXENAME): main.ml version.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa
 ifneq ($(OCAMLMAKE),)
@@ -56,7 +56,7 @@ $(BUILDDIR)/unicode.cmxa:
 	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
 
 $(BINLN):
-	ln -s $(BUILDDIR) $@
+	ln -sfh $(BUILDDIR) $@
 
 man: man1/headmaster.1
 
