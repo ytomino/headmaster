@@ -16,17 +16,16 @@
 #undef LONG
 #undef SHORT
 #undef NT_INCLUDED
-#define __INTRIN_H_
+#define _X86INTRIN_H_INCLUDED
 #include <winnt.h>
-#undef __INTRIN_H_
-#include <winsock2.h> /* before windows.h */
-/* #pragma for Ada "winsock2.h" monolithic_include "psdk_inc/_wsa_errnos.h" */
-#undef h_errno
+#undef _X86INTRIN_H_INCLUDED
+#define NOWINBASEINTERLOCK
 #include <windows.h>
+#undef NOWINBASEINTERLOCK
+#include <winsock2.h>
+/* #pragma for Ada "winsock2.h" monolithic_include "psdk_inc/_wsa_errnos.h" */
+#include <winternl.h> /* before wincrypt.h */
 #include <wincrypt.h>
 #include <ws2tcpip.h>
-#undef _S6_un /* false positive warning of gcc */
-#undef s6_addr /* use _S6_un */
-#include <winternl.h>
 
 #undef WIN32_LEAN_AND_MEAN

@@ -862,6 +862,11 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"WCOREDUMP"]]]; (* using __WAIT_INT *)
 	"*-w64-mingw*", [
+		"apiset.h", [
+			`unparsible_macro, [
+				"API_SET_LIBRARY"; (* partial parameterized declaration ??? *)
+				"API_SET_OVERRIDE_DEF"; (* partial parameterized declaration ??? *)
+				"API_SET_PRIVATE"]]; (* partial parameterized declaration ??? *)
 		"bcrypt.h", [
 			`unparsible_macro, [
 				"BCRYPT_INIT_AUTH_MODE_INFO"; (* multi-statements *)
@@ -1037,6 +1042,22 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__buildbittesti"; (* parameterized declaration *)
 				"__buildstos"]]; (* parameterized declaration *)
+		"psdk_inc/intrin-impl.h", [
+			`unparsible_macro, [
+				"__buildbitscan"; (* parameterized declaration *)
+				"__buildbittest"; (* parameterized declaration *)
+				"__buildbittestand"; (* parameterized declaration *)
+				"__buildbittesti"; (* parameterized declaration *)
+				"__build_inport"; (* parameterized declaration *)
+				"__build_inportstring"; (* parameterized declaration *)
+				"__buildmov"; (* parameterized declaration *)
+				"__build_outport"; (* parameterized declaration *)
+				"__build_outportstring"; (* parameterized declaration *)
+				"__build_readcr"; (* parameterized declaration *)
+				"__buildreadseg"; (* parameterized declaration *)
+				"__buildstos"; (* parameterized declaration *)
+				"__build_writecr"; (* parameterized declaration *)
+				"__buildwriteseg"]]; (* parameterized declaration *)
 		"psdk_inc/_ip_types.h", [
 			`unparsible_macro, [
 				"h_addr"]]; (* alias of element and dereferencing *)
@@ -1162,6 +1183,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"PreFetchCacheLine"; (* _mm_prefetch *)
 				"PrefetchForWrite"; (* _m_prefetchw *)
 				"PROBE_ALIGNMENT"; (* new struct in macro *)
+				"PROBE_ALIGNMENT32"; (* new struct in macro *)
 				"ReadMxCsr"; (* _mm_getcsr *)
 				"ReadForWriteAccess"; (* _m_prefetchw *)
 				"ReadTimeStampCounter"; (* __rdtsc *)
