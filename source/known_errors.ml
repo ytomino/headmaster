@@ -43,6 +43,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 	"*-apple-darwin*", [
 		"AvailabilityMacros.h", [
 			`undefined_macro, [
+				"__AVAILABILITY_MACROS_USES_AVAILABILITY"; (* darwin13 *)
 				"__i386__"; (* darwin10 *)
 				"__ppc64__"]]; (* darwin10 *)
 		"complex.h", [
