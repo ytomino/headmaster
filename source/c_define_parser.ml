@@ -28,15 +28,15 @@ type known_errors_of_define_parser = [known_errors_of_preprocessor
 	| `unparsible_macro];;
 
 module type DefineParserType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module LexicalElement: LexicalElementType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	module Preprocessor: PreprocessorType
 		with module Literals := Literals
-		with module LexicalElement := LexicalElement;;
+		with module LexicalElement := LexicalElement
 	module Syntax: SyntaxType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
+		with module Literals := Literals
+	module Language: LanguageType
 	
 	type define = [
 		| `operator of iso646_operator
@@ -45,7 +45,7 @@ module type DefineParserType = sig
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
 		| `function_stmt of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
-		| `any of string];;
+		| `any of string]
 	
 	val parse_define:
 		(ranged_position -> string -> unit) ->
@@ -53,14 +53,14 @@ module type DefineParserType = sig
 		TypedefSet.t ->
 		Preprocessor.define_map ->
 		Preprocessor.define_item ->
-		define Syntax.p;;
+		define Syntax.p
 	
 	val map:
 		(ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
 		TypedefSet.t ->
 		Preprocessor.define_map ->
-		define Syntax.p StringMap.t;;
+		define Syntax.p StringMap.t
 	
 end;;
 

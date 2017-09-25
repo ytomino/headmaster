@@ -58,11 +58,11 @@ type iso646_operator = [
 (* representation *)
 
 module type LiteralsType = sig
-	module Integer: IntegerType;;
-	module Real: RealType;;
-	module WideString: StringType with type elm = Int32.t;;
-	val integer_of_real: Real.t -> Integer.t;;
-	val real_of_integer: Integer.t -> Real.t;;
-	val round_to_float: Real.t -> Real.t;;
-	val round_to_double: Real.t -> Real.t;;
+	module Integer: IntegerType
+	module Real: RealType
+	module WideString: StringType with type elm = Int32.t
+	val integer_of_real: Real.t -> Integer.t
+	val real_of_integer: Integer.t -> Real.t
+	val round_to_float: Real.t -> Real.t
+	val round_to_double: Real.t -> Real.t
 end;;

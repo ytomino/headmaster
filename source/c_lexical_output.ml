@@ -2,11 +2,11 @@ open C_lexical;;
 open C_literals;;
 
 module type LexicalOutputType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module LexicalElement: LexicalElementType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	
-	val print_element: (string -> unit) -> LexicalElement.t -> unit;;
+	val print_element: (string -> unit) -> LexicalElement.t -> unit
 	
 end;;
 

@@ -2,9 +2,9 @@ open C_lexical;;
 open C_literals;;
 
 module type NumericScannerType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module LexicalElement: LexicalElementType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	
 	val scan_numeric_literal:
 		(('p * 'p) -> string -> unit) ->
@@ -15,7 +15,7 @@ module type NumericScannerType = sig
 		('s -> 'i -> 'i) ->
 		('s) ->
 		'i ->
-		[> `numeric_literal of string * LexicalElement.numeric_literal] * 'i;;
+		[> `numeric_literal of string * LexicalElement.numeric_literal] * 'i
 	
 end;;
 

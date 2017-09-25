@@ -9,12 +9,12 @@ type known_errors_of_define_analzer = [
 	| `uninterpretable_macro];;
 
 module type DefineAnalyzerType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module Syntax: SyntaxType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	module Semantics: SemanticsType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
+		with module Literals := Literals
+	module Language: LanguageType
 	
 	type define = [
 		| `operator of iso646_operator
@@ -23,7 +23,7 @@ module type DefineAnalyzerType = sig
 		| `initializer_t of Syntax.initializer_t
 		| `function_expr of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.expression
 		| `function_stmt of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
-		| `any of string];;
+		| `any of string]
 	
 	val handle_define:
 		(ranged_position -> string -> unit) ->
@@ -35,7 +35,7 @@ module type DefineAnalyzerType = sig
 		Semantics.mapping_options ->
 		string ->
 		define Syntax.p ->
-		Semantics.derived_types * Semantics.source_item list;;
+		Semantics.derived_types * Semantics.source_item list
 	
 	val map:
 		(ranged_position -> string -> unit) ->
@@ -46,7 +46,7 @@ module type DefineAnalyzerType = sig
 		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
 		Semantics.mapping_options ->
 		(define Syntax.p) StringMap.t ->
-		Semantics.derived_types * (Semantics.source_item list * Semantics.extra_info) StringMap.t;;
+		Semantics.derived_types * (Semantics.source_item list * Semantics.extra_info) StringMap.t
 	
 end;;
 

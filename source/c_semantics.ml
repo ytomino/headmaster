@@ -424,19 +424,19 @@ module SemanticsThin (Literals: LiteralsType) = struct
 end;;
 
 module type SemanticsThinType = sig
-	module Literals: LiteralsType;;
-	include module type of SemanticsThin (Literals);;
+	module Literals: LiteralsType
+	include module type of SemanticsThin (Literals)
 end;;
 
 module type SemanticsType = sig
-	module Literals: LiteralsType;;
-	open Literals;;
+	module Literals: LiteralsType
+	open Literals
 	include SemanticsThinType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	
 	(* attributes *)
 	
-	val no_attributes: attributes;;
+	val no_attributes: attributes
 	
 	(* typedef *)
 	
@@ -444,89 +444,89 @@ module type SemanticsType = sig
 		?stop_on_language_typedef: bool ->
 		?stop_on_anonymous: bool ->
 		all_type ->
-		all_type;;
+		all_type
 	
-	val remove_type_qualifiers: all_type -> not_qualified_type;;
+	val remove_type_qualifiers: all_type -> not_qualified_type
 	
 	(* predefined types *)
 	
-	val find_predefined_type_with_size: [< predefined_type] -> predefined_types -> [> predefined_type] * int;;
-	val find_predefined_type: [< predefined_type] -> predefined_types -> [> predefined_type];;
-	val find_ptrdiff_t: predefined_types -> [> [> typedef_var] with_name];;
-	val find_size_t: predefined_types -> [> [> typedef_var] with_name];;
-	val find_wchar_t: predefined_types -> [> predefined_type | [> typedef_var] with_name];;
+	val find_predefined_type_with_size: [< predefined_type] -> predefined_types -> [> predefined_type] * int
+	val find_predefined_type: [< predefined_type] -> predefined_types -> [> predefined_type]
+	val find_ptrdiff_t: predefined_types -> [> [> typedef_var] with_name]
+	val find_size_t: predefined_types -> [> [> typedef_var] with_name]
+	val find_wchar_t: predefined_types -> [> predefined_type | [> typedef_var] with_name]
 	
-	val unsigned_of_signed: signed_int_prec -> [> unsigned_int_prec];;
+	val unsigned_of_signed: signed_int_prec -> [> unsigned_int_prec]
 	
 	(* derived types *)
 	
-	val is_derived_type: (all_type -> bool) -> derived_type -> bool;;
+	val is_derived_type: (all_type -> bool) -> derived_type -> bool
 	
-	val is_pointer: all_type -> bool;;
-	val dereference: all_type -> all_type option;;
+	val is_pointer: all_type -> bool
+	val dereference: all_type -> all_type option
 	
 	val fold_derived_types: ('a -> derived_type -> 'a) ->
-		'a -> all_type -> derived_types -> 'a;;
+		'a -> all_type -> derived_types -> 'a
 	
 	(* namespace *)
 	
-	val empty_namespace: namespace;;
+	val empty_namespace: namespace
 	
 	(* mapping from opaque type to body *)
 	
-	val empty_opaque_mapping: opaque_mapping;;
+	val empty_opaque_mapping: opaque_mapping
 	
-	val opaque_to_full: opaque_type -> opaque_mapping -> non_opaque_type option;;
-	val full_to_opaque: non_opaque_type -> opaque_mapping -> opaque_type;;
+	val opaque_to_full: opaque_type -> opaque_mapping -> non_opaque_type option
+	val full_to_opaque: non_opaque_type -> opaque_mapping -> opaque_type
 	
-	val is_opaque: opaque_type -> opaque_mapping -> bool;;
+	val is_opaque: opaque_type -> opaque_mapping -> bool
 	
 	(* struct / union *)
 	
-	val find_field: string -> struct_item list -> struct_item option;;
+	val find_field: string -> struct_item list -> struct_item option
 	
-	val is_bitfield: struct_item list -> bool;;
+	val is_bitfield: struct_item list -> bool
 	
-	val tail_type_of_element_access: struct_item list -> all_type;;
+	val tail_type_of_element_access: struct_item list -> all_type
 	
 	(* generic types *)
 	
-	val is_generic_type: all_type -> bool;;
+	val is_generic_type: all_type -> bool
 	
 	(* expression / statement *)
 	
-	val is_static_expression: expression -> bool;;
+	val is_static_expression: expression -> bool
 	
-	val integer_of_expression: expression -> (int_prec * Integer.t) option;;
+	val integer_of_expression: expression -> (int_prec * Integer.t) option
 	
 	val exists_in_expression: (statement -> bool) -> (expression -> bool) ->
-		expression -> bool;;
+		expression -> bool
 	val exists_in_statement: (statement -> bool) -> (expression -> bool) ->
-		statement -> bool;;
+		statement -> bool
 	
 	val fold_expression: ('a -> statement -> 'a) -> ('a -> expression -> 'a) ->
-		'a -> expression -> 'a;;
+		'a -> expression -> 'a
 	val fold_statement: ('a -> statement -> 'a) -> ('a -> expression -> 'a) ->
-		'a -> statement -> 'a;;
+		'a -> statement -> 'a
 	
 	(* source info *)
 	
-	val no_extra_info: extra_info;;
-	val empty_source: source_item list * extra_info;;
+	val no_extra_info: extra_info
+	val empty_source: source_item list * extra_info
 	
 	(* mapping options *)
 	
-	val no_language_mapping: language_mapping;;
-	val no_mapping_options: mapping_options;;
+	val no_language_mapping: language_mapping
+	val no_mapping_options: mapping_options
 	
-	val find_langauge_mapping: string -> mapping_options -> language_mapping;;
+	val find_langauge_mapping: string -> mapping_options -> language_mapping
 	
 	val finds_mapped_type:
-		all_type -> language_mapping -> (all_type * string) list;;
+		all_type -> language_mapping -> (all_type * string) list
 	val finds_mapped_type_of_unconstrained_array:
-		not_qualified_type -> language_mapping -> (all_type * string) list;;
+		not_qualified_type -> language_mapping -> (all_type * string) list
 	
-	val mem_mapped_type: all_type -> language_mapping -> bool;;
+	val mem_mapped_type: all_type -> language_mapping -> bool
 	
 end;;
 

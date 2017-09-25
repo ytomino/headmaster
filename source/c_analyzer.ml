@@ -3352,11 +3352,11 @@ struct
 end;;
 
 module type AnalyzerType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module Syntax: SyntaxType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	module Semantics: SemanticsType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
-	include module type of Analyzer (Literals) (Syntax) (Semantics) (Language);;
+		with module Literals := Literals
+	module Language: LanguageType
+	include module type of Analyzer (Literals) (Syntax) (Semantics) (Language)
 end;;

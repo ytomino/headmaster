@@ -13,11 +13,11 @@ type known_errors_of_preprocessor = [
 	| `push_defined_macro];;
 
 module type PreprocessorType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module LexicalElement: LexicalElementType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	
-	type include_from = [`user | `system];;
+	type include_from = [`user | `system]
 	
 	type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
 	and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
@@ -30,15 +30,15 @@ module type PreprocessorType = sig
 		df_has_arguments: bool;
 		df_args: (ranged_position * string) list;
 		df_varargs: bool;
-		df_contents: in_t};;
+		df_contents: in_t}
 	
 	type macro_argument_map = macro_argument_item StringMap.t
 	and macro_argument_item = ((ranged_position * LexicalElement.t) option * ranged_position * concatable_element) option * out_t
 	and concatable_element = [reserved_word | preprocessor_word
 		| `ident of string
-		| `numeric_literal of string * LexicalElement.numeric_literal];;
+		| `numeric_literal of string * LexicalElement.numeric_literal]
 	
-	type state_t = [`top_level | `in_ifdef of int | `in_macro_expr];;
+	type state_t = [`top_level | `in_ifdef of int | `in_macro_expr]
 	
 	val preprocess:
 		(ranged_position -> string -> unit) ->
@@ -48,7 +48,7 @@ module type PreprocessorType = sig
 		define_map ->
 		macro_argument_map ->
 		in_t ->
-		out_prim;;
+		out_prim
 	
 end;;
 

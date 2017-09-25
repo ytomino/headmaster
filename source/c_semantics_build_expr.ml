@@ -8,27 +8,27 @@ let rec list_make n e =
 	e :: list_make (n - 1) e
 
 module type ExpressingType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module Semantics: SemanticsType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
+		with module Literals := Literals
+	module Language: LanguageType
 	module Typing: TypingType
 		with module Literals := Literals
 		with module Semantics := Semantics
-		with module Language := Language;;
+		with module Language := Language
 	
 	(* typing for unary operators *)
 	
 	val real_type_of:
 		Semantics.all_type ->
 		Semantics.predefined_types ->
-		Semantics.all_type option;;
+		Semantics.all_type option
 	
 	(* typing for binary operators *)
 	
-	val int_prec: int_prec -> int_prec -> int_prec;;
-	val float_prec: float_prec -> float_prec -> float_prec;;
-	val real_prec: real_prec -> real_prec -> real_prec;;
+	val int_prec: int_prec -> int_prec -> int_prec
+	val float_prec: float_prec -> float_prec -> float_prec
+	val real_prec: real_prec -> real_prec -> real_prec
 	
 	val result_type_of:
 		[`add | `sub | `multiplicative | `bit | `conditional] ->
@@ -36,24 +36,24 @@ module type ExpressingType = sig
 		Semantics.all_type ->
 		Semantics.predefined_types ->
 		Semantics.derived_types ->
-		Semantics.all_type option * Semantics.derived_types;;
+		Semantics.all_type option * Semantics.derived_types
 	
 	(* build new expressions *)
 	
 	val implicit_conv:
 		Semantics.all_type ->
 		Semantics.expression ->
-		Semantics.expression;;
+		Semantics.expression
 	
 	val int_conv:
 		Semantics.predefined_types ->
 		int_prec ->
 		Literals.Integer.t ->
-		Semantics.expression;;
+		Semantics.expression
 	
 	val zero:
 		Semantics.all_type ->
-		Semantics.expression option;;
+		Semantics.expression option
 	
 end;;
 

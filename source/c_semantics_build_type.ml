@@ -25,79 +25,79 @@ type language_typedef =
 	[`typedef_wchar_t of int_prec];;
 
 module type TypingType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module Semantics: SemanticsType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
+		with module Literals := Literals
+	module Language: LanguageType
 	
 	(* type compatibility *)
 	
-	type compatibility = [`just | `typedef | `compatible | `error];;
+	type compatibility = [`just | `typedef | `compatible | `error]
 	
 	val type_ABI_compatibility:
 		dest:Semantics.all_type ->
 		source:Semantics.all_type ->
-		compatibility;;
+		compatibility
 	val prototype_ABI_compatibility:
 		dest:Semantics.prototype ->
 		source:Semantics.prototype ->
-		compatibility;;
+		compatibility
 	
 	(* predefined types *)
 	
 	val ready_predefined_types:
 		sizeof ->
 		language_typedef ->
-		Semantics.predefined_types;;
+		Semantics.predefined_types
 	
 	val select_bit_width_int:
 		Semantics.predefined_types ->
 		int ->
 		int_prec ->
 		int_prec ->
-		[> int_prec] * [> `none | `not_had of int];;
+		[> int_prec] * [> `none | `not_had of int]
 	
 	val apply_bit_width_mode:
 		Semantics.predefined_types ->
 		bit_width_mode ->
 		Semantics.all_type ->
-		Semantics.all_type * [> `none | `not_had of int | `not_int];;
+		Semantics.all_type * [> `none | `not_had of int | `not_int]
 	
 	(* derived types *)
 	
 	val find_const_type:
 		Semantics.all_type ->
 		Semantics.derived_types ->
-		[> Semantics.const_type] * Semantics.derived_types;;
+		[> Semantics.const_type] * Semantics.derived_types
 	val find_volatile_type:
 		Semantics.all_type ->
 		Semantics.derived_types ->
-		[> Semantics.volatile_type | `const of [> Semantics.volatile_type]] * Semantics.derived_types;;
+		[> Semantics.volatile_type | `const of [> Semantics.volatile_type]] * Semantics.derived_types
 	val find_pointer_type:
 		Semantics.all_type ->
 		Semantics.derived_types ->
-		[> Semantics.pointer_type] * Semantics.derived_types;;
+		[> Semantics.pointer_type] * Semantics.derived_types
 	val find_block_pointer_type:
 		Semantics.function_type ->
 		Semantics.derived_types ->
-		[> `block_pointer of Semantics.function_type] * Semantics.derived_types;;
+		[> `block_pointer of Semantics.function_type] * Semantics.derived_types
 	val find_array_type:
 		Literals.Integer.t option ->
 		Semantics.all_type ->
 		Semantics.derived_types ->
 		[> Semantics.array_type | `volatile of [> Semantics.array_type]
-			| `const of [> Semantics.array_type | `volatile of [> Semantics.array_type]]] * Semantics.derived_types;;
+			| `const of [> Semantics.array_type | `volatile of [> Semantics.array_type]]] * Semantics.derived_types
 	val find_restrict_type:
 		Semantics.pointer_type ->
 		Semantics.derived_types ->
-		[> Semantics.restrict_type] * Semantics.derived_types;;
+		[> Semantics.restrict_type] * Semantics.derived_types
 	
 	(* anonymous types *)
 	
 	val find_function_type:
 		Semantics.prototype ->
 		Semantics.source_item list ->
-		[> Semantics.function_type] * Semantics.source_item list;;
+		[> Semantics.function_type] * Semantics.source_item list
 	
 	(* named types *)
 	
@@ -105,66 +105,66 @@ module type TypingType = sig
 		(ranged_position * [`ident of string]) ->
 		Semantics.namespace ->
 		Semantics.source_item list ->
-		[> [> Semantics.opaquable_enum_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list;;
+		[> [> Semantics.opaquable_enum_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list
 	
 	val find_struct:
 		(ranged_position * [`ident of string]) ->
 		Semantics.namespace ->
 		Semantics.source_item list ->
-		[> [> Semantics.opaquable_struct_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list;;
+		[> [> Semantics.opaquable_struct_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list
 	
 	val find_union:
 		(ranged_position * [`ident of string]) ->
 		Semantics.namespace ->
 		Semantics.source_item list ->
-		[> [> Semantics.opaquable_union_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list;;
+		[> [> Semantics.opaquable_union_var] Semantics.with_name] * Semantics.namespace * Semantics.source_item list
 	
 	val find_enum_by_element:
 		Semantics.enum_item ->
 		Semantics.predefined_types ->
 		Semantics.namespace ->
-		Semantics.all_type;;
+		Semantics.all_type
 	
 	val resolve_opaque:
 		Semantics.namespace ->
 		([> [> Semantics.opaque_type_var | Semantics.non_opaque_type_var] Semantics.with_name] as 'a) ->
-		'a;;
+		'a
 	
 	(* sizeof / alignof *)
 	
 	val sizeof_predefined_type:
 		[< Semantics.predefined_type] ->
 		Semantics.predefined_types ->
-		int;;
+		int
 	val sizeof:
 		Semantics.all_type ->
 		Semantics.predefined_types ->
-		int option;;
+		int option
 	
 	val alignof_predefined_type:
 		[< Semantics.predefined_type] ->
 		Semantics.predefined_types ->
-		int;;
+		int
 	val alignof:
 		Semantics.all_type ->
 		Semantics.predefined_types ->
-		int option;;
+		int option
 	val alignof_struct:
 		Semantics.struct_item list ->
 		Semantics.predefined_types ->
-		int option;;
+		int option
 	
 	(* bit-field *)
 	
-	type bitfield_or_not = [`empty | `is_bitfield | `is_not_bitfield | `mixed];;
+	type bitfield_or_not = [`empty | `is_bitfield | `is_not_bitfield | `mixed]
 	
 	val is_bitfield:
 		Semantics.struct_item list ->
-		bitfield_or_not;;
+		bitfield_or_not
 	val fill_bitfield:
 		Semantics.predefined_types ->
 		Semantics.struct_item list ->
-		Semantics.struct_item list * [`error of Semantics.struct_item | `none];;
+		Semantics.struct_item list * [`error of Semantics.struct_item | `none]
 	
 end;;
 

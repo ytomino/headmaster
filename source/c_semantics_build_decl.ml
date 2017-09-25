@@ -4,18 +4,18 @@ open C_semantics_build_type;;
 open C_version;;
 
 module type DeclaringType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module Semantics: SemanticsType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
+		with module Literals := Literals
+	module Language: LanguageType
 	module Typing: TypingType
 		with module Literals := Literals
 		with module Semantics := Semantics
-		with module Language := Language;;
+		with module Language := Language
 	
 	(* attributes *)
 	
-	val attributes_of_alignment: Semantics.alignment -> Semantics.attributes;;
+	val attributes_of_alignment: Semantics.alignment -> Semantics.attributes
 	
 	(* built-in functions *)
 	
@@ -26,14 +26,14 @@ module type DeclaringType = sig
 		(string *
 			[< Semantics.predefined_type | `pointer of [< Semantics.predefined_type | `const of [< Semantics.predefined_type]] | `size_t] list *
 			[< Semantics.predefined_type | `pointer of [< Semantics.predefined_type | `const of [< Semantics.predefined_type]] | `size_t]) list ->
-		Semantics.derived_types * Semantics.namespace * (Semantics.source_item list * Semantics.extra_info);;
+		Semantics.derived_types * Semantics.namespace * (Semantics.source_item list * Semantics.extra_info)
 	
 	(* functions *)
 	
 	val is_function_conflicted:
 		Semantics.function_item ->
 		Semantics.namespace ->
-		[`error | `same | `precedence of Semantics.function_item | `none];;
+		[`error | `same | `precedence of Semantics.function_item | `none]
 	
 end;;
 

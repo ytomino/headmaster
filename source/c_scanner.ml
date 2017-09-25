@@ -5,26 +5,26 @@ open C_version;;
 open Position;;
 
 module type ScannerType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module LexicalElement: LexicalElementType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
+		with module Literals := Literals
+	module Language: LanguageType
 	
 	module NumericScanner: NumericScannerType
 		with module Literals := Literals
-		with module LexicalElement := LexicalElement;;
+		with module LexicalElement := LexicalElement
 	
-	type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim;;
-	type t = (ranged_position, LexicalElement.t, unit) LazyList.t;;
+	type prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
+	type t = (ranged_position, LexicalElement.t, unit) LazyList.t
 	
-	val make_nil: ranged_position -> prim;;
+	val make_nil: ranged_position -> prim
 	
 	val scan:
 		(ranged_position -> string -> unit) ->
 		(unit -> unit) ->
 		TextFile.t ->
 		(ranged_position -> prim) ->
-		prim;;
+		prim
 	
 end;;
 

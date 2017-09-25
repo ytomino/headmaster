@@ -457,6 +457,6 @@ module Syntax (Literals: LiteralsType) = struct
 end;;
 
 module type SyntaxType = sig
-	module Literals: LiteralsType;;
-	include module type of Syntax (Literals);;
+	module Literals: LiteralsType
+	include module type of Syntax (Literals)
 end;;

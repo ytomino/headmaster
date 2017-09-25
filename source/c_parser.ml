@@ -3498,11 +3498,11 @@ struct
 end;;
 
 module type ParserType = sig
-	module Literals: LiteralsType;;
+	module Literals: LiteralsType
 	module LexicalElement: LexicalElementType
-		with module Literals := Literals;;
+		with module Literals := Literals
 	module Syntax: SyntaxType
-		with module Literals := Literals;;
-	module Language: LanguageType;;
-	include module type of Parser (Literals) (LexicalElement) (Syntax) (Language);;
+		with module Literals := Literals
+	module Language: LanguageType
+	include module type of Parser (Literals) (LexicalElement) (Syntax) (Language)
 end;;
