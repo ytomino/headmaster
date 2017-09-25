@@ -133,8 +133,7 @@ struct
 					if h = '.' then (
 						Buffer.add_char buf h;
 						let index = succ source index in
-						(* reading only 10-based digits becaue 'E' means exponent *)
-						read_digits_to_buffer ~base:10 buf index
+						read_digits_to_buffer ~base buf index
 					) else (
 						index
 					)
@@ -143,27 +142,35 @@ struct
 					let image = Buffer.sub buf start (Buffer.length buf - start) in
 					Real.of_based_string ~base image
 				in
-				if base <> 10
-					&& Real.compare mantissa Real.one <> 0 (* accept 0x1.0p2047 *)
-				then (
-					let p2 = prev_position source index in
-					error (p1, p2) not_10_based_float_literal
-				);
 				let value, index =
 					begin match get source index with
-					| 'e' | 'E' as h ->
-						Buffer.add_char buf h;
-						let index = succ source index in
+					| 'e' | 'E' | 'p' | 'P' as h ->
+						let index =
+							begin match h with
+							| 'e' | 'E' ->
+								Buffer.add_char buf h;
+								succ source index
+							| _ ->
+								index
+							end
+						in
+						let e_base, index =
+							begin match get source index with
+							| 'p' | 'P' as h ->
+								Buffer.add_char buf h;
+								2, succ source index
+							| _ ->
+								10, index
+							end
+						in
 						let exponent, index = read_exponent buf index in
-						let value = Real.scale mantissa ~base:10 ~exponent in
-						value, index
-					| 'p' | 'P' as h ->
-						Buffer.add_char buf h;
-						let index = succ source index in
-						let exponent, index = read_exponent buf index in
-						let value = Real.scale mantissa ~base:2 ~exponent in
+						let value = Real.scale mantissa ~base:e_base ~exponent in
 						value, index
 					| _ ->
+						if base <> 10 then (
+							let p2 = prev_position source index in
+							error (p1, p2) not_10_based_float_literal
+						);
 						mantissa, index
 					end
 				in

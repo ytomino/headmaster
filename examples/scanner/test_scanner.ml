@@ -74,6 +74,13 @@ module Test (L: LiteralsType) = struct
 			true
 		| _ -> false);;
 	assert (
+		match lazy (Sc.scan error ignore (read "0x1.fffffep+127f") Sc.make_nil) with
+		| lazy (`cons (_, `numeric_literal ("0x1.fffffep+127f", `float_literal (`float, _)),
+			lazy (`nil _))) ->
+			print_string "o";
+			true
+		| _ -> false);;
+	assert (
 		match lazy (Sc.scan error ignore (read "\"a\\nb\"") Sc.make_nil) with
 		| lazy (`cons (_, `chars_literal "a\nb",
 			lazy (`nil _))) ->
