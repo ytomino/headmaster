@@ -737,7 +737,7 @@ struct
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `format_arg (n, l_paren, arg, r_paren)), xs
 			| "__gnu_inline__" ->
 				`some (p4, `gnu_inline), xs
@@ -770,7 +770,7 @@ struct
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let args, xs = parse_argument_expression_list_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ args &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ args &^ r_paren in
 				`some (ps, `nonnull (n, l_paren, args, r_paren)), xs
 			| "noreturn" | "__noreturn__" ->
 				`some (p4, `noreturn attr_keyword), xs
@@ -788,7 +788,7 @@ struct
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `optimize (n, l_paren, arg, r_paren)), xs
 			| "packed" | "__packed__" ->
 				`some (p4, `packed attr_keyword), xs
@@ -799,7 +799,7 @@ struct
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `regparm (n, l_paren, arg, r_paren)), xs
 			| "__returns_twice__" ->
 				`some (p4, `returns_twice), xs
@@ -808,7 +808,7 @@ struct
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `section (n, l_paren, arg, r_paren)), xs
 			| "selectany" ->
 				`some (p4, `selectany), xs
@@ -831,14 +831,14 @@ struct
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `vector_size (n, l_paren, arg, r_paren)), xs
 			| "visibility" | "__visibility__" ->
 				let n = p4, attr_keyword in
 				let l_paren, xs = parse_l_paren_or_error error xs in
 				let arg, xs = parse_assignment_expression_or_error error typedefs xs in
 				let r_paren, xs = parse_r_paren_or_error error xs in
-				let `some (ps, ()) = (`some n) &^l_paren &^ arg &^ r_paren in
+				let `some (ps, ()) = (`some n) &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `visibility (n, l_paren, arg, r_paren)), xs
 			| "warn_unused_result" | "__warn_unused_result__" ->
 				`some (p4, `warn_unused_result attr_keyword), xs
@@ -1086,13 +1086,12 @@ struct
 		) in
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
-			lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr))))
-		->
+			lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr)))) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_initializer (lp_p, lp_e) xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
-			lazy (`cons (a, (`ident name as it), xr)))) when TypedefSet.mem name typedefs
-		->
+			lazy (`cons (a, (`ident name as it), xr))))
+			when TypedefSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_initializer (lp_p, lp_e) xs
 		| lazy (`cons (b_p, (`__builtin_va_arg as b_e), xs)) ->
@@ -1160,13 +1159,12 @@ struct
 								`__builtin_object_size (fn, `error, `error, `error, `error, `error)
 							end
 						| fn_p, `ident (
-							  "__builtin_isgreater"
+							"__builtin_isgreater"
 							| "__builtin_isgreaterequal"
 							| "__builtin_isless"
 							| "__builtin_islessequal"
 							| "__builtin_islessgreater"
-							| "__builtin_isunordered" as funcname)
-						->
+							| "__builtin_isunordered" as funcname) ->
 							let builtin: builtin_comparator =
 								match funcname with
 								| "__builtin_isgreater" -> `__builtin_isgreater
@@ -1297,13 +1295,12 @@ struct
 			) in
 			begin match xs with
 			| lazy (`cons (lp_p, (`l_paren as lp_e),
-				lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr))))
-			->
+				lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr)))) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_sizeof_type sizeof (lp_p, lp_e) xs
 			| lazy (`cons (lp_p, (`l_paren as lp_e),
-				lazy (`cons (a, (`ident name as it), xr)))) when TypedefSet.mem name typedefs
-			->
+				lazy (`cons (a, (`ident name as it), xr))))
+				when TypedefSet.mem name typedefs ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_sizeof_type sizeof (lp_p, lp_e) xs
 			| _ ->
@@ -1364,13 +1361,12 @@ struct
 		) in
 		begin match xs with
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
-			lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr))))
-		->
+			lazy (`cons (a, (#FirstSet.firstset_of_type_name' as it), xr)))) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_cast (lp_p, lp_e) xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
-			lazy (`cons (a, (`ident name as it), xr)))) when TypedefSet.mem name typedefs
-		->
+			lazy (`cons (a, (`ident name as it), xr))))
+			when TypedefSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_cast (lp_p, lp_e) xs
 		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
@@ -3092,8 +3088,7 @@ struct
 			let (asm_p, asm_e), xs = parse_inline_assembler ~semicolon_need error typedefs xs in
 			(asm_p, `asm asm_e), xs
 		| lazy (`cons (id_p, (#FirstSet.identifier as id_e),
-			lazy (`cons (colon_p, (`colon as colon_e), xs))))
-		->
+			lazy (`cons (colon_p, (`colon as colon_e), xs)))) ->
 			let id = id_p, id_e in
 			let colon = colon_p, colon_e in
 			let stmt, xs = parse_statement_or_error ~semicolon_need error typedefs xs in

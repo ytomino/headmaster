@@ -67,7 +67,7 @@ module Test (L: LiteralsType) = struct
 			lazy (`cons (_, `numeric_literal ("010U", `int_literal (`unsigned_int, v2)),
 				lazy (`cons (_, `numeric_literal ("0xfeL", `int_literal (`signed_long, v3)),
 					lazy (`nil _)))))))
-				when v1 = L.Integer.of_int 123
+			when v1 = L.Integer.of_int 123
 				&& v2 = L.Integer.of_int 0o10
 				&& v3 = L.Integer.of_int 0xfe ->
 			print_string "o";

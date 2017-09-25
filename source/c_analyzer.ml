@@ -40,8 +40,8 @@ struct
 		"storage-class-specifier was duplicated.";;
 	let bad_combination_of_storage_class_specifier_and_function_specifier: string =
 		"the combination of storage-class-specifier and function-specifier is bad.";;
-	let attribute_requires_string_literal(s: string): string =
-		 ("__attribute__((" ^ s ^ "(...))) requires string literal.");;
+	let attribute_requires_string_literal (s: string): string =
+		("__attribute__((" ^ s ^ "(...))) requires string literal.");;
 	let function_with_initializer =
 		"the function can not have any initializer.";;
 	let unimplemented (line: int) =
@@ -493,7 +493,7 @@ struct
 															begin match Listtbl.assqs func x.lm_overload with
 															| (_, es) :: _ ->
 																if List.exists (fun e ->
-																	Typing.prototype_ABI_compatibility ~dest:prototype ~source:e = `just
+																		Typing.prototype_ABI_compatibility ~dest:prototype ~source:e = `just
 																	) es
 																then (
 																	x.lm_overload (* already exists *)
@@ -1377,7 +1377,8 @@ struct
 						| `cast (`cast (_, orig_t as expr), _), _
 						| `cast (`explicit_conv (_, orig_t as expr), _), _
 						| `cast (`implicit_conv (_, orig_t as expr), _), _
-						| `cast ((`int_literal _), orig_t as expr), _ when resolve_typedef orig_t == int_t ->
+						| `cast ((`int_literal _), orig_t as expr), _
+							when resolve_typedef orig_t == int_t ->
 							(* folding (int)(T)(int)expr to (int)expr *)
 							begin match integer_of_expression expr with
 							| Some (_, expr) ->
@@ -2022,7 +2023,7 @@ struct
 					derived_types, namespace, ((item :> source_item) :: source), Some (item :> all_type)
 				| `none ->
 					if attributes <> default_attributes then (
-						error (fst x) "attribute(s) could not be accepted by the anonymous struct/union.";
+						error (fst x) "attribute(s) could not be accepted by the anonymous struct/union."
 					);
 					let t: struct_or_union_type_var =
 						begin match snd sou with
@@ -2035,7 +2036,7 @@ struct
 				end
 			| `error ->
 				derived_types, namespace, source, None
-			end;
+			end
 		| `no_body (sou, id) ->
 			begin match id with
 			| `some id ->
@@ -2589,7 +2590,7 @@ struct
 		| `some decl ->
 			let derived_types, namespace, source, (t, attributes) = handle_abstract_declarator error predefined_types derived_types namespace source base_type no_attributes decl in
 			if attributes <> no_attributes then (
-				error (fst x) "attribute(s) cound not be accepted in expression.";
+				error (fst x) "attribute(s) cound not be accepted in expression."
 			);
 			if namespace != old_namespace then (
 				error (fst x) "new type-specifier was found in expression."
@@ -2777,7 +2778,7 @@ struct
 					end
 				in
 				`array (size, (t :> not_qualified_type))
-			| `named(ps, _, `generic_type, _) ->
+			| `named (ps, _, `generic_type, _) ->
 				`array (-1, `named (ps, "", `generic_type, no_attributes))
 			| t ->
 				error (fst x) "bad type for initializer-list.";
@@ -3242,7 +3243,7 @@ struct
 				| `function_type prototype as t ->
 					let st: function_definition_specifier =
 						begin match storage_class with
-						| `extern  | `static | `inline | `static_inline | `extern_inline as storage_class ->
+						| `extern | `static | `inline | `static_inline | `extern_inline as storage_class ->
 							storage_class
 						| `none ->
 							`extern

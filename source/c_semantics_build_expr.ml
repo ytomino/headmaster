@@ -156,10 +156,12 @@ struct
 		| (`imaginary prec1 | `complex prec1), (`imaginary prec2 | `complex prec2) ->
 			Some (find_predefined_type (`complex (float_prec prec1 prec2)) predefined_types), derived_types
 		| (`pointer _ as ptr_t), #int_prec
-		| (`restrict (`pointer _) as ptr_t), #int_prec when op = `add || op = `sub ->
+		| (`restrict (`pointer _) as ptr_t), #int_prec
+			when op = `add || op = `sub ->
 			Some ptr_t, derived_types
 		| #int_prec, (`pointer _ as ptr_t)
-		| #int_prec, (`restrict (`pointer _) as ptr_t) when op = `add ->
+		| #int_prec, (`restrict (`pointer _) as ptr_t)
+			when op = `add ->
 			Some ptr_t, derived_types
 		| `array (_, elm_t), #int_prec when op = `add || op = `sub ->
 			let ptr_t, derived_types = Typing.find_pointer_type (elm_t :> all_type) derived_types in
@@ -180,7 +182,8 @@ struct
 		| _, `const t2 ->
 			result_type_of op t1 (t2 :> all_type) predefined_types derived_types
 		| (`void as void_t), _
-		| _, (`void as void_t) when op = `conditional ->
+		| _, (`void as void_t)
+			when op = `conditional ->
 			Some void_t, derived_types
 		| (`named (_, _, `generic_type, _) as g_t), _
 		| _, (`named (_, _, `generic_type, _) as g_t) ->
@@ -199,7 +202,7 @@ struct
 			| #predefined_numeric_type as t2 when t1 != t2 ->
 				`implicit_conv expr, t
 			| `named (_, _, `typedef _, _) ->
-				`implicit_conv expr, t  (* language typedef -> predefined type *)
+				`implicit_conv expr, t (* language typedef -> predefined type *)
 			| `pointer _ ->
 				`implicit_conv expr, t (* pointer as bool *)
 			| _ ->
@@ -214,21 +217,27 @@ struct
 		| `pointer (`void as t1) | `pointer (`const `void as t1) ->
 			begin match expr with
 			| _, `pointer t2 when t2 != t1 ->
-				`implicit_conv expr, t (*  any type * -> void * *)
+				`implicit_conv expr, t (* any type * -> void * *)
 			| _ ->
 				expr
 			end
 		| `pointer x ->
 			begin match expr with
-			| `chars_literal _, `array (_, `char) when (match x with `const `char -> true | _ -> false) ->
+			| `chars_literal _, `array (_, `char)
+				when (
+					match x with
+					| `const `char -> true
+					| _ -> false) ->
 				`implicit_conv expr, t (* char array literal -> char const * *)
 			| `cast (`int_literal (_, n), _ as z), t2
 			| `cast (`implicit_conv (`int_literal (_, n), _ as z), #int_prec), t2 (* (any type * )(void * )(implicit ptrdiff_t)0 *)
 			| `explicit_conv (`int_literal (_, n), _ as z), t2
 			| `implicit_conv (`int_literal (_, n), _ as z), t2
-				when (match resolve_typedef t2 with `pointer `void -> true | _ -> false)
-					&& Integer.compare n Integer.zero = 0
-			->
+				when (
+						match resolve_typedef t2 with
+						| `pointer `void -> true
+						| _ -> false)
+					&& Integer.compare n Integer.zero = 0 ->
 				`implicit_conv z, t (* (void * )NULL -> (any type * )NULL *)
 			| `int_literal (_, n), _
 			| `implicit_conv (`int_literal (_, n), _), #int_prec

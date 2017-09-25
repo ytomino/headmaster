@@ -83,8 +83,10 @@ let parse
 			let rec apply_loop xs options = (
 				begin match xs with
 				| {short; long; has_argument; apply} :: _
-					when (match lors with `short -> short = opt | `long -> long = opt)
-				->
+					when (
+						match lors with
+						| `short -> short = opt
+						| `long -> long = opt) ->
 					if has_argument then (
 						begin match param with
 						| Some param ->

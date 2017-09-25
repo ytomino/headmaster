@@ -67,12 +67,13 @@ let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	S.scan error ignore file
 );;
 
-let read_include_file = make_include (fun name ->
-	print_string "* ";
-	print_string name;
-	print_newline ();
-	read_file name
-) env;;
+let read_include_file =
+	make_include (fun name ->
+		print_string "* ";
+		print_string name;
+		print_newline ();
+		read_file name
+	) env;;
 
 let print_defined: PP.define_map -> unit = (
 	StringMap.iter (fun _ item ->
@@ -112,7 +113,7 @@ let predefined_tokens: PP.in_t =
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
 	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
-let predefined = (
+let predefined =
 	begin match predefined_tokens' with
 	| lazy (`nil (_, predefined)) ->
 		predefined
@@ -120,8 +121,7 @@ let predefined = (
 		print_string "extra token(s) exists in predefined!!\n";
 		let `nil (_, predefined) = LazyList.find_nil xr in
 		predefined
-	end
-);;
+	end;;
 
 print_defined predefined;;
 

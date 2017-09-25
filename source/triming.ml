@@ -29,15 +29,11 @@ let take_word
 	(s: string): string * string =
 (
 	let is_not_separator c = not (is_separator c) in
-	trim_left
-		(fun s start len ->
-			let hd = String.sub s 0 start in
-			let tl = trim_left String.sub is_separator s start (start + len) in
-			hd, tl)
-		is_not_separator
-		s
-		0
-		(String.length s)
+	trim_left (fun s start len ->
+		let hd = String.sub s 0 start in
+		let tl = trim_left String.sub is_separator s start (start + len) in
+		hd, tl
+	) is_not_separator s 0 (String.length s)
 );;
 
 let is_space (c: char): bool = (

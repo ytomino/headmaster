@@ -587,16 +587,14 @@ struct
 		begin match t with
 		| `named (ps, _, `typedef t, _)
 			when (
-				not stop_on_language_typedef
-				|| let (filename, _, _, _), _ = ps in not (is_special_filename filename))
+					not stop_on_language_typedef
+					|| let (filename, _, _, _), _ = ps in not (is_special_filename filename))
 				&& (
-				not stop_on_anonymous
-				||
-					match t with
-					| `anonymous _ | `function_type _
-					| `pointer (`anonymous _ | `function_type _) -> false
-					| _ -> true)
-		->
+					not stop_on_anonymous || (
+						match t with
+						| `anonymous _ | `function_type _
+						| `pointer (`anonymous _ | `function_type _) -> false
+						| _ -> true)) ->
 			resolve_typedef ~stop_on_language_typedef t
 		| _ ->
 			t
@@ -653,12 +651,13 @@ struct
 	);;
 	
 	let unsigned_of_signed (p: signed_int_prec): [> unsigned_int_prec] = (
-		match p with
+		begin match p with
 		| `signed_char -> `unsigned_char
 		| `signed_short -> `unsigned_short
 		| `signed_int -> `unsigned_int
 		| `signed_long -> `unsigned_long
 		| `signed_long_long -> `unsigned_long_long
+		end
 	);;
 	
 	(* derived types *)
@@ -768,7 +767,7 @@ struct
 		(opaque_mapping: opaque_mapping)
 		: non_opaque_type option =
 	(
-		try
+		begin try
 			let `named (_, name, kind, _) = item in
 			let oe, os, ou = opaque_mapping in
 			Some (
@@ -776,7 +775,9 @@ struct
 				| `opaque_enum -> (snd (StringMap.find name oe) :> non_opaque_type)
 				| `opaque_struct -> (snd (StringMap.find name os) :> non_opaque_type)
 				| `opaque_union -> (snd (StringMap.find name ou) :> non_opaque_type))
-		with Not_found -> None
+		with Not_found ->
+			None
+		end
 	);;
 	
 	let full_to_opaque
@@ -953,8 +954,8 @@ struct
 		| `statement stmts ->
 			List.exists (exists_in_statement stmt_f expr_f) stmts
 		| `function_call (f, args) ->
-			exists_in_expression stmt_f expr_f f ||
-			List.exists (exists_in_expression stmt_f expr_f) args
+			exists_in_expression stmt_f expr_f f
+			|| List.exists (exists_in_expression stmt_f expr_f) args
 		| `va_arg expr
 		| `element_access (expr, _) | `dereference expr
 		| `post_increment expr | `post_decrement expr
@@ -967,11 +968,10 @@ struct
 		| `sizeof_formal_type _ ->
 			false
 		| `compound (exprs, zero) ->
-			List.exists (exists_in_expression stmt_f expr_f) exprs ||
-			begin match zero with
-			| Some zero -> exists_in_expression stmt_f expr_f zero
-			| None -> false
-			end
+			List.exists (exists_in_expression stmt_f expr_f) exprs || (
+				match zero with
+				| Some zero -> exists_in_expression stmt_f expr_f zero
+				| None -> false)
 		| `mul (expr1, expr2) | `div (expr1, expr2) | `rem (expr1, expr2)
 		| `add (expr1, expr2) | `sub (expr1, expr2)
 		| `l_shift (expr1, expr2) | `r_shift (expr1, expr2)
@@ -981,12 +981,12 @@ struct
 		| `bit_and (expr1, expr2) | `bit_xor (expr1, expr2) | `bit_or (expr1, expr2)
 		| `and_then (expr1, expr2) | `or_else (expr1, expr2)
 		| `assign (expr1, _, expr2) | `comma (expr1, expr2) ->
-			exists_in_expression stmt_f expr_f expr1 ||
-			exists_in_expression stmt_f expr_f expr2
+			exists_in_expression stmt_f expr_f expr1
+			|| exists_in_expression stmt_f expr_f expr2
 		| `cond (expr1, expr2, expr3) ->
-			exists_in_expression stmt_f expr_f expr1 ||
-			exists_in_expression stmt_f expr_f expr2 ||
-			exists_in_expression stmt_f expr_f expr3
+			exists_in_expression stmt_f expr_f expr1
+			|| exists_in_expression stmt_f expr_f expr2
+			|| exists_in_expression stmt_f expr_f expr3
 		end
 	) and exists_in_statement
 		(stmt_f: statement -> bool)
@@ -997,31 +997,40 @@ struct
 		if stmt_f stmt then true else
 		begin match stmt with
 		| `asm (_, _, out_args, in_args, _) ->
-			List.exists (fun (_, expr) -> exists_in_expression stmt_f expr_f expr) out_args ||
-			List.exists (fun (_, expr) -> exists_in_expression stmt_f expr_f expr) in_args
+			List.exists (fun (_, expr) -> exists_in_expression stmt_f expr_f expr) out_args
+			|| List.exists (fun (_, expr) -> exists_in_expression stmt_f expr_f expr) in_args
 		| `local (_, stmts) | `compound stmts | `label (_, stmts) ->
 			List.exists (exists_in_statement stmt_f expr_f) stmts
 		| `while_loop (expr, stmts) | `do_loop (stmts, expr) ->
-			exists_in_expression stmt_f expr_f expr ||
-			List.exists (exists_in_statement stmt_f expr_f) stmts
+			exists_in_expression stmt_f expr_f expr
+			|| List.exists (exists_in_statement stmt_f expr_f) stmts
 		| `for_loop (expr1, expr2, expr3, stmts) ->
-			(match expr1 with Some expr1 -> exists_in_expression stmt_f expr_f expr1 | None -> false) ||
-			(match expr2 with Some expr2 -> exists_in_expression stmt_f expr_f expr2 | None -> false) ||
-			(match expr3 with Some expr3 -> exists_in_expression stmt_f expr_f expr3 | None -> false) ||
-			List.exists (exists_in_statement stmt_f expr_f) stmts
+			(match expr1 with
+				| Some expr1 -> exists_in_expression stmt_f expr_f expr1
+				| None -> false)
+			|| (match expr2 with
+				| Some expr2 -> exists_in_expression stmt_f expr_f expr2
+				| None -> false)
+			|| (match expr3 with
+				| Some expr3 -> exists_in_expression stmt_f expr_f expr3
+				| None -> false)
+			|| List.exists (exists_in_statement stmt_f expr_f) stmts
 		| `if_statement (expr, stmts1, stmts2) ->
-			exists_in_expression stmt_f expr_f expr ||
-			List.exists (exists_in_statement stmt_f expr_f) stmts1 ||
-			List.exists (exists_in_statement stmt_f expr_f) stmts2
+			exists_in_expression stmt_f expr_f expr
+			|| List.exists (exists_in_statement stmt_f expr_f) stmts1
+			|| List.exists (exists_in_statement stmt_f expr_f) stmts2
 		| `va_start (expr1, expr2) | `va_copy (expr1, expr2) ->
-			exists_in_expression stmt_f expr_f expr1 ||
-			exists_in_expression stmt_f expr_f expr2
+			exists_in_expression stmt_f expr_f expr1
+			|| exists_in_expression stmt_f expr_f expr2
 		| `va_end expr | `expression expr ->
 			exists_in_expression stmt_f expr_f expr
 		| `goto _ | `break _ ->
 			false
 		| `return (expr, _) ->
-			(match expr with Some expr -> exists_in_expression stmt_f expr_f expr | None -> false)
+			begin match expr with
+			| Some expr -> exists_in_expression stmt_f expr_f expr
+			| None -> false
+			end
 		end
 	);;
 	

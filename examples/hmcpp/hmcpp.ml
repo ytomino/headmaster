@@ -150,7 +150,7 @@ let predefined_tokens: PP.in_t =
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
 	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
-let predefined = (
+let predefined =
 	begin match predefined_tokens' with
 	| lazy (`nil (_, predefined)) ->
 		predefined
@@ -158,8 +158,7 @@ let predefined = (
 		print_string "extra token(s) exists in predefined!!\n";
 		let `nil (_, predefined) = LazyList.find_nil xr in
 		predefined
-	end
-);;
+	end;;
 
 let source_tokens: PP.in_t = lazy (read_file options.source_filename S.make_nil);;
 let source_tokens': PP.out_t = lazy (PP.preprocess

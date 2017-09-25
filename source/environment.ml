@@ -76,13 +76,14 @@ let find_include
 	) in
 	begin match from with
 	| `user ->
-		begin try find_loop (next_filter env.en_include) with
-		| Not_found ->
+		begin try
+			find_loop (next_filter env.en_include)
+		with Not_found ->
 			begin try
 				if next then raise Not_found else
 				find_loop (current_dir :: [])
-			with
-			| Not_found -> find_loop (next_filter env.en_sys_include)
+			with Not_found ->
+				find_loop (next_filter env.en_sys_include)
 			end
 		end
 	| `system ->

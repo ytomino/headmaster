@@ -128,15 +128,14 @@ struct
 			if s = sub then level else
 			-1
 		) in
-		if package_name = ""
-			|| (current = package_name
-				&& not (StringSet.mem (String.uppercase_ascii name) hiding))
+		if package_name = "" || (
+			current = package_name
+			&& not (StringSet.mem (String.uppercase_ascii name) hiding))
 		then (
 			name
-		) else if StringSet.mem package_name hidden_packages
-			|| (
-				let p, pr = take_package_name package_name in
-				pr <> "" && (
+		) else if StringSet.mem package_name hidden_packages || (
+			let p, pr = take_package_name package_name in
+			pr <> "" && (
 				let c = contained p current 0 in
 				c > 0 || (c = 0 && fst (take_package_name pr) = p)))
 		then (
@@ -231,11 +230,11 @@ struct
 		begin match Semantics.resolve_typedef pointed_t with
 		| `void | `volatile `void | `const (`volatile `void) | `function_type _ ->
 			None
-		| `const pointed_t when (
-			match Semantics.resolve_typedef (pointed_t :> Semantics.all_type) with
-			| `void -> true
-			| _ -> false)
-		->
+		| `const pointed_t
+			when (
+				match Semantics.resolve_typedef (pointed_t :> Semantics.all_type) with
+				| `void -> true
+				| _ -> false) ->
 			None
 		| _ ->
 			Some pointed_t
@@ -383,8 +382,7 @@ struct
 			| `function_type _ ->
 				r
 			| `named (_, _, #Semantics.named_type_var, _) as t
-				when Semantics.mem_mapped_type t language_mapping
-			->
+				when Semantics.mem_mapped_type t language_mapping ->
 				r
 			| `named (_, ("ptrdiff_t" | "size_t" | "wchar_t"), `typedef _, _) ->
 				r
@@ -392,7 +390,7 @@ struct
 				begin match separated_forward_opaque_to_full opaque opaque_mapping with
 				| Some full ->
 					let `named (f_ps, _, _, _) = full in
-					let package_name = "C." ^  Naming.module_of f_ps name_mapping in
+					let package_name = "C." ^ Naming.module_of f_ps name_mapping in
 					add_to_with_caluse_map package_name (`limited_with, `none, `none) r
 				| None ->
 					r
@@ -401,8 +399,7 @@ struct
 				List.fold_left (fun r d ->
 					begin match d with
 					| `named (opaque_ps, _, #Semantics.opaque_type_var, _) as opaque
-						when separated_forward_opaque_to_full opaque opaque_mapping <> None
-					->
+						when separated_forward_opaque_to_full opaque opaque_mapping <> None ->
 						let full =
 							match Semantics.opaque_to_full opaque opaque_mapping with
 							| Some full -> full
@@ -421,8 +418,7 @@ struct
 							add_to_with_caluse_map package_name (`limited_with, `none, `none) r
 						)
 					| `named (full_ps, _, #Semantics.non_opaque_type_var, _) as full
-						when separated_full_to_forward_opaque full opaque_mapping <> None
-					->
+						when separated_full_to_forward_opaque full opaque_mapping <> None ->
 						let package_name = Naming.module_of full_ps name_mapping in
 						if package_name = current then r else
 						(* reference full from opaque headers or other headers via opaque type *)
@@ -478,8 +474,10 @@ struct
 			false (* unimplemented *)
 		| `named (_, _, `defined_expression expr, _) ->
 			including_expression || (
-				not (Semantics.is_static_expression expr)
-				&& (match expr with `ref_object _, _ -> false | _ -> true))
+				not (Semantics.is_static_expression expr) && (
+					match expr with
+					| `ref_object _, _ -> false
+					| _ -> true))
 		| _ ->
 			false
 		end
@@ -506,9 +504,9 @@ struct
 	(
 		begin match item with
 		| `void ->
-			pp_print_string ff "void";
+			pp_print_string ff "void"
 		| `bool ->
-			pp_print_string ff "bool";
+			pp_print_string ff "bool"
 		| #int_prec as p ->
 			pp_print_string ff (ada_name_of_int_prec p)
 		| #float_prec as p ->
@@ -570,8 +568,11 @@ struct
 				| `function_type _ as t ->
 					let (package_name, unique_key) =
 						let _, _, anonymous_mapping = mappings in
-						try List.assq t anonymous_mapping with
-						| Not_found -> failwith "pp_derived_type_name/pp_pointer_type_name"
+						begin try
+							List.assq t anonymous_mapping
+						with Not_found ->
+							failwith "pp_derived_type_name/pp_pointer_type_name"
+						end
 					in
 					pp_print_string ff (add_package_name current package_name ("access_" ^ unique_key))
 				| `const t ->
@@ -662,8 +663,11 @@ struct
 		let (filename, _, _, _), _ = ps in
 		let _, package_name, _ =
 			let name_mapping, _ = mappings in
-			try StringMap.find filename name_mapping with
-			| Not_found -> failwith "pp_anonymous_type_name"
+			begin try
+				StringMap.find filename name_mapping
+			with Not_found ->
+				failwith "pp_anonymous_type_name"
+			end
 		in
 		pp_print_string ff (add_package_name ~hidden_packages current package_name (postfix ^ unique_key))
 	) and pp_type_name
@@ -679,12 +683,10 @@ struct
 		let opaque_mapping, name_mapping, anonymous_mapping = mappings in
 		begin match Semantics.resolve_typedef item with
 		| #Semantics.derived_type as item
-			when where = `argument && using_anonymous_access item <> None
-		->
+			when where = `argument && using_anonymous_access item <> None ->
 			pp_derived_type_name ff ~mappings ~current ~hidden_packages ~hiding ~where item
 		| `named (_, _, #Semantics.opaque_type_var, _) as opaque
-			when where <> `name && separated_forward_opaque_to_full opaque opaque_mapping <> None
-		->
+			when where <> `name && separated_forward_opaque_to_full opaque opaque_mapping <> None ->
 			begin match Semantics.opaque_to_full opaque opaque_mapping with
 			| Some full ->
 				pp_type_name ff ~mappings ~current ~hidden_packages ~hiding ~where (full :> Semantics.all_type)
@@ -710,8 +712,7 @@ struct
 				let name = ada_name_of current ~hidden_packages ~hiding ps name `opaque_union name_mapping in
 				pp_print_string ff name
 			| `named (ps, ("ptrdiff_t" | "size_t" | "wchar_t" as name), _, _)
-				when (let (filename, _, _, _), _ = ps in is_special_filename filename)
-			->
+				when (let (filename, _, _, _), _ = ps in is_special_filename filename) ->
 				if StringSet.mem name hiding then pp_print_string ff "Standard.C.";
 				pp_print_string ff name
 			| `named (ps, name, _, _) ->
@@ -1101,12 +1102,13 @@ struct
 	(
 		Finding.recursive_fold_derived_types ~including_typedef:true (fun done_list dt ->
 			let is_output =
-				List.for_all
-					(fun x -> not (Finding.compare_types_by_structure (dt :> Semantics.all_type) (x :> Semantics.all_type)))
-					done_list
-				&& (match dt with
-				| `array (Some _, _) -> List.memq (dt :> Semantics.all_type) sized_arrays
-				| _ -> true)
+					List.for_all (fun x ->
+						not (Finding.compare_types_by_structure (dt :> Semantics.all_type) (x :> Semantics.all_type))
+					) done_list
+				&& (
+					match dt with
+					| `array (Some _, _) -> List.memq (dt :> Semantics.all_type) sized_arrays
+					| _ -> true)
 			in
 			if is_output then (
 				(* type declaration *)
@@ -1399,8 +1401,8 @@ struct
 		pp_pragma_unchecked_union ff name;
 		pp_pragma_convention ff `c_pass_by_copy name;
 		if !has_bitfield then (
-			fprintf ff "@ --  attention: %s has bit-field member!" name;
-		);
+			fprintf ff "@ --  attention: %s has bit-field member!" name
+		)
 	);;
 	
 	let pp_anonymous_type
@@ -1443,8 +1445,7 @@ struct
 		let opaque_mapping, name_mapping, anonymous_mapping = mappings in
 		begin match Semantics.resolve_typedef t with
 		| `named (_, _, #Semantics.opaque_type_var, _) as resolved_t
-			when separated_forward_opaque_to_full resolved_t opaque_mapping <> None
-		->
+			when separated_forward_opaque_to_full resolved_t opaque_mapping <> None ->
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			let target_type_name =
 				omit_long_word
@@ -1454,7 +1455,9 @@ struct
 			fprintf ff "@ --  subtype %s is %s;" name target_type_name
 		| `void ->
 			fprintf ff "@ --  subtype %s is void (%s)" name
-				(match where with `typedef -> "typedef" | `macro -> "macro")
+				(match where with
+					| `typedef -> "typedef"
+					| `macro -> "macro")
 		| _ ->
 			begin match t with
 			| `function_type _ ->
@@ -1591,9 +1594,10 @@ struct
 			if paren then pp_close_paren ff ()
 		) in
 		let need_to_cast expr = (
-			match Semantics.integer_of_expression expr with
+			begin match Semantics.integer_of_expression expr with
 			| Some (_, n) -> Integer.compare n Integer.zero < 0
 			| None -> true
+			end
 		) in
 		let pp_bit_op ff inside left right t = (
 			let is_signed, unsigned_of_signed =
@@ -1620,12 +1624,11 @@ struct
 				pp_expression ff ~mappings ~current ~outside:(inside :> outside_precedence) left
 			);
 			pp_print_space ff ();
-			pp_print_string ff (
-				begin match inside with
-				| `logical_and -> "and"
-				| `logical_or -> "or"
-				| `logical_xor -> "xor"
-				end);
+			pp_print_string ff
+				(match inside with
+					| `logical_and -> "and"
+					| `logical_or -> "or"
+					| `logical_xor -> "xor");
 			pp_print_char ff ' ';
 			if is_signed && need_to_cast right then (
 				pp_print_string ff (ada_name_of_int_prec unsigned_of_signed);
@@ -1649,7 +1652,7 @@ struct
 			let _, e = Real.frexp value in
 			let e16 = e / 4 in
 			let m = Real.scale value ~base:16 ~exponent:(- e16) in
-			fprintf ff "16#%s#e%+d" (Real.to_based_string ~base:16 m) e16;
+			fprintf ff "16#%s#e%+d" (Real.to_based_string ~base:16 m) e16
 		| `char_literal value, _ ->
 			pp_char_literal ff value
 		| `chars_literal value, _ ->
@@ -1785,7 +1788,7 @@ struct
 						if n > 0 then fprintf ff ",@ ";
 						pp_expression ff ~mappings ~current ~outside:`lowest e;
 						loop (n + 1) er
-					end;
+					end
 				) in
 				loop 0 exprs;
 				begin match zero with
@@ -1795,7 +1798,7 @@ struct
 				| None ->
 					()
 				end;
-				fprintf ff ")";
+				fprintf ff ")"
 			| `anonymous (_, `struct_type (_, items))
 			| `named (_, _, `struct_type (_, items), _) ->
 				let _, fields = name_mapping_for_struct_items items in
@@ -1817,7 +1820,7 @@ struct
 					end
 				) in
 				loop true fields exprs;
-				fprintf ff ")";
+				fprintf ff ")"
 			| `anonymous (_, `union items)
 			| `named (_, _, `union items, _) ->
 				let _, fields = name_mapping_for_struct_items items in
@@ -1836,7 +1839,7 @@ struct
 					end
 				) in
 				process fields exprs;
-				fprintf ff ")";
+				fprintf ff ")"
 			| _ ->
 				assert false (* does not come here ??? *)
 			end
@@ -1958,8 +1961,7 @@ struct
 					assert false (* does not come here *)
 				end
 			| (`int_literal (_, value), _), #int_prec, (`pointer _) (* pointer literal to not void *)
-				when Integer.compare value Integer.zero = 0
-			->
+				when Integer.compare value Integer.zero = 0 ->
 				pp_print_string ff "null"
 			| (`chars_literal _, _), `array (_, `char), (`pointer `char | `pointer (`const `char)) ->
 				let hash = hash_name expr in
@@ -1987,7 +1989,7 @@ struct
 				let mappings_for_typename = opaque_mapping, name_mapping, [] in
 				if outside <> `primary then (
 					pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t2;
-					pp_print_string ff "'(";
+					pp_print_string ff "'("
 				);
 				pp_print_string ff "Cast (";
 				begin match expr with
@@ -1995,7 +1997,7 @@ struct
 					pp_type_name ff ~mappings:mappings_for_typename ~current ~where:`name t1;
 					pp_print_string ff "'(";
 					pp_expression ff ~mappings ~current ~outside:`lowest expr;
-					pp_print_char ff ')';
+					pp_print_char ff ')'
 				| _ ->
 					pp_expression ff ~mappings ~current ~outside:`lowest expr
 				end;
@@ -2250,7 +2252,7 @@ struct
 					fprintf ff "@ **** unimplemented. ****\n";
 					assert false
 				end;
-				pp_close_box ff ();
+				pp_close_box ff ()
 			) chars_literals;
 			(* specs of inner functions *)
 			List.iter (fun (_, t as expr) ->
@@ -2399,7 +2401,7 @@ struct
 			pp_end ff ()
 		) else (
 			pp_statement ff ()
-		);
+		)
 	) and pp_statement
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
@@ -2505,21 +2507,22 @@ struct
 					| `named (ps, name, _, _) as item ->
 						(* name mapping *)
 						let name_mapping =
-							try
+							begin try
 								(* should make mapping function in c_semantics_naming.ml... *)
 								let ada_name = ada_name_by_substitute ~prefix:"L_" ~postfix:"" name in
 								let (filename, _, _, _), _ = ps in
 								let rel_filename, package_name, map = StringMap.find filename name_mapping in
 								let map = Naming.add `namespace name ada_name map in
 								StringMap.add filename (rel_filename, package_name, map) name_mapping
-							with Not_found -> assert false
+							with Not_found ->
+								assert false
+							end
 						in
 						(* un-modified variable to constant *)
 						let item =
 							match item with
 							| `named (ps, name, `variable (#Semantics.not_const_type as t, init), attr) as var
-								when not (List.exists (Finding.lvalue_referenced_in_statement var) stmts)
-							->
+								when not (List.exists (Finding.lvalue_referenced_in_statement var) stmts) ->
 								`named (ps, name, `variable (`const t, init), attr)
 							| _ ->
 								item
@@ -2697,7 +2700,7 @@ struct
 		: unit =
 	(
 		if stmts = [] && null_statement then (
-			pp_null_statement ff ();
+			pp_null_statement ff ()
 		) else (
 			let rec loop xs = (
 				begin match xs with
@@ -2917,7 +2920,7 @@ struct
 				pp_print_space ff ();
 				pp_open_box ff indent;
 				let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
-				ignore (pp_prototype ff ~mappings  ~current ~name:(Some name) prototype);
+				ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
 				fprintf ff " renames %s;" source_name;
 				pp_close_box ff ()
 			)
@@ -2994,7 +2997,7 @@ struct
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					pp_type_name ff ~mappings ~current ~where:`extern t;
 					pp_print_char ff ';';
-					pp_close_box ff ();
+					pp_close_box ff ()
 				end;
 				let c_name =
 					begin match alias with
@@ -3017,7 +3020,9 @@ struct
 			pp_open_box ff indent;
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			fprintf ff "%s : %s%a" ada_name
-				(match t with `const _ -> "constant " | _ -> "")
+				(match t with
+					| `const _ -> "constant "
+					| _ -> "")
 				(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) t;
 			begin match init with
 			| Some init ->
@@ -3506,11 +3511,11 @@ struct
 							begin match x with
 							| `pointer (`const (`volatile `void))
 								when List.exists (fun (x2, y2) ->
-									y2 == y &&
-										begin match x2 with
-										| `pointer (`volatile `void) -> true
-										| _ -> false
-										end) casts ->
+										y2 == y && (
+											match x2 with
+											| `pointer (`volatile `void) -> true
+											| _ -> false)
+									) casts ->
 								() (* two types are mapped to same System.Address *)
 							| _ ->
 								pp_unchecked_conversion ff ~mappings:(opaque_mapping, name_mapping, []) ~current pair
@@ -3643,8 +3648,7 @@ struct
 						List.iter (fun item ->
 							begin match item with
 							| `named (ps, t_name, (`opaque_enum | `opaque_struct | `opaque_union as kind), _) as item
-								when Semantics.is_opaque item opaque_mapping
-							->
+								when Semantics.is_opaque item opaque_mapping ->
 								let t_name = ada_name_of current ps t_name kind name_mapping in
 								pp_type ff t_name pp_record_definition []
 							| _ ->

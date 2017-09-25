@@ -112,7 +112,7 @@ let internal_succ (s: t) (index: int): int = (
 		set_succ_line s
 	| '\r' ->
 		if get s next_index = '\n' then (
-			s.tf_column <- s.tf_column + 1;
+			s.tf_column <- s.tf_column + 1
 		) else (
 			set_succ_line s
 		)
@@ -139,7 +139,7 @@ let seek (s: t) (to_index: int): unit = (
 		s.tf_column <- 1;
 		s.tf_prev_index <- line.li_index - 1;
 		s.tf_prev_line <- line.li_line - 1;
-		s.tf_prev_column <- line.li_prev_column;
+		s.tf_prev_column <- line.li_prev_column
 	);
 	(* seek within the line or unscanned area *)
 	let rec loop (s: t) (to_index: int): unit = (

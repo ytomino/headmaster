@@ -45,7 +45,7 @@ enum {
 int ALIAS;
 int f_valid_name(){ return ALIAS2; } /* return valid_name; */
 
-#define __MSABI_LONG(x)  x ## l
+#define __MSABI_LONG(x) x ## l
 #define OLEIVERB_SHOW (__MSABI_LONG(-1))
 
 long z = OLEIVERB_SHOW;

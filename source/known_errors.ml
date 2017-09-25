@@ -99,7 +99,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"host_get_user_notification_port"; (* darwin9 / host_get_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_amfid_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_audit_control_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
-				"host_set_automountd_port";  (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
+				"host_set_automountd_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_chud_port"; (* darwin10 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_dynamic_pager_port"; (* darwin9 / host_set_special_port is undefined, #include <mach/host_priv.h> *)
 				"host_set_gssd_port"; (* darwin12 / host_set_special_port is undefined *)
@@ -193,7 +193,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"clearerr_unlocked"; (* darwin9 / accessing element of untyped parameter *)
 				"ferror_unlocked"; (* darwin9 / accessing element of untyped parameter *)
-				"feof_unlocked";  (* darwin9 / accessing element of untyped parameter *)
+				"feof_unlocked"; (* darwin9 / accessing element of untyped parameter *)
 				"fileno_unlocked"; (* darwin9 / accessing element of untyped parameter *)
 				"__sclearerr"; (* darwin9 / accessing element of untyped parameter *)
 				"__sfeof"; (* darwin9 / accessing element of untyped parameter *)
@@ -481,7 +481,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"CPU_CLR"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_CLR_ATOMIC"; (* freebsd9 / atomic_clear_long is undefined *)
 				"CPU_CMP"; (* freebsd9 / accessing element of untyped parameter *)
-				"CPU_COPY_STORE_REL";  (* freebsd9 / atomic_store_rel_long is undefined *)
+				"CPU_COPY_STORE_REL"; (* freebsd9 / atomic_store_rel_long is undefined *)
 				"CPU_EMPTY"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_FILL"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_ISFULLSET"; (* freebsd9 / accessing element of untyped parameter *)
@@ -1043,7 +1043,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"ULISet32"]]; (* accessing element of untyped parameter *)
 		"propidl.h", [
 			`unparsible_macro, [
-				"REFPROPVARIANT"];  (* declaration specifier and pointer *)
+				"REFPROPVARIANT"]; (* declaration specifier and pointer *)
 			`uninterpretable_macro, [
 				"PropVariantInit"]]; (* sizeof untyped parameter *)
 		"prsht.h", [

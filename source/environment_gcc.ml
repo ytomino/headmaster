@@ -305,7 +305,7 @@ let gcc_env
 		"__builtin___strcat_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
 		"__builtin___strcpy_chk", [`pointer `char; `pointer (`const `char); `size_t], `pointer `char;
 		"__builtin___strncat_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char;
-		"__builtin___strncpy_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char];
+		"__builtin___strncpy_chk", [`pointer `char; `pointer (`const `char); `size_t; `size_t], `pointer `char]
 	in
 	let result = {
 		en_target = target;

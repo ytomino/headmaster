@@ -271,18 +271,20 @@ struct
 	
 	let ready_predefined_types (sizeof: sizeof) (typedef: language_typedef): predefined_types = (
 		let `sizeof_bool sizeof_bool,
-			`sizeof_short sizeof_short,
-			`sizeof_int sizeof_int,
-			`sizeof_long sizeof_long,
-			`sizeof_long_long sizeof_long_long,
-			`sizeof_float sizeof_float,
-			`sizeof_double sizeof_double,
-			`sizeof_long_double sizeof_long_double,
-			`sizeof_intptr sizeof_intptr = sizeof
+				`sizeof_short sizeof_short,
+				`sizeof_int sizeof_int,
+				`sizeof_long sizeof_long,
+				`sizeof_long_long sizeof_long_long,
+				`sizeof_float sizeof_float,
+				`sizeof_double sizeof_double,
+				`sizeof_long_double sizeof_long_double,
+				`sizeof_intptr sizeof_intptr =
+			sizeof
 		in
 		let `typedef_ptrdiff_t typedef_ptrdiff_t,
-			`typedef_size_t typedef_size_t,
-			`typedef_wchar_t typedef_wchar_t = typedef
+				`typedef_size_t typedef_size_t,
+				`typedef_wchar_t typedef_wchar_t =
+			typedef
 		in
 		let predefined_types: (predefined_type * int) list =
 			(`void, 0) ::
@@ -310,8 +312,8 @@ struct
 			((`complex `double), sizeof_double * 2) ::
 			((`complex `long_double), sizeof_long_double * 2) ::
 			(`char, 1) ::
-			(`__builtin_va_list, sizeof_intptr) :: (
-				begin match Language.lang with
+			(`__builtin_va_list, sizeof_intptr) ::
+			(match Language.lang with
 				| `c | `objc ->
 					[]
 				| `cxx | `objcxx ->
@@ -324,22 +326,18 @@ struct
 						| `signed_long_long | `unsigned_long_long -> sizeof_long_long
 						end
 					in
-					(`wchar, sizeof_wchar) :: []
-				end
-			)
+					(`wchar, sizeof_wchar) :: [])
 		in
 		let language_typedefs: typedef_type list =
 			let find_f t (x, _) = x = (t :> predefined_type) in
 			let find t = (fst (List.find (find_f t) predefined_types) :> all_type) in
 			(`named (builtin_position, "ptrdiff_t", `typedef (find typedef_ptrdiff_t), no_attributes)) ::
-			(`named (builtin_position, "size_t", `typedef (find typedef_size_t), no_attributes)) :: (
-				begin match Language.lang with
+			(`named (builtin_position, "size_t", `typedef (find typedef_size_t), no_attributes)) ::
+			(match Language.lang with
 				| `c | `objc ->
 					(`named (builtin_position, "wchar_t", `typedef (find typedef_wchar_t), no_attributes)) :: []
 				| `cxx | `objcxx ->
-					[]
-				end
-			)
+					[])
 		in
 		predefined_types, language_typedefs
 	);;
@@ -483,16 +481,22 @@ struct
 					| `pointer u as x when u == t ->
 						(x :> [> pointer_type])
 					| `pointer (`named (_, tag, `opaque_enum, _)) as x
-						when (match t with `named (_, o_tag, `enum _, _) -> tag = o_tag | _ -> false)
-					->
+						when (
+							match t with
+							| `named (_, o_tag, `enum _, _) -> tag = o_tag
+							| _ -> false) ->
 						(x :> [> pointer_type])
 					| `pointer (`named (_, tag, `opaque_struct, _)) as x
-						when (match t with `named (_, o_tag, `struct_type _, _) -> tag = o_tag | _ -> false)
-					->
+						when (
+							match t with
+							| `named (_, o_tag, `struct_type _, _) -> tag = o_tag
+							| _ -> false) ->
 						(x :> [> pointer_type])
 					| `pointer (`named (_, tag, `opaque_union, _)) as x
-						when (match t with `named (_, o_tag, `union _, _) -> tag = o_tag | _ -> false)
-					->
+						when (
+							match t with
+							| `named (_, o_tag, `union _, _) -> tag = o_tag
+							| _ -> false) ->
 						(x :> [> pointer_type])
 					| _ ->
 						loop xr

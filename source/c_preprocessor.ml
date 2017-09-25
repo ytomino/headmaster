@@ -535,7 +535,7 @@ struct
 		let result, xs = calc_cond false xs in
 		begin match xs with
 		| lazy (`cons (ps, _, _)) ->
-			error ps unexpected_extra_tokens;
+			error ps unexpected_extra_tokens
 		| lazy (`nil _) ->
 			()
 		end;
@@ -579,8 +579,8 @@ struct
 	);;
 	
 	let concat_with_comma (xs: (in_t * comma_token option) list): in_prim = (
-		let ys = List.map
-			begin fun (tokens, comma) ->
+		let ys =
+			List.map (fun (tokens, comma) ->
 				begin match comma with
 				| Some (comma_p, comma_e) ->
 					lazy (LazyList.append
@@ -590,8 +590,7 @@ struct
 				| None ->
 					tokens
 				end
-			end
-			xs
+			) xs
 		in
 		LazyList.concat ys
 	);;
@@ -772,12 +771,11 @@ struct
 							let ys = lazy (process (expanding_level state) removed the_macro_arguments item.df_contents) in
 							(* replace position-info to current *)
 							let (filename, _, line, _), _ = ps in
-							lazy (LazyList.map_a
-								begin fun ps' ->
+							lazy (
+								LazyList.map_a (fun ps' ->
 									let (filename', _, line', _), _ = ps' in
 									if filename' = filename && line' >= line then ps' else ps
-								end
-								ys)
+								) ys)
 						in
 						LazyList.append ys (lazy (
 							process state predefined macro_arguments xs))
@@ -792,9 +790,10 @@ struct
 					begin match ys with
 					| lazy (`cons (_, `ident replaced, lazy (`nil _)))
 						when StringMap.mem replaced removed
-							&& (StringMap.find replaced removed).df_has_arguments
-							&& (match xs with lazy (`cons (_, `l_paren, _)) -> true | _ -> false)
-					->
+							&& (StringMap.find replaced removed).df_has_arguments && (
+								match xs with
+								| lazy (`cons (_, `l_paren, _)) -> true
+								| _ -> false) ->
 						(* re-expanding function-macro with following arguments *)
 						(* replace position-info to current *)
 						let ys = lazy (LazyList.map_a (fun _ -> ps) ys) in
@@ -1129,8 +1128,7 @@ struct
 						| lazy (`cons (_, `l_paren,
 							lazy (`cons (target_ps, `chars_literal target_name,
 								lazy (`cons (_, `r_paren,
-									lazy (`cons (_, `end_of_line, xs))))))))
-						->
+									lazy (`cons (_, `end_of_line, xs)))))))) ->
 							let push_or_pop =
 								if pragma = "push_macro" then `push else `pop
 							in
@@ -1140,7 +1138,7 @@ struct
 									if StringMap.mem target_name predefined
 										&& not (is_known_error ps target_name `push_defined_macro)
 									then (
-										error target_ps (defined_macro_is_pushed target_name);
+										error target_ps (defined_macro_is_pushed target_name)
 									);
 									predefined
 								| `pop ->
@@ -1309,8 +1307,7 @@ struct
 								begin match xs with
 								| lazy (`cons (_, `l_paren, _))
 									when StringMap.mem replaced predefined
-										&& (StringMap.find replaced predefined).df_has_arguments
-								->
+										&& (StringMap.find replaced predefined).df_has_arguments ->
 									true
 								| _ ->
 									false

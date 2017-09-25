@@ -120,13 +120,13 @@ let pp_with_caluse
 	pp_open_box ff indent;
 	begin match is_limited with
 	| `limited_with ->
-		pp_print_string ff "limited ";
+		pp_print_string ff "limited "
 	| `none ->
 		()
 	end;
 	begin match is_private with
 	| `private_with ->
-		pp_print_string ff "private ";
+		pp_print_string ff "private "
 	| `none ->
 		()
 	end;
@@ -446,7 +446,7 @@ let pp_if
 		pp_open_vbox ff indent;
 		pp_print_string ff "else";
 		pp_false_case ff ();
-		pp_close_box ff ();
+		pp_close_box ff ()
 	| None ->
 		()
 	end;
@@ -468,7 +468,7 @@ let pp_loop
 		pp_open_box ff indent;
 		pp_cond ff ();
 		pp_close_box ff ();
-		pp_print_space ff ();
+		pp_print_space ff ()
 	| None ->
 		()
 	end;
@@ -647,7 +647,7 @@ let pp_string_literal
 				if q then pp_print_char ff '\"';
 				if i > 0 then (
 					pp_print_space ff ();
-					pp_print_string ff "& ";
+					pp_print_string ff "& "
 				);
 				pp_character_literal ff c;
 				loop false 0 (i + 1)
@@ -726,7 +726,7 @@ let pp_array_literal
 		pp_print_int ff first;
 		pp_print_string ff " .. ";
 		pp_print_int ff (first - 1);
-		pp_print_string ff " => <>)";
+		pp_print_string ff " => <>)"
 	) else if length = 1 then (
 		pp_print_char ff '(';
 		pp_print_int ff first;

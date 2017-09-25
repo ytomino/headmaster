@@ -287,7 +287,8 @@ struct
 			| `increment _, t
 			| `decrement _, t
 			| `post_increment _, t
-			| `post_decrement _, t when is_pointer t ->
+			| `post_decrement _, t
+				when is_pointer t ->
 				add t ptrdiff_t (add ptrdiff_t t rs)
 			| _ ->
 				rs
@@ -320,13 +321,11 @@ struct
 			)
 		) in
 		let add_array (`array (_, e1) as t1) t2 rs = (
-			if List.exists
-				begin fun (u1, u2) ->
+			if List.exists (fun (u1, u2) ->
 					match u1 with
 					| `array (_, f1) when f1 == e1 && u2 == t2 -> true
 					| _ -> false
-				end
-				rs
+				) rs
 			then (
 				rs
 			) else (
@@ -356,8 +355,7 @@ struct
 					add_array t1 t2 rs
 				| _, (`pointer _)
 				| (`pointer _), _
-					when not (is_generic_type t1) && not (is_generic_type t2)
-				->
+					when not (is_generic_type t1) && not (is_generic_type t2) ->
 					add t1a t2a rs
 				| _ ->
 					rs

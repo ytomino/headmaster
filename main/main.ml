@@ -112,11 +112,12 @@ let option_spec =
 
 let options = CommandLine.parse option_spec Sys.argv initial_options;;
 
-if options.usage || options.version ||
-	options.source_filenames = [] || options.to_lang = `none
+if options.usage || options.version
+	|| options.source_filenames = [] || options.to_lang = `none
 then (
-	let error = not options.usage && not options.version &&
-		(options.source_filenames = [] || options.to_lang = `none) in
+	let error = not options.usage && not options.version
+		&& (options.source_filenames = [] || options.to_lang = `none)
+	in
 	if error && options.source_filenames = [] then (
 		print_string "no input file was specified.";
 		print_newline ()
@@ -201,7 +202,7 @@ let predefined_tokens: PP.in_t =
 let predefined_tokens': PP.out_t = lazy (PP.preprocess
 	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
 
-let predefined = (
+let predefined =
 	begin match predefined_tokens' with
 	| lazy (`nil (_, predefined)) ->
 		predefined
@@ -209,8 +210,7 @@ let predefined = (
 		print_string "extra token(s) exists in predefined!!\n";
 		let `nil (_, predefined) = LazyList.find_nil xr in
 		predefined
-	end
-);;
+	end;;
 
 let source_tokens: PP.in_t =
 	let dummy_position = "<dummy>", 0, 0, 0 in
@@ -230,22 +230,26 @@ let source_tokens': PP.out_t = lazy (PP.preprocess
 	error is_known_error read_include_file `top_level predefined StringMap.empty source_tokens);;
 
 let (tu: AST.translation_unit),
-	(typedefs: P.typedef_set),
-	(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) = P.parse_translation_unit error source_tokens';;
+		(typedefs: P.typedef_set),
+		(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) =
+	P.parse_translation_unit error source_tokens';;
 
 let defines: DP.define AST.p StringMap.t = DP.map error is_known_error typedefs defined_tokens;;
 
 let (predefined_types: SEM.predefined_types),
-	(derived_types: SEM.derived_types),
-	(namespace: SEM.namespace),
-	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t),
-	(mapping_options: SEM.mapping_options) = A.analyze error env.en_sizeof env.en_typedef env.en_builtin tu;;
+		(derived_types: SEM.derived_types),
+		(namespace: SEM.namespace),
+		(sources: (SEM.source_item list * SEM.extra_info) StringMap.t),
+		(mapping_options: SEM.mapping_options) =
+	A.analyze error env.en_sizeof env.en_typedef env.en_builtin tu;;
 
 let (derived_types: SEM.derived_types),
-	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) = DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
+		(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) =
+	DA.map error is_known_error predefined_types derived_types namespace sources mapping_options defines;;
 
 let (derived_types: SEM.derived_types),
-	(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) = A.rev derived_types sources;;
+		(sources: (SEM.source_item list * SEM.extra_info) StringMap.t) =
+	A.rev derived_types sources;;
 
 let opaque_mapping = A.opaque_mapping namespace;;
 
@@ -279,7 +283,7 @@ begin match options.to_lang with
 			print_exception e;
 			has_error := true
 		end;
-		close_out f;
+		close_out f
 	) dirs;
 	let items_per_package = T.items_per_package ada_mapping filename_mapping sources in
 	let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package in

@@ -175,7 +175,8 @@ struct
 			let _, def_e = define in
 			begin match def_e with
 			| `function_expr (m_args, m_varargs, _)
-			| `function_stmt (m_args, m_varargs, _) when List.for_all (fun (_, k) -> k = `value) m_args ->
+			| `function_stmt (m_args, m_varargs, _)
+				when List.for_all (fun (_, k) -> k = `value) m_args ->
 				let existed = StringMap.find name namespace.ns_namespace in
 				begin match existed with
 				| `named (_, _, `function_forward (_, t), _)
@@ -543,7 +544,7 @@ struct
 				flush stderr;
 				begin match !redirected_error with
 				| Some (r_ps, r_message) ->
-					error r_ps r_message;
+					error r_ps r_message
 				| None ->
 					()
 				end;
