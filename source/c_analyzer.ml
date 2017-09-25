@@ -42,6 +42,8 @@ struct
 		"the combination of storage-class-specifier and function-specifier is bad.";;
 	let attribute_requires_string_literal(s: string): string =
 		 ("__attribute__((" ^ s ^ "(...))) requires string literal.");;
+	let function_with_initializer =
+		"the function can not have any initializer.";;
 	let unimplemented (line: int) =
 		"unimplemented at " ^ __FILE__ ^ ":" ^ string_of_int line;;
 	
@@ -1725,7 +1727,7 @@ struct
 				begin match t with
 				| `function_type _ as t ->
 					if init <> None then (
-						error ps "initializer was found with function."
+						error (fst x) function_with_initializer
 					);
 					let result = `named (ps, id, `function_forward (`static, t), attr) in
 					let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
@@ -1753,7 +1755,7 @@ struct
 				begin match t with
 				| `function_type _ as t ->
 					if init <> None then (
-						error ps "initializer was found with function."
+						error (fst x) function_with_initializer
 					);
 					let result = `named (ps, id, `extern (t, alias), attr) in
 					begin match Declaring.is_function_conflicted result namespace with
@@ -1781,8 +1783,19 @@ struct
 				error (fst x) (unimplemented __LINE__);
 				assert false
 			| `extern_inline | `inline | `static_inline ->
-				error (fst x) (unimplemented __LINE__);
-				derived_types, namespace, source, None
+				begin match t with
+				| `function_type _ as t ->
+					if init <> None then (
+						error (fst x) function_with_initializer
+					);
+					let result = `named (ps, id, `function_forward (`static, t), attr) in
+					let namespace = {namespace with ns_namespace = StringMap.add id result namespace.ns_namespace} in
+					let source = (result :> source_item) :: source in
+					derived_types, namespace, source, Some result
+				| _ ->
+					error (fst x) "\"inline\" could not be applied to any object type.";
+					derived_types, namespace, source, None
+				end
 			end
 		| None ->
 			derived_types, namespace, source, None
