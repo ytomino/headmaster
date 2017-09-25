@@ -300,9 +300,9 @@ struct
 			(`float, sizeof_float) ::
 			(`double, sizeof_double) ::
 			(`long_double, sizeof_long_double) ::
-			(`decimal32, 4) ::
-			(`decimal64, 8) ::
-			(`decimal128, 16) ::
+			(`_Decimal32, 4) ::
+			(`_Decimal64, 8) ::
+			(`_Decimal128, 16) ::
 			((`imaginary `float), sizeof_float) ::
 			((`imaginary `double), sizeof_double) ::
 			((`imaginary `long_double), sizeof_long_double) ::

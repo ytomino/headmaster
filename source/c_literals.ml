@@ -25,9 +25,9 @@ type float_prec = [
 
 type real_prec = [
 	| float_prec
-	| `decimal32 (* gcc's _Decimal32 *)
-	| `decimal64 (* gcc's _Decimal64 *)
-	| `decimal128];; (* gcc's _Decimal128 *)
+	| `_Decimal32 (* gcc's _Decimal32 *)
+	| `_Decimal64 (* gcc's _Decimal64 *)
+	| `_Decimal128];; (* gcc's _Decimal128 *)
 
 (* for __attribute__((__mode__)) *)
 

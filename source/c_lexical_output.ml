@@ -61,9 +61,9 @@ struct
 				| `float -> "F"
 				| `double -> ""
 				| `long_double -> "L"
-				| `decimal32 -> "DF"
-				| `decimal64 -> "DD"
-				| `decimal128 -> "DL"
+				| `_Decimal32 -> "DF"
+				| `_Decimal64 -> "DD"
+				| `_Decimal128 -> "DL"
 				end
 			| `numeric_literal (_, `imaginary_literal (prec, value)) ->
 				let m, e = Real.frexp value in

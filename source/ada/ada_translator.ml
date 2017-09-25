@@ -513,12 +513,12 @@ struct
 			pp_print_string ff (ada_name_of_int_prec p)
 		| #float_prec as p ->
 			pp_print_string ff (ada_name_of_float_prec p)
-		| `decimal32 ->
-			pp_print_string ff "decimal32"
-		| `decimal64 ->
-			pp_print_string ff "decimal64"
-		| `decimal128 ->
-			pp_print_string ff "decimal128"
+		| `_Decimal32 ->
+			pp_print_string ff "Decimal32"
+		| `_Decimal64 ->
+			pp_print_string ff "Decimal64"
+		| `_Decimal128 ->
+			pp_print_string ff "Decimal128"
 		| `imaginary e ->
 			fprintf ff "%s_imaginary" (ada_name_of_float_prec e)
 		| `complex e ->
@@ -819,12 +819,12 @@ struct
 				in
 				pp_type ff name pp_derived_type_definition pp_print_string body;
 				pp_pragma_convention ff `cdecl name
-			| `decimal32 ->
-				fprintf ff "@ --  type decimal32 is ..."
-			| `decimal64 ->
-				fprintf ff "@ --  type decimal64 is ..."
-			| `decimal128 ->
-				fprintf ff "@ --  type decimal128 is ..."
+			| `_Decimal32 ->
+				fprintf ff "@ --  type Decimal32 is ..."
+			| `_Decimal64 ->
+				fprintf ff "@ --  type Decimal64 is ..."
+			| `_Decimal128 ->
+				fprintf ff "@ --  type Decimal128 is ..."
 			| `imaginary e ->
 				let e_name = ada_name_of_float_prec e in
 				pp_type ff name pp_derived_type_definition pp_print_string e_name;

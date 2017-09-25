@@ -182,19 +182,19 @@ struct
 					| 'f' | 'F' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						wrap (`float_literal (`decimal32, value)) index
+						wrap (`float_literal (`_Decimal32, value)) index
 					| 'd' | 'D' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						wrap (`float_literal (`decimal64, value)) index
+						wrap (`float_literal (`_Decimal64, value)) index
 					| 'l' | 'L' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						wrap (`float_literal (`decimal128, value)) index
+						wrap (`float_literal (`_Decimal128, value)) index
 					| _ ->
 						let p2 = prev_position source index in
 						error (p1, p2) bad_decimal_suffix;
-						wrap (`float_literal (`decimal32, value)) index
+						wrap (`float_literal (`_Decimal32, value)) index
 					end
 				| 'f' | 'F' as h ->
 					Buffer.add_char buf h;

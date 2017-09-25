@@ -116,9 +116,9 @@ struct
 	
 	let real_prec (prec1: real_prec) (prec2: real_prec): real_prec = (
 		begin match prec1, prec2 with
-		| `decimal128, _ | _, `decimal128 -> `decimal128
-		| `decimal64, _ | _, `decimal64 -> `decimal64
-		| `decimal32, _ | _, `decimal32 -> `decimal32
+		| `_Decimal128, _ | _, `_Decimal128 -> `_Decimal128
+		| `_Decimal64, _ | _, `_Decimal64 -> `_Decimal64
+		| `_Decimal32, _ | _, `_Decimal32 -> `_Decimal32
 		| (#float_prec as prec1), (#float_prec as prec2) -> float_prec prec1 prec2
 		end
 	);;
