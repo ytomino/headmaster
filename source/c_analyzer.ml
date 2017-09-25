@@ -42,6 +42,8 @@ struct
 		"the combination of storage-class-specifier and function-specifier is bad.";;
 	let attribute_requires_string_literal(s: string): string =
 		 ("__attribute__((" ^ s ^ "(...))) requires string literal.");;
+	let unimplemented (line: int) =
+		"unimplemented at " ^ __FILE__ ^ ":" ^ string_of_int line;;
 	
 	(* in *)
 	
@@ -340,7 +342,7 @@ struct
 						let info = {info with ei_fenv = true} in
 						derived_types, info, alignment_stack, mapping_options
 					| `poison _ ->
-						error (fst gcc_directive) "unimplemented!";
+						error (fst gcc_directive) (unimplemented __LINE__);
 						assert false
 					| `visibility _ ->
 						(* ignore #pragma visibility *)
@@ -1025,7 +1027,7 @@ struct
 			let t, derived_types = Typing.find_array_type length base_type derived_types in
 			derived_types, source, Some (v, t)
 		| `objc_string_literal _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `ident name ->
 			begin match StringMap.find_option name namespace.ns_namespace with
@@ -1050,7 +1052,7 @@ struct
 					error (fst x) ("a type name (" ^ name ^ ")is used as variable.");
 					derived_types, source, None
 				| _ -> (* `defined_* *)
-					error (fst x) "unimplemented!";
+					error (fst x) (unimplemented __LINE__);
 					assert false
 				end
 			| None -> (* not found *)
@@ -1730,11 +1732,11 @@ struct
 					let source = (result :> source_item) :: source in
 					derived_types, namespace, source, Some result
 				| _ ->
-					error (fst x) "unimplemented!";
+					error (fst x) (unimplemented __LINE__);
 					assert false
 				end
 			| `auto ->
-				error (fst x) "unimplemented!";
+				error (fst x) (unimplemented __LINE__);
 				assert false
 			| `register ->
 				begin match t with
@@ -1776,10 +1778,10 @@ struct
 					derived_types, namespace, source, Some result
 				end
 			| `_Thread_local ->
-				error (fst x) "unimplemented!";
+				error (fst x) (unimplemented __LINE__);
 				assert false
 			| `extern_inline | `inline | `static_inline ->
-				error (fst x) "unimplemented!";
+				error (fst x) (unimplemented __LINE__);
 				derived_types, namespace, source, None
 			end
 		| None ->
@@ -2373,7 +2375,7 @@ struct
 			end
 		| `array (dd, _, tql, num, _) ->
 			if tql <> `none then (
-				error (fst x) "unimplemented!";
+				error (fst x) (unimplemented __LINE__);
 				assert false
 			);
 			let derived_types, source, array_type =
@@ -2402,13 +2404,13 @@ struct
 			in
 			handle_direct_declarator error predefined_types derived_types namespace source array_type attributes dd
 		| `static_array1 _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `static_array2 _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `dynamic_array _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `function_type (dd, _, ptl, _) ->
 			let conventions = attributes.at_conventions in
@@ -2421,7 +2423,7 @@ struct
 		| `old_function_type (dd, _, idl, _) ->
 			begin match idl with
 			| `some _ ->
-				error (fst x) "unimplemented!";
+				error (fst x) (unimplemented __LINE__);
 				assert false
 			| `none ->
 				let conventions = attributes.at_conventions in
@@ -2634,7 +2636,7 @@ struct
 			end
 		| `array (dd, _, tql, num, _) ->
 			if tql <> `none then (
-				error (fst x) "unimplemented!";
+				error (fst x) (unimplemented __LINE__);
 				assert false
 			);
 			let derived_types, source, array_type =
@@ -2668,13 +2670,13 @@ struct
 				derived_types, namespace, source, ((array_type :> all_type), attributes)
 			end
 		| `static_array1 _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `static_array2 _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `dynamic_array _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `function_type (dd, _, ptl, _) ->
 			let conventions = attributes.at_conventions in
@@ -2788,7 +2790,7 @@ struct
 				in
 				begin match d with
 				| `some (d_p, _) ->
-					error d_p "unimplemented.";
+					error d_p (unimplemented __LINE__);
 					assert false
 				| `none ->
 					()
@@ -2800,11 +2802,11 @@ struct
 					| Some elm ->
 						derived_types, source, kind, (elm :: rs)
 					| None ->
-						error (fst x) "unimplemented.";
+						error (fst x) (unimplemented __LINE__);
 						assert false
 					end
 				| `error ->
-					error (fst x) "unimplemented.";
+					error (fst x) (unimplemented __LINE__);
 					assert false
 				end
 			) (derived_types, source, kind, []) x
@@ -2820,7 +2822,7 @@ struct
 							let list = zero :: list in
 							filling_zero_loop items_r list
 						| None ->
-							error (fst x) "unimplemented.";
+							error (fst x) (unimplemented __LINE__);
 							assert false
 						end
 					| [] ->
@@ -2835,7 +2837,7 @@ struct
 				| Some _ as zero ->
 					list, zero
 				| None ->
-					error (fst x) "unimplemented.";
+					error (fst x) (unimplemented __LINE__);
 					assert false
 				end
 			end
@@ -2926,10 +2928,10 @@ struct
 			let derived_types, source, stmt = handle_statement_or_error ~control derived_types source stmt in
 			derived_types, source, Some (`label (label, stmt))
 		| `case _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `default _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `compound cs_e ->
 			let derived_types, source, stmts = handle_compound_statement ~control ?return_type error predefined_types derived_types namespace source alignment (fst x, cs_e) in
@@ -3020,7 +3022,7 @@ struct
 				derived_types, source, None
 			end
 		| `switch _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `while_loop (_, _, expr, _, stmt) ->
 			begin match expr with
@@ -3078,7 +3080,7 @@ struct
 			let derived_types, source, stmt = handle_statement_or_error ~control:`loop derived_types source stmt in
 			derived_types, source, Some (`for_loop (init_expr, cond_expr, next_expr, stmt))
 		| `for_with_declaration _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `goto (_, label, _) ->
 			begin match label with
@@ -3088,7 +3090,7 @@ struct
 				derived_types, source, None
 			end
 		| `continue _ ->
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `break _ ->
 			begin match control with
@@ -3214,7 +3216,7 @@ struct
 	(
 		let _, (spec, decl, params, stmt) = x in
 		if params <> `none then (
-			error (fst x) "unimplemented!";
+			error (fst x) (unimplemented __LINE__);
 			assert false
 		);
 		let derived_types, namespace, source, (storage_class, base_type, attributes) = handle_declaration_specifiers error predefined_types derived_types namespace source alignment spec in
