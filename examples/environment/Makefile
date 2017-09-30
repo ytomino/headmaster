@@ -1,17 +1,14 @@
 HOST=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
-ifneq ($(ComSpec),)
+ifneq ($(findstring mingw,$(TARGET)),)
 EXEEXT=.exe
-RM=del
-RMDIR=rmdir /s /q
 else
 EXEEXT=
-RM=rm
-RMDIR=rm -rf
+endif
+
 ifneq ($(shell rlwrap --version),)
 RLWRAP=rlwrap
-endif
 endif
 
 BUILDDIR=$(TARGET).build
@@ -57,5 +54,5 @@ ifneq ($(OCAMLMAKE),)
 endif
 
 clean:
-	-$(RMDIR) $(BUILDDIR)
-	-$(RM) $(BINLN) $(SOURCELN)
+	-rm -r $(BUILDDIR)
+	-rm $(BINLN) $(SOURCELN)

@@ -1,17 +1,14 @@
 HOST=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
-ifneq ($(ComSpec),)
+ifneq ($(findstring mingw,$(TARGET)),)
 EXEEXT=.exe
-RM=del
-RMDIR=rmdir /s /q
 else
 EXEEXT=
-RM=rm
-RMDIR=rm -rf
+endif
+
 ifneq ($(shell rlwrap --version),)
 RLWRAP=rlwrap
-endif
 endif
 
 BUILDDIR=$(TARGET).build
@@ -60,15 +57,14 @@ ifneq ($(OCAMLMAKE),)
 endif
 
 $(BUILDDIR)/gmp.cma:
-	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
+	$(MAKE) -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cma:
-	make -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+	$(MAKE) -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
 
 import:
 	mkdir import
 
 clean:
-	-$(RMDIR) $(BUILDDIR)
-	-$(RMDIR) import
-	-$(RM) $(BINLN) $(SOURCELN)
+	-rm -r $(BUILDDIR) import
+	-rm $(BINLN) $(SOURCELN)

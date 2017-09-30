@@ -10,10 +10,10 @@ all: $(BDIRS)
 clean: $(CDIRS)
 
 %.build: %
-	make -C $<
+	$(MAKE) -C $<
 
 %.clean: %
-	make -C $< clean
+	$(MAKE) -C $< clean
 
 %.tests: %
 	make -C $< test

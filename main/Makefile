@@ -1,14 +1,10 @@
 HOST=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
-ifneq ($(ComSpec),)
+ifneq ($(findstring mingw,$(TARGET)),)
 EXEEXT=.exe
-RM=del
-RMDIR=rmdir /s /q
 else
 EXEEXT=
-RM=rm
-RMDIR=rm -rf
 endif
 
 BUILDDIR=$(TARGET).build
@@ -54,10 +50,10 @@ version.ml: version.txt $(HEAD)
 	echo "let version = \"version $(shell ./version)\";;" > version.ml
 
 $(BUILDDIR)/gmp.cmxa:
-	make -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
 
 $(BUILDDIR)/unicode.cmxa:
-	make -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
 
 $(BINLN):
 	ln -sfh $(BUILDDIR) $@
@@ -80,11 +76,10 @@ testman: man1/headmaster.1
 	man -M . headmaster
 
 clean:
-	-$(RMDIR) $(BUILDDIR)
-	-$(RMDIR) man1
-	-$(RM) version.ml version.rst $(BINLN) $(SOURCELN)
-	make -C ../lib/gmp-ocaml clean
-	make -C ../lib/unicode-ocaml clean
+	-rm -r $(BUILDDIR) man1
+	-rm version.ml version.rst $(BINLN) $(SOURCELN)
+	$(MAKE) -C ../lib/gmp-ocaml clean
+	$(MAKE) -C ../lib/unicode-ocaml clean
 
 install: $(EXENAME)
 	install $(EXENAME) $(BINDIR)

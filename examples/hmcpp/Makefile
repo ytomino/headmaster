@@ -1,14 +1,10 @@
 HOST=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
-ifneq ($(ComSpec),)
+ifneq ($(findstring mingw,$(TARGET)),)
 EXEEXT=.exe
-RM=del
-RMDIR=rmdir /s /q
 else
 EXEEXT=
-RM=rm
-RMDIR=rm -rf
 endif
 
 BUILDDIR=$(TARGET).build
@@ -58,7 +54,7 @@ version.ml: | ../../main/version.ml
 	ln -s $< $@
 
 ../../main/version.ml: ../../main/version.txt $(HEAD)
-	make -C ../../main version.ml
+	$(MAKE) -C ../../main version.ml
 
 $(BINLN):
 	ln -sfh $(BUILDDIR) $@
@@ -70,14 +66,14 @@ test: $(EXENAME)
 	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 $(BUILDDIR)/gmp.cmxa:
-	make -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
 
 $(BUILDDIR)/unicode.cmxa:
-	make -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
 
 clean:
-	-$(RMDIR) $(BUILDDIR)
-	-$(RM) $(BINLN) $(SOURCELN)
+	-rm -r $(BUILDDIR)
+	-rm $(BINLN) $(SOURCELN)
 
 install: $(EXENAME)
 	install $(EXENAME) $(BINDIR)
