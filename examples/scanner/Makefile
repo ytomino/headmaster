@@ -17,35 +17,41 @@ endif
 BUILDDIR=$(TARGET).build
 SOURCEDIR=../../source
 BINLN=bin
+ifeq ($(OCAMLMAKE),)
+SOURCELN=source
+endif
+
+OCAMLCFLAGS=-g -safe-string -w Aer-48
 
 export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
 
 TEST=test_scanner
-EXENAME=$(BUILDDIR)/$(TEST)$(EXEEXT)
+EXENAME=$(BUILDDIR)/$(TEST).byte$(EXEEXT)
 
 .PHONY: $(EXENAME) all test interactive clean
 
 all: $(EXENAME) $(BINLN)
 
-$(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
+$(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma $(SOURCELN)
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -g -safe-string -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $<
+	$(OCAMLMAKE) -o $@ -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $<
 else
-	-ln -s $(SOURCEDIR) .
-	ocamlbuild -build-dir $(BUILDDIR) -X bin -I source $(TEST).byte
-	cd $(BUILDDIR) && ln -sf $(TEST).byte $(notdir $(EXENAME))
+	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -cflags "$(OCAMLCFLAGS)" $(TEST).byte
 endif
 
 $(BINLN):
 	ln -sfh $(BUILDDIR) $@
+
+$(SOURCELN):
+	ln -sfh $(SOURCEDIR) $@
 
 test: $(EXENAME)
 	$(EXENAME)
 
 interactive:
 ifneq ($(OCAMLMAKE),)
-	$(RLWRAP) $(OCAMLMAKE) -interact -g -w LZ -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(TEST).ml
+	$(RLWRAP) $(OCAMLMAKE) -interact -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $(TEST).ml
 endif
 
 $(BUILDDIR)/gmp.cma:
@@ -56,7 +62,4 @@ $(BUILDDIR)/unicode.cma:
 
 clean:
 	-$(RMDIR) $(BUILDDIR)
-ifeq ($(OCAMLMAKE),)
-	-$(RM) source
-endif
-	-$(RM) bin
+	-$(RM) $(BINLN) $(SOURCELN)

@@ -17,12 +17,17 @@ endif
 BUILDDIR=$(TARGET).build
 SOURCEDIR=../../source
 BINLN=bin
+ifeq ($(OCAMLMAKE),)
+SOURCELN=source
+endif
+
+OCAMLCFLAGS=-g -safe-string -w Aer-48
 
 export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
 
 TEST=test_translator
-EXENAME=$(BUILDDIR)/$(TEST)$(EXEEXT)
+EXENAME=$(BUILDDIR)/$(TEST).byte$(EXEEXT)
 
 GCC=gcc
 H=../c-lib.h
@@ -32,17 +37,18 @@ HFLAGS=
 
 all: $(EXENAME) $(BINLN)
 
-$(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma
+$(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma $(SOURCELN)
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -g -safe-string -w Aer -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $<
+	$(OCAMLMAKE) -o $@ -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $(OCAMLCFLAGS) $<
 else
-	-ln -s $(SOURCEDIR) .
-	ocamlbuild -build-dir $(BUILDDIR) -X bin -I source -I source/ada $(TEST).byte
-	cd $(BUILDDIR) && ln -sf $(TEST).byte $(notdir $(EXENAME))
+	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -I $(SOURCELN)/ada -cflags "$(OCAMLCFLAGS)" $(TEST).byte
 endif
 
 $(BINLN):
 	ln -sfh $(BUILDDIR) $@
+
+$(SOURCELN):
+	ln -sfh $(SOURCEDIR) $@
 
 test: $(EXENAME) | import
 	-rm import/*
@@ -50,7 +56,7 @@ test: $(EXENAME) | import
 
 interactive:
 ifneq ($(OCAMLMAKE),)
-	$(RLWRAP) $(OCAMLMAKE) -interact -g -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(TEST).ml
+	$(RLWRAP) $(OCAMLMAKE) -interact -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $(TEST).ml
 endif
 
 $(BUILDDIR)/gmp.cma:
@@ -65,7 +71,4 @@ import:
 clean:
 	-$(RMDIR) $(BUILDDIR)
 	-$(RMDIR) import
-ifeq ($(OCAMLMAKE),)
-	-$(RM) source
-endif
-	-$(RM) bin
+	-$(RM) $(BINLN) $(SOURCELN)

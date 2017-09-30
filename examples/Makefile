@@ -5,13 +5,9 @@ TDIRS=$(addsuffix .tests,$(DIRS))
 
 .PHONY: all clean
 
-all:
-	make $(BDIRS)
+all: $(BDIRS)
 
-clean:
-	make $(CDIRS)
-	make -C ../lib/gmp-ocaml clean
-	make -C ../lib/unicode-ocaml clean
+clean: $(CDIRS)
 
 %.build: %
 	make -C $<
