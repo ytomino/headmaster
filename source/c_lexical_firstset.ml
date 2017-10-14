@@ -86,6 +86,7 @@ struct
 		| `FLOAT
 		| `DOUBLE
 		| `SIGNED
+		| `__signed
 		| `__signed__
 		| `UNSIGNED
 		| `_BOOL

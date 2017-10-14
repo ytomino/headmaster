@@ -13,7 +13,7 @@ module Syntax (Literals: LiteralsType) = struct
 	type const = [`CONST | `__const];;
 	type inline = [`INLINE | `__inline | `__inline__];;
 	type restrict = [`RESTRICT | `__restrict | `__restrict__];;
-	type signed = [`SIGNED | `__signed__];;
+	type signed = [`SIGNED | `__signed | `__signed__];;
 	type volatile = [`VOLATILE | `__volatile__];;
 	type __asm = [`__asm | `__asm__];;
 	

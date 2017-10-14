@@ -290,6 +290,7 @@ type extended_word = [
 	| `__real__
 	| `__restrict
 	| `__restrict__
+	| `__signed
 	| `__signed__
 	| `__thread
 	| `__typeof__
@@ -313,6 +314,7 @@ let extended_word_table = [
 	"__real__", `__real__;
 	"__restrict", `__restrict;
 	"__restrict__", `__restrict__;
+	"__signed", `__signed;
 	"__signed__", `__signed__;
 	"__thread", `__thread;
 	"__typeof__", `__typeof__;

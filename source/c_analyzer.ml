@@ -1858,7 +1858,7 @@ struct
 			derived_types, namespace, source, ({set with ts_float = set.ts_float + 1}, named)
 		| `DOUBLE ->
 			derived_types, namespace, source, ({set with ts_double = set.ts_double + 1}, named)
-		| `SIGNED | `__signed__ ->
+		| `SIGNED | `__signed | `__signed__ ->
 			derived_types, namespace, source, ({set with ts_signed = set.ts_signed + 1}, named)
 		| `UNSIGNED ->
 			derived_types, namespace, source, ({set with ts_unsigned = set.ts_unsigned + 1}, named)

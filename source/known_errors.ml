@@ -206,6 +206,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"sys/cdefs.h", [
 			`redefine_extended_word, [
 				"__const"; (* darwin10 *)
+				"__signed"; (* darwin10 *)
 				"__restrict"]; (* darwin10 *)
 			`unparsible_macro, [
 				"__CAST_AWAY_QUALIFIER"; (* darwin10 / parameterized type qualifier in expression *)
@@ -457,6 +458,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__FreeBSD_cc_version"]; (* freebsd7 *)
 			`redefine_extended_word, [
 				"__const"; (* freebsd7 *)
+				"__signed"; (* freebsd9 *)
 				"__restrict"]; (* freebsd7 *)
 			`redefine_preprocessor_word, [
 				"__has_include"]; (* freebsd9 *)
