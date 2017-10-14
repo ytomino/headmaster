@@ -120,8 +120,7 @@ module Literals = struct
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Gmp.z_of_truncated_f;;
 	let real_of_integer = Real.of_z;;
-	let round_to_float = Gmp.f_of_f ~prec:float_prec;;
-	let round_to_double = Gmp.f_of_f ~prec:double_prec;;
+	let round = Gmp.f_of_f;;
 end;;
 
 module Language = struct

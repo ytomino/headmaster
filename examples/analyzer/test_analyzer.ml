@@ -54,8 +54,9 @@ module Literals = struct
 	module WideString = String32;;
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;
-	let round_to_float x = x;;
-	let round_to_double x = x;;
+	let round ~prec x = (ignore prec; x);;
+	let float_prec = 24;;
+	let double_prec = 53;;
 end;;
 
 module Language = struct

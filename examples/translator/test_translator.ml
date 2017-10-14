@@ -56,8 +56,7 @@ module Literals = struct
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Mpfr.z_of_truncated_fr;;
 	let real_of_integer = Real.of_z;;
-	let round_to_float = Mpfr.fr_of_fr ~prec:float_prec ~mode:`N;;
-	let round_to_double = Mpfr.fr_of_fr ~prec:double_prec ~mode:`N;;
+	let round = Mpfr.fr_of_fr ~mode:`N;;
 end;;
 
 module Language = struct

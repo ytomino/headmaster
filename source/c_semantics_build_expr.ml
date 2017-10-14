@@ -119,6 +119,11 @@ struct
 		| `_Decimal128, _ | _, `_Decimal128 -> `_Decimal128
 		| `_Decimal64, _ | _, `_Decimal64 -> `_Decimal64
 		| `_Decimal32, _ | _, `_Decimal32 -> `_Decimal32
+		| `_Float128, _ | _, `_Float128 -> `_Float128
+		| `_Float64x, _ | _, `_Float64x -> `_Float64x (* fNx is higher than fN *)
+		| `_Float64, _ | _, `_Float64 -> `_Float64
+		| `_Float32x, _ | _, `_Float32x -> `_Float32x
+		| `_Float32, _ | _, `_Float32 -> `_Float32
 		| (#float_prec as prec1), (#float_prec as prec2) -> float_prec prec1 prec2
 		end
 	);;

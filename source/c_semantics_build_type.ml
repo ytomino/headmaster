@@ -302,6 +302,11 @@ struct
 			(`float, sizeof_float) ::
 			(`double, sizeof_double) ::
 			(`long_double, sizeof_long_double) ::
+			(`_Float32, 4) ::
+			(`_Float64, 8) ::
+			(`_Float128, 16) ::
+			(`_Float32x, 8) ::
+			(`_Float64x, 16) ::
 			(`_Decimal32, 4) ::
 			(`_Decimal64, 8) ::
 			(`_Decimal128, 16) ::

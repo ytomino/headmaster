@@ -511,6 +511,16 @@ struct
 			pp_print_string ff (ada_name_of_int_prec p)
 		| #float_prec as p ->
 			pp_print_string ff (ada_name_of_float_prec p)
+		| `_Float32 ->
+			pp_print_string ff "Float32"
+		| `_Float64 ->
+			pp_print_string ff "Float64"
+		| `_Float128 ->
+			pp_print_string ff "Float128"
+		| `_Float32x ->
+			pp_print_string ff "Float32x"
+		| `_Float64x ->
+			pp_print_string ff "Float64x"
 		| `_Decimal32 ->
 			pp_print_string ff "Decimal32"
 		| `_Decimal64 ->
@@ -820,6 +830,16 @@ struct
 				in
 				pp_type ff name pp_derived_type_definition pp_print_string body;
 				pp_pragma_convention ff `cdecl name
+			| `_Float32 ->
+				fprintf ff "@ --  type Float32 is ..."
+			| `_Float64 ->
+				fprintf ff "@ --  type Float64 is ..."
+			| `_Float128 ->
+				fprintf ff "@ --  type Float128 is ..."
+			| `_Float32x ->
+				fprintf ff "@ --  type Float32x is ..."
+			| `_Float64x ->
+				fprintf ff "@ --  type Float64x is ..."
 			| `_Decimal32 ->
 				fprintf ff "@ --  type Decimal32 is ..."
 			| `_Decimal64 ->

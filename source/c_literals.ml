@@ -23,11 +23,19 @@ type float_prec = [
 	| `double
 	| `long_double];;
 
-type real_prec = [
-	| float_prec
-	| `_Decimal32 (* gcc's _Decimal32 *)
-	| `_Decimal64 (* gcc's _Decimal64 *)
-	| `_Decimal128];; (* gcc's _Decimal128 *)
+type extended_float_proc = [ (* ISO/IEC TS 18661-3:2015 *)
+	| `_Float32
+	| `_Float64
+	| `_Float128
+	| `_Float32x
+	| `_Float64x];;
+
+type extended_decimal_proc = [ (* ISO/IEC WDTR24732 *)
+	| `_Decimal32
+	| `_Decimal64
+	| `_Decimal128];;
+
+type real_prec = [float_prec | extended_float_proc | extended_decimal_proc];;
 
 (* for __attribute__((__mode__)) *)
 
@@ -63,6 +71,7 @@ module type LiteralsType = sig
 	module WideString: StringType with type elm = Int32.t
 	val integer_of_real: Real.t -> Integer.t
 	val real_of_integer: Integer.t -> Real.t
-	val round_to_float: Real.t -> Real.t
-	val round_to_double: Real.t -> Real.t
+	val round: prec:int -> Real.t -> Real.t
+	val float_prec: int
+	val double_prec: int
 end;;

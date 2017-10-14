@@ -33,6 +33,10 @@ struct
 	
 	let not_10_based_float_literal =
 		"floating-point literal should be 10-based.";;
+	let bad_fN_suffix =
+		"the suffix of sized float literal should be one of f32, f64, f128.";;
+	let bad_fNx_suffix =
+		"the suffix of half sized float literal should be one of f32x, f64x.";;
 	let bad_decimal_suffix =
 		"the suffix of decimal literal should be one of DF, DD, DL.";;
 	let not_numeric_literal =
@@ -199,13 +203,55 @@ struct
 				| 'f' | 'F' as h ->
 					Buffer.add_char buf h;
 					let index = succ source index in
-					let value = round_to_float value in
 					begin match get source index with
+					| '0'..'9' -> (* fN, fNx *)
+						let index = read_digits_to_buffer ~base:10 buf index in
+						let bit_size = 32 in
+						let prec, index =
+							begin match get source index with
+							| 'x' as h -> (* lowercase only? *)
+								Buffer.add_char buf h;
+								let index = succ source index in
+								let prec =
+									begin match bit_size with
+									| 32 ->
+										`_Float32x
+									| 64 ->
+										`_Float64x
+									| _ ->
+										let p2 = prev_position source index in
+										error (p1, p2) bad_fNx_suffix;
+										`_Float64x (* fallback *)
+									end
+								in
+								prec, index
+							| _ ->
+								let prec =
+									begin match bit_size with
+									| 32 ->
+										`_Float32
+									| 64 ->
+										`_Float64
+									| 128 ->
+										`_Float128
+									| _ ->
+										let p2 = prev_position source index in
+										error (p1, p2) bad_fN_suffix;
+										`_Float128  (* fallback *)
+									end
+								in
+								prec, index
+							end
+						in
+						let value = round ~prec:bit_size value in
+						wrap (`float_literal (prec, value)) index
 					| 'i' | 'I' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
+						let value = round ~prec:float_prec value in
 						wrap (`imaginary_literal (`float, value)) index
 					| _ ->
+						let value = round ~prec:float_prec value in
 						wrap (`float_literal (`float, value)) index
 					end
 				| 'i' | 'I' as h -> (* imaginary literal is gcc's extended?? *)
@@ -215,14 +261,14 @@ struct
 					| 'f' | 'F' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						let value = round_to_float value in
+						let value = round ~prec:float_prec value in
 						wrap (`imaginary_literal (`float, value)) index
 					| 'l' | 'L' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
 						wrap (`imaginary_literal (`long_double, value)) index
 					| _ ->
-						let value = round_to_double value in
+						let value = round ~prec:double_prec value in
 						wrap (`imaginary_literal (`double, value)) index
 					end
 				| 'l' | 'L' as h ->
@@ -237,7 +283,7 @@ struct
 						wrap (`float_literal (`long_double, value)) index
 					end
 				| _ ->
-					let value = round_to_double value in
+					let value = round ~prec:double_prec value in
 					wrap (`float_literal (`double, value)) index
 				end
 			| _ as h -> (* integer *)

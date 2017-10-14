@@ -121,8 +121,9 @@ module Literals_ocaml = struct
 	module WideString = String32;;
 	let integer_of_real = int_of_float;;
 	let real_of_integer = float_of_int;;
-	let round_to_float x = x;;
-	let round_to_double x = x;;
+	let round ~prec x = (ignore prec; x);;
+	let float_prec = 24;;
+	let double_prec = 53;;
 end;;
 
 module Test1 = Test (Literals_ocaml);;
@@ -135,8 +136,9 @@ module Literals_ocaml64 = struct
 	module WideString = String32;;
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;
-	let round_to_float x = x;;
-	let round_to_double x = x;;
+	let round ~prec x = (ignore prec; x);;
+	let float_prec = 24;;
+	let double_prec = 53;;
 end;;
 
 module Test2 = Test (Literals_ocaml64);;
@@ -149,8 +151,9 @@ module Literals_gmp = struct
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Gmp.z_of_truncated_f;;
 	let real_of_integer = Real.of_z;;
-	let round_to_float = Gmp.f_of_f ~prec:24;;
-	let round_to_double = Gmp.f_of_f ~prec:53;;
+	let round = Gmp.f_of_f;;
+	let float_prec = 24;;
+	let double_prec = 53;;
 end;;
 
 module Test3 = Test (Literals_gmp);;
