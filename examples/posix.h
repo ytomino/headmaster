@@ -1,6 +1,7 @@
 #if defined(__APPLE__)
 #define _DONT_USE_CTYPE_INLINE_
 #include <stdint.h> /* uint32_t for sys/socket.h */
+#include <strings.h> /* bcopy for FD_COPY */
 #elif defined(__FreeBSD__)
 #define _DONT_USE_CTYPE_INLINE_
 #elif defined (__linux__)
@@ -8,6 +9,7 @@
 #endif
 #include <sys/types.h> /* before other system headers */
 #include <sys/ucontext.h> /* before signal.h */
+#include <sys/select.h>
 #include <sys/resource.h> /* before sys/time.h */
 #include <sys/time.h>
 #include <sys/uio.h>
@@ -31,6 +33,7 @@
 #include <sys/stat.h>
 #endif
 #include <sys/file.h>
+#include <poll.h>
 #if defined(__linux__)
 #define _SYS_SOCKET_H
 #include <bits/socket.h> /* before netinet/in.h */
@@ -62,10 +65,6 @@
 #include <spawn.h>
 #endif
 #if !defined(__linux__)
-#if defined(__FreeBSD__)
-#include <stdio.h> /* before wchar.h in FreeBSD */
-#endif
-#include <wchar.h> /* before iconv.h in FreeBSD, after malloc.h in Linux */
 #include <pwd.h>
 #include <grp.h>
 #endif
@@ -85,6 +84,7 @@
 #include <pthread_np.h>
 #include <link.h>
 #elif defined(__linux__)
+#include <sys/sendfile.h>
 #include <sys/statvfs.h>
 #include <link.h>
 #undef __USE_GNU /* avoiding circular dependency between libio.h and stdio.h */
