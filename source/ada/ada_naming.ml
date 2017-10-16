@@ -75,10 +75,6 @@ let special_name_mapping = make_mapmap [
 		"rl_vi_bWord", "rl_vi_bWord_uppercase"; (* readline / conflicted with rl_vi_bword *)
 		"rl_vi_eWord", "rl_vi_eWord_uppercase"; (* readline / conflicted with rl_vi_eword *)
 		"rl_vi_fWord", "rl_vi_fWord_uppercase"]; (* readline / conflicted with rl_vi_fword *)
-	"signal", [
-		"sv_onstack", "sigvec_sv_onstack"]; (* linux / conflicted with SV_ONSTACK *)
-	"sys.signal", [
-		"sv_onstack", "sigvec_sv_onstack"]; (* darwin9 / conflicted with SV_ONSTACK *)
 	"stdlib", [
 		"exit", "C_exit"; (* w64-mingw32 / conflicted with _Exit *)
 		"_exit", "C_qexit"; (* w64-mingw32 / conflicted with _Exit *)
