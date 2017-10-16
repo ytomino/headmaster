@@ -119,29 +119,29 @@ struct
 		(name: string)
 		: string =
 	(
-		let rec contained sub s level = (
-			assert (sub <> "");
-			if s = "" then -1 else
-			let s, sr = take_package_name s in
-			let r = contained sub sr (level + 1) in
-			if r >= 0 then r else
-			if s = sub then level else
-			-1
-		) in
 		if package_name = "" || (
 			current = package_name
 			&& not (StringSet.mem (String.uppercase_ascii name) hiding))
 		then (
 			name
-		) else if StringSet.mem package_name hidden_packages || (
-			let p, pr = take_package_name package_name in
-			pr <> "" && (
-				let c = contained p current 0 in
-				c > 0 || (c = 0 && fst (take_package_name pr) = p)))
-		then (
-			"Standard.C." ^ package_name ^ "." ^ name
 		) else (
-			package_name ^ "." ^ name
+			let rec cut_loop c a r: string list * string = (
+				let c1, c2 = take_package_name c in
+				let r1, r2 = take_package_name r in
+				if r1 <> c1 then a, r else
+				cut_loop c2 (r1 :: a) r2
+			) in
+			let rec add_loop a r: string = (
+				let r1, _ = take_package_name r in
+				if not (StringSet.mem (String.uppercase_ascii r1) hidden_packages) then r else
+				begin match a with
+				| [] -> r
+				| x :: xr -> add_loop xr (x ^ "." ^ r)
+				end
+			) in
+			let a, r = cut_loop current ["C"; "Standard"] package_name in
+			let v = add_loop a r in
+			if v <> "" then v ^ "." ^ name else name
 		)
 	);;
 	
@@ -557,7 +557,7 @@ struct
 		(item: Semantics.derived_type)
 		: unit =
 	(
-		let pp_pointer_type_name ff ~mappings ~where ~restrict t = (
+		let pp_pointer_type_name ff ~restrict t = (
 			let resolved_t = Semantics.resolve_typedef t in
 			if where = `argument && using_anonymous_access_for_pointed_type resolved_t <> None then (
 				(* expanding to anonymous access type *)
@@ -584,7 +584,7 @@ struct
 							failwith "pp_derived_type_name/pp_pointer_type_name"
 						end
 					in
-					pp_print_string ff (add_package_name current package_name ("access_" ^ unique_key))
+					pp_print_string ff (add_package_name current ?hidden_packages:None package_name ("access_" ^ unique_key))
 				| `const t ->
 					pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name (t :> Semantics.all_type);
 					fprintf ff "_const%s" postfix
@@ -596,7 +596,7 @@ struct
 		) in
 		begin match item with
 		| `pointer t ->
-			pp_pointer_type_name ff ~mappings ~where ~restrict:false t
+			pp_pointer_type_name ff ~restrict:false t
 		| `block_pointer _ ->
 			fprintf ff "System.Address"
 		| `array (n, t) ->
@@ -605,7 +605,7 @@ struct
 				assert false; (* does not come here *)
 			| `extern | `name | `subtype | `rename as where ->
 				let base_name = string_of_pp
-					(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) (t :> Semantics.all_type)
+					(pp_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`name) (t :> Semantics.all_type)
 				in
 				begin match where with
 				| `extern | `name | `subtype as where ->
@@ -634,7 +634,7 @@ struct
 				end
 			end
 		| `restrict (`pointer t) ->
-			pp_pointer_type_name ff ~mappings ~where ~restrict:true t
+			pp_pointer_type_name ff ~restrict:true t
 		| `volatile base_type ->
 			pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name (base_type :> Semantics.all_type);
 			fprintf ff "_volatile"
@@ -723,7 +723,7 @@ struct
 				pp_print_string ff name
 			| `named (ps, ("ptrdiff_t" | "size_t" | "wchar_t" as name), _, _)
 				when (let (filename, _, _, _), _ = ps in is_special_filename filename) ->
-				if StringSet.mem name hiding then pp_print_string ff "Standard.C.";
+				if StringSet.mem (String.uppercase_ascii name) hiding then pp_print_string ff "Standard.C.";
 				pp_print_string ff name
 			| `named (ps, name, _, _) ->
 				let name = ada_name_of current ~hidden_packages ~hiding ps name `namespace name_mapping in
@@ -743,6 +743,7 @@ struct
 		let _, name_mapping, _ = mappings in
 		let name_mapping, args = add_name_mapping_for_arguments args name_mapping in
 		let hiding = set_of_fst args in
+		let hidden_packages = StringSet.union hiding hidden_packages in
 		let pp_args ff args = (
 			if args <> [] then (
 				pp_print_string ff " (";
@@ -929,6 +930,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		(typedef: Semantics.typedef_type option)
 		(item: Semantics.derived_type)
 		: unit =
@@ -1081,7 +1083,7 @@ struct
 							re_t
 					) else (
 						pp_subtype ff name
-							(pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name)
+							(pp_derived_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`name)
 							(match Finding.expand_typedef ((==) typedef) (item :> Semantics.all_type) with
 								| #Semantics.derived_type as t -> t
 								| _ -> assert false) (* does not come here *)
@@ -1114,6 +1116,7 @@ struct
 		~(casts: (Semantics.all_type * Semantics.all_type) list)
 		~(sized_arrays: Semantics.all_type list)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		?(special: bool = false)
 		(base_type: Semantics.all_type)
 		(derived_types: Semantics.derived_type list)
@@ -1134,9 +1137,9 @@ struct
 				(* type declaration *)
 				begin match base_type with
 				| `named (_, _, `typedef _, _) as typedef_t when not special ->
-					pp_derived_type ff ~mappings ~current (Some typedef_t) dt
+					pp_derived_type ff ~mappings ~current ~hidden_packages (Some typedef_t) dt
 				| _ ->
-					pp_derived_type ff ~mappings ~current None dt
+					pp_derived_type ff ~mappings ~current ?hidden_packages:None None dt
 				end;
 				(* cast *)
 				List.iter (fun (x, y as pair) ->
@@ -1281,6 +1284,8 @@ struct
 		(fields: (string * Semantics.struct_item) list)
 		: (formatter -> unit -> unit) list =
 	(
+		let hiding = set_of_fst fields in
+		let hidden_packages = StringSet.union hiding hidden_packages in
 		List.map (fun (field_name, (_, field_type, field_bits_info, _)) (ff: formatter) () ->
 			pp_print_space ff ();
 			pp_open_box ff indent;
@@ -1293,7 +1298,6 @@ struct
 			| Some (_, _, false) | None ->
 				pp_print_string ff "aliased "
 			end;
-			let hiding = set_of_fst fields in
 			pp_type_name ff ~mappings ~current ~hidden_packages ~hiding ~where:`subtype field_type;
 			begin match field_bits_info with
 			| Some (_, field_bits, true) ->
@@ -1456,6 +1460,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		~(where: [`typedef | `macro])
 		(ps: ranged_position)
 		(name: string)
@@ -1496,7 +1501,7 @@ struct
 				| _ ->
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					pp_subtype ff name
-						(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) t
+						(pp_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`subtype) t
 				end
 			end
 		end
@@ -1506,6 +1511,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.language_mapping * Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		(item: Semantics.typedef_type)
 		: unit =
 	(
@@ -1517,7 +1523,7 @@ struct
 		| [] -> (* not found *)
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			let `named (ps, name, `typedef t, _) = item in
-			pp_typedef_without_language_mapping ff ~mappings ~current ~where:`typedef ps name t
+			pp_typedef_without_language_mapping ff ~mappings ~current ~hidden_packages ~where:`typedef ps name t
 		end
 	);;
 	
@@ -1575,7 +1581,7 @@ struct
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 				pp_union ff ~mappings ~current ~hidden_packages name items
 			| `named (_, _, `typedef _, _) as t ->
-				pp_typedef ff ~mappings ~current t
+				pp_typedef ff ~mappings ~current ~hidden_packages t
 			| `named (_, _, `generic_type, _) ->
 				assert false (* does not come here *)
 			end
@@ -1599,6 +1605,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		~(outside: outside_precedence)
 		(expr: Semantics.expression)
 		: unit =
@@ -1641,7 +1648,7 @@ struct
 				pp_expression ff ~mappings ~current ~outside:`lowest left;
 				pp_print_char ff ')'
 			) else (
-				pp_expression ff ~mappings ~current ~outside:(inside :> outside_precedence) left
+				pp_expression ff ~mappings ~current ~hidden_packages ~outside:(inside :> outside_precedence) left
 			);
 			pp_print_space ff ();
 			pp_print_string ff
@@ -1656,7 +1663,7 @@ struct
 				pp_expression ff ~mappings ~current ~outside:`lowest right;
 				pp_print_char ff ')'
 			) else (
-				pp_expression ff ~mappings ~current ~outside:(inside :> outside_precedence) right
+				pp_expression ff ~mappings ~current ~hidden_packages ~outside:(inside :> outside_precedence) right
 			);
 			if is_signed || paren then pp_close_paren ff ()
 		) in
@@ -1766,7 +1773,7 @@ struct
 			| `dereference expr, _ (* omit .all *)
 			| expr ->
 				fprintf ff "%a.%s"
-					(pp_expression ~mappings ~current ~outside:`primary) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`primary) expr
 					(StringMap.find field_name field_map)
 			end
 		| `dereference expr, _ ->
@@ -1785,10 +1792,10 @@ struct
 					pp_type_name ff ~mappings ~current ~where:`name t
 				end;
 				fprintf ff " %a.all"
-					(pp_expression ~mappings ~current ~outside:`primary) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`primary) expr
 			| _ ->
 				fprintf ff "%a.all"
-					(pp_expression ~mappings ~current ~outside:`primary) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`primary) expr
 			end
 		| `post_increment _, _ as expr ->
 			let hash = hash_name expr in
@@ -1909,19 +1916,19 @@ struct
 					pp_type_name ff ~mappings ~current ~where:`name t2
 				end;
 				fprintf ff "'(%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, #real_prec, `complex _ ->
 				fprintf ff "(Re => %a,@ Im => 0.0)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, `imaginary _, `complex _ ->
 				fprintf ff "(Re => 0.0,@ Im => %a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, `bool, #int_prec ->
 				fprintf ff "Boolean'Pos (%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, `char, #int_prec ->
 				fprintf ff "char'Pos (%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, #signed_int_prec, #unsigned_int_prec when need_to_cast expr ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
@@ -1939,16 +1946,16 @@ struct
 					pp_type_name ff ~mappings ~current ~where:`name t2
 				end;
 				fprintf ff "'(%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, (#int_prec | #real_prec | `const #int_prec), (#int_prec | #real_prec) ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in
-					pp_type_name ff ~mappings ~current ~where:`name t2
+					pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name t2
 				end;
 				pp_print_string ff " (";
 				pp_print_break ff 0 0;
-				pp_expression ff ~mappings ~current ~outside:`lowest expr;
+				pp_expression ff ~mappings ~current ~hidden_packages ~outside:`lowest expr;
 				pp_print_char ff ')'
 			| _, #int_prec, `bool ->
 				let paren = parenthesis_required ~outside ~inside:`relation in
@@ -1959,7 +1966,7 @@ struct
 				if paren then pp_close_paren ff ()
 			| _, #int_prec, `char ->
 				fprintf ff "char'Val (%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, #int_prec, `named (_, _, `enum _, _) ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
@@ -1967,7 +1974,7 @@ struct
 					pp_type_name ff ~mappings ~current ~where:`name t2
 				end;
 				fprintf ff "'Enum_Val (%a)"
-					(pp_expression ~mappings ~current ~outside:`lowest) expr
+					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, #int_prec, (`pointer `void) when Semantics.is_static_expression expr -> (* pointer literal to void *)
 				begin match Semantics.integer_of_expression expr with
 				| Some (_, value) ->
@@ -2073,7 +2080,7 @@ struct
 			begin
 				let opaque_mapping, name_mapping = mappings in
 				let mappings = opaque_mapping, name_mapping, [] in
-				pp_type_name ff ~mappings ~current ~where:`name t
+				pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name t
 			end;
 			pp_print_string ff "'(Shift_Left (";
 			pp_print_break ff 0 0;
@@ -2089,7 +2096,7 @@ struct
 			begin
 				let opaque_mapping, name_mapping = mappings in
 				let mappings = opaque_mapping, name_mapping, [] in
-				pp_type_name ff ~mappings ~current ~where:`name t
+				pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name t
 			end;
 			begin match Semantics.resolve_typedef t with
 			| #signed_int_prec ->
@@ -2176,23 +2183,23 @@ struct
 		| `mul_assign ->
 			fprintf ff "%a * %a;"
 				(pp_left ~outside:`term) left
-				(pp_expression ~mappings ~current ~outside:`term) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`term) right
 		| `div_assign ->
 			fprintf ff "%a / %a;"
 				(pp_left ~outside:`term_right) left
-				(pp_expression ~mappings ~current ~outside:`term_right) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`term_right) right
 		| `rem_assign ->
 			fprintf ff "%a rem %a;"
 				(pp_left ~outside:`term_right) left
-				(pp_expression ~mappings ~current ~outside:`term_right) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`term_right) right
 		| `add_assign ->
 			fprintf ff "%a + %a;"
 				(pp_left ~outside:`simple) left
-				(pp_expression ~mappings ~current ~outside:`simple) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`simple) right
 		| `sub_assign ->
 			fprintf ff "%a - %a;"
 				(pp_left ~outside:`simple) left
-				(pp_expression ~mappings ~current ~outside:`simple_right) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`simple_right) right
 		| `l_shift_assign ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
@@ -2202,15 +2209,15 @@ struct
 		| `and_assign ->
 			fprintf ff "%a and %a;"
 				(pp_left ~outside:`logical_and) left
-				(pp_expression ~mappings ~current ~outside:`logical_and) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`logical_and) right
 		| `or_assign ->
 			fprintf ff "%a or %a;"
 				(pp_left ~outside:`logical_or) left
-				(pp_expression ~mappings ~current ~outside:`logical_or) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`logical_or) right
 		| `xor_assign ->
 			fprintf ff "%a xor %a;"
 				(pp_left ~outside:`logical_xor) left
-				(pp_expression ~mappings ~current ~outside:`logical_xor) right
+				(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`logical_xor) right
 		end;
 		pp_close_box ff ()
 	);;
@@ -2321,7 +2328,7 @@ struct
 						pp_type_name ff ~mappings ~current ~where:`subtype t
 					end;
 					fprintf ff " renames %a;"
-						(pp_expression ~mappings ~current ~outside:`lowest) ebody;
+						(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) ebody;
 					pp_close_box ff ();
 					pp_begin ff ();
 					begin match expr with
@@ -2426,6 +2433,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		?(in_expression: bool = false)
 		(stmt: Semantics.statement)
 		: unit =
@@ -2438,11 +2446,11 @@ struct
 			pp_string_literal ff pp_character_literal 1 template;
 			if out_args <> [] then (
 				let handle (n, expr) = (
-					pp_type_name ff ~mappings ~current ~where:`name (snd expr);
+					pp_type_name ff ~mappings ~current ~hidden_packages ~where:`name (snd expr);
 					let opaque_mapping, name_mapping, _ = mappings in
 					let mappings = opaque_mapping, name_mapping in
 					fprintf ff "\'Asm_Output (\"%s\", %a)" n
-						(pp_expression ~mappings ~current ~outside:`lowest) expr
+						(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 				) in
 				fprintf ff ",@ ";
 				pp_open_box ff indent;
@@ -2469,7 +2477,7 @@ struct
 					let opaque_mapping, name_mapping, _ = mappings in
 					let mappings = opaque_mapping, name_mapping in
 					fprintf ff "\'Asm_Input (\"%s\", %a)" n
-						(pp_expression ~mappings ~current ~outside:`lowest) expr
+						(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 				) in
 				fprintf ff ",@ Inputs => ";
 				begin match in_args with
@@ -2570,14 +2578,14 @@ struct
 				pp_return ff (Some (fun ff () ->
 					let opaque_mapping, name_mapping, _ = mappings in
 					let mappings = opaque_mapping, name_mapping in
-					pp_expression ff ~mappings ~current ~outside:`lowest expr))
+					pp_expression ff ~mappings ~current ~hidden_packages ~outside:`lowest expr))
 			) else (
 				begin match expr with
 				| `assign (_, `assign, _), _ as expr ->
 					let opaque_mapping, name_mapping, _ = mappings in
 					let mappings = opaque_mapping, name_mapping in
 					pp_assignment_expression ff ~mappings ~current
-						~pp_left:(pp_expression ~mappings ~current) expr
+						~pp_left:(pp_expression ~mappings ~current ?hidden_packages:None) expr
 				| #Semantics.any_assignment_expression_var, t as expr ->
 					begin match expr with
 					| `assign (ebody, _, _), _
@@ -2704,7 +2712,7 @@ struct
 					~pp_statement:(
 						begin fun ff () ->
 							pp_return ff (Some (fun ff () ->
-								pp_expression ff ~mappings ~current ~outside:`lowest expr))
+								pp_expression ff ~mappings ~current ~hidden_packages ~outside:`lowest expr))
 						end)
 			| None ->
 				pp_return ff None
@@ -2714,6 +2722,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		?(in_expression: bool = false)
 		~(null_statement : bool)
 		(stmts: Semantics.statement list)
@@ -2725,9 +2734,9 @@ struct
 			let rec loop xs = (
 				begin match xs with
 				| stmt :: [] when in_expression ->
-					pp_statement ff ~mappings ~current ~in_expression:true stmt
+					pp_statement ff ~mappings ~current ~hidden_packages ~in_expression:true stmt
 				| stmt :: xr ->
-					pp_statement ff ~mappings ~current stmt;
+					pp_statement ff ~mappings ~current ~hidden_packages stmt;
 					loop xr
 				| [] ->
 					()
@@ -2990,7 +2999,7 @@ struct
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					pp_print_space ff ();
 					pp_open_box ff indent;
-					ignore (pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype);
+					ignore (pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name) prototype);
 					pp_print_string ff ";";
 					pp_close_box ff ();
 					begin match Listtbl.assqs item language_mapping.Semantics.lm_overload with
@@ -3076,7 +3085,7 @@ struct
 			let ada_name = ada_name_of current ps name `namespace name_mapping in
 			pp_print_space ff ();
 			pp_open_box ff indent;
-			ignore (pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype);
+			ignore (pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name) prototype);
 			pp_print_string ff ";";
 			pp_close_box ff ();
 			if body_required_for_single_item ~including_expression:false (item :> Semantics.source_item) then (
@@ -3179,7 +3188,7 @@ struct
 		| `named (ps, name, `defined_typedef t, _) ->
 			let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-			pp_typedef_without_language_mapping ff ~mappings ~current ~where:`macro ps name t
+			pp_typedef_without_language_mapping ff ~mappings ~current ~hidden_packages ~where:`macro ps name t
 		| `named (_, name, `defined_opaque_type t, _) ->
 			let target_type_name =
 				match t with
@@ -3297,6 +3306,7 @@ struct
 		(ff: formatter)
 		~(mappings: Semantics.opaque_mapping * name_mapping * anonymous_mapping)
 		~(current: string)
+		?(hidden_packages: StringSet.t = StringSet.empty)
 		(item: Semantics.named_item)
 		: unit =
 	(
@@ -3318,7 +3328,7 @@ struct
 				if has_local then pp_open_box ff 0;
 				pp_open_box ff indent;
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				let name_mapping = pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype in
+				let name_mapping = pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name) prototype in
 				(* start of local declarations *)
 				if has_local then pp_close_box ff ();
 				fprintf ff "@ is";
@@ -3333,7 +3343,7 @@ struct
 						let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 						fprintf ff "%s : %a := %s;"
 							mutable_name
-							(pp_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`subtype) arg_t
+							(pp_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`subtype) arg_t
 							ada_name;
 						let (filename, _, _, _), _ = ps in
 						let rel_filename, package_name, map = StringMap.find filename name_mapping in
@@ -3345,7 +3355,7 @@ struct
 				if has_local then pp_close_box ff ();
 				pp_begin ff ();
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				pp_statement_list ff ~mappings ~current
+				pp_statement_list ff ~mappings ~current ~hidden_packages
 					~null_statement:true stmts;
 				pp_end ff ~label:ada_name ()
 			| `extern | `inline ->
@@ -3406,17 +3416,21 @@ struct
 			~pp_private:None
 	);;
 	
-	let pp_translated_package_spec
-		(ff: formatter)
+	type context_clauses =
+		with_clause list *
+			StringSet.t * (* hidden packages *)
+			Semantics.enum_type_var Semantics.anonymous list *
+			(Semantics.all_type * Semantics.all_type) list;; (* casts *)
+	
+	let context_clauses
 		~(language_mapping: Semantics.language_mapping)
 		~(predefined_types: (Semantics.predefined_type * int) list * Semantics.typedef_type list)
 		~(derived_types: Semantics.derived_type list)
-		~(enum_of_element: Semantics.full_enum_type StringMap.t)
 		~(opaque_mapping: Semantics.opaque_mapping)
 		~(name_mapping: name_mapping)
 		~(name: string)
 		(items: Semantics.source_item list)
-		: unit =
+		: context_clauses =
 	(
 		let ptrdiff_t = Semantics.find_ptrdiff_t predefined_types in
 		let items_having_bodies = List.filter (body_required_for_single_item ~including_expression:true) items in
@@ -3425,9 +3439,6 @@ struct
 		(* used casts *)
 		let casts = List.fold_left Finding.find_all_cast_in_source_item [] items_having_bodies in
 		let casts = List.fold_left (Finding.find_all_pointer_arithmetic_in_source_item ptrdiff_t) casts items_having_bodies in
-		(* used sized arrays *)
-		let used_sized_arrays = List.fold_left Finding.find_all_sized_array_in_source_item [] items in
-		let all_sized_arrays = List.fold_left Finding.find_all_sized_array_in_derived_type used_sized_arrays derived_types in
 		(* with clauses *)
 		let with_packages =
 			let items = (items :> Semantics.all_item list) in
@@ -3441,7 +3452,46 @@ struct
 			referencing_packages ~language_mapping ~name_mapping ~derived_types ~opaque_mapping ~anonymous_enums ~casts
 				~current:name items
 		in
+		(* hidden packages *)
 		let hidden_packages = hidden_packages with_packages ~current:name in
+		let hidden_packages =
+			List.fold_left (fun hidden_packages item ->
+				(* update hidden packages *)
+				begin match item with
+				| `named (ps, item_name, kind, _) ->
+					begin match kind with
+					| #Semantics.opaque_type_var | `enum _ | `struct_type _ | `union _
+					| `defined_alias (`named (_, _, (#Semantics.opaque_type_var | `enum _ | `struct_type _ | `union _), _)) ->
+						hidden_packages
+					| _ ->
+						let ada_name = ada_name_of name ps item_name `namespace name_mapping in
+						StringSet.add (String.uppercase_ascii ada_name) hidden_packages
+					end
+				| _ ->
+					hidden_packages
+				end
+			) hidden_packages items
+		in
+		with_packages, hidden_packages, anonymous_enums, casts
+	);;
+	
+	let pp_translated_package_spec
+		(ff: formatter)
+		~(language_mapping: Semantics.language_mapping)
+		~(predefined_types: (Semantics.predefined_type * int) list * Semantics.typedef_type list)
+		~(derived_types: Semantics.derived_type list)
+		~(enum_of_element: Semantics.full_enum_type StringMap.t)
+		~(opaque_mapping: Semantics.opaque_mapping)
+		~(name_mapping: name_mapping)
+		~(name: string)
+		(items: Semantics.source_item list)
+		(context_clauses: context_clauses)
+		: unit = 
+	(
+		let with_packages, hidden_packages, anonymous_enums, casts = context_clauses in
+		(* used sized arrays *)
+		let used_sized_arrays = List.fold_left Finding.find_all_sized_array_in_source_item [] items in
+		let all_sized_arrays = List.fold_left Finding.find_all_sized_array_in_derived_type used_sized_arrays derived_types in
 		(* opaque types *)
 		let has_private_part =
 			List.exists (fun item ->
@@ -3596,23 +3646,7 @@ struct
 					end
 				) in
 				ignore (
-					List.fold_left (fun (anonymous_mapping, done_list, hidden_packages) item ->
-						(* update hidden packages *)
-						let hidden_packages =
-							begin match item with
-							| `named (ps, name, kind, _) ->
-								begin match kind with
-								| #Semantics.opaque_type_var | `enum _ | `struct_type _ | `union _
-								| `defined_alias (`named (_, _, (#Semantics.opaque_type_var | `enum _ | `struct_type _ | `union _), _)) ->
-									hidden_packages
-								| _ ->
-									let ada_name = ada_name_of current ps name `namespace name_mapping in
-									StringSet.add ada_name hidden_packages
-								end
-							| _ ->
-								hidden_packages
-							end
-						in
+					List.fold_left (fun (anonymous_mapping, done_list) item ->
 						(* source item *)
 						let anonymous_mapping =
 							begin match item with
@@ -3653,13 +3687,13 @@ struct
 								(* output derived types *)
 								pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping)
 									~casts ~sized_arrays:all_sized_arrays
-									~current (t :> Semantics.all_type) derived_types done_list
+									~current ~hidden_packages (t :> Semantics.all_type) derived_types done_list
 							| _ ->
 								done_list
 							end
 						in
-						anonymous_mapping, done_list, hidden_packages
-					) ([], [], hidden_packages) items
+						anonymous_mapping, done_list
+					) ([], []) items
 				)
 			)
 			~pp_private:(
@@ -3686,6 +3720,7 @@ struct
 		~(name_mapping: name_mapping)
 		~(name: string)
 		(items: Semantics.source_item list)
+		(context_clauses: context_clauses)
 		: unit =
 	(
 		let has_asm =
@@ -3701,6 +3736,7 @@ struct
 			)
 		in
 		let current = name in
+		let _, hidden_packages, _, _ = context_clauses in
 		pp_package_body
 			ff
 			~with_packages
@@ -3713,7 +3749,7 @@ struct
 							let hash = hash_name item in
 							(item, (current, hash)) :: anonymous_mapping
 						| `named _ as item when body_required_for_single_item ~including_expression:false item ->
-							pp_named_body ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~current:current item;
+							pp_named_body ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~current ~hidden_packages item;
 							anonymous_mapping
 						| _ ->
 							anonymous_mapping

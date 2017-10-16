@@ -306,13 +306,19 @@ let ada_package_name (h: string): string = (
 
 let hidden_packages (with_packages: (string * 'a) list) ~(current: string): StringSet.t = (
 	let rec c_loop current_parent current_relative result = (
-		let moving, current_relative' =
-			let cp, cn = take_package_name current_relative in
-			if cn = current_relative then current_relative, "" else cp, cn
-		in
+		let starting_with p ((s, _): string * 'a): bool = (
+			let p_length = String.length p in
+			String.length s >= p_length + 2
+			&& s.[0] = 'C' && s.[1] = '.' && String.sub s 2 p_length = p
+			&& (String.length s = p_length + 2 || s.[p_length + 2] = '.')
+		) in
+		let moving, current_relative' = take_package_name current_relative in
 		let result =
-			if List.mem_assoc ("C." ^ moving) with_packages then (
-				StringSet.add moving result (* from a viewpoint of C.sys.signal, C.signal is hidden *)
+			if current_parent <> ""
+				&& List.exists (starting_with moving) with_packages
+			then (
+				(* from a viewpoint of C.sys.signal, C.signal is hidden *)
+				StringSet.add (String.uppercase_ascii moving) result
 			) else (
 				result
 			)
@@ -326,16 +332,21 @@ let hidden_packages (with_packages: (string * 'a) list) ~(current: string): Stri
 			List.fold_left (fun result (with_name, _) ->
 				let rec w_loop w_parent w_relative result = (
 					let wp, wn = take_package_name w_relative in
-					if wn = w_relative then result else
+					if wn = "" then result else
 					let w_parent' =
 						if String.length w_parent = 0 then wp else w_parent ^ "." ^ wp
 					in
 					let result =
 						if String.length w_parent' >= current_parent'_length
 							&& String.sub w_parent' 0 current_parent'_length = current_parent'
-							&& List.mem_assoc ("C." ^ wn) with_packages
 						then (
-							StringSet.add wn result (* from a viewpoint of C.sys.ucontext, C.sys.signal hides C.signal *)
+							let wcp, _ = take_package_name wn in
+							if List.exists (starting_with wcp) with_packages then (
+								(* from a viewpoint of C.sys.ucontext, C.sys.signal hides C.signal *)
+								StringSet.add (String.uppercase_ascii wcp) result
+							) else (
+								result
+							)
 						) else (
 							result
 						)

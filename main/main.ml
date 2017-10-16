@@ -291,6 +291,16 @@ begin match options.to_lang with
 		print_string "generating ";
 		print_string ads_filename;
 		print_string "...";
+		let context_clauses =
+			T.context_clauses
+				~language_mapping:ada_mapping
+				~predefined_types
+				~derived_types
+				~opaque_mapping
+				~name_mapping
+				~name:package
+				items
+		in
 		let f = open_out ads_filename in
 		let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 		begin try
@@ -304,7 +314,8 @@ begin match options.to_lang with
 				~opaque_mapping
 				~name_mapping
 				~name:package
-				items;
+				items
+				context_clauses;
 			Format.pp_print_flush ff ();
 			print_string "ok";
 			print_newline ()
@@ -330,7 +341,8 @@ begin match options.to_lang with
 					~opaque_mapping
 					~name_mapping
 					~name:package
-					items;
+					items
+					context_clauses;
 				Format.pp_print_flush ff ();
 				print_string "ok";
 				print_newline ()

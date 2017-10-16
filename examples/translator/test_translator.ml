@@ -179,19 +179,30 @@ let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_pack
 StringMap.iter (fun package items ->
 	let ads_filename = Filename.concat destdir (T.spec_filename package) in
 	print_string ads_filename;
+	let context_clauses =
+		T.context_clauses
+			~language_mapping:ada_mapping
+			~predefined_types
+			~derived_types
+			~opaque_mapping
+			~name_mapping
+			~name:package
+			items
+	in
 	let f = open_out ads_filename in
 	let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 	begin try
 		T.pp_translated_package_spec
 			ff
 			~language_mapping:ada_mapping
-			~name_mapping
 			~predefined_types
 			~derived_types
-			~opaque_mapping
 			~enum_of_element:namespace.SEM.ns_enum_of_element
+			~opaque_mapping
+			~name_mapping
 			~name:package
-			items;
+			items
+			context_clauses;
 		Format.pp_print_flush ff ();
 		print_string "...ok";
 		print_newline ();
@@ -217,7 +228,8 @@ StringMap.iter (fun package items ->
 				~opaque_mapping
 				~name_mapping
 				~name:package
-				items;
+				items
+				context_clauses;
 			Format.pp_print_flush ff ();
 			print_string "...ok";
 			print_newline ();
