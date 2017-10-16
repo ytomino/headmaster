@@ -3400,21 +3400,56 @@ struct
 			(pragma_p, `pragma pragma_e), typedefs, xs
 		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' | #FirstSet.typedef_name as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
+			let rec is_function_declarator (declarator: declarator): bool = (
+				let rec is_function_dd (direct_declarator: direct_declarator): bool = (
+					begin match direct_declarator with
+					| `ident _ ->
+						false
+					| `paren (_, _, d, _) ->
+						begin match d with
+						| `some (_, d) -> is_function_declarator d
+						| `error -> false
+						end
+					| `array ((_, dd), _, _, _, _)
+					| `static_array1 ((_, dd), _, _, _, _, _) | `static_array2 ((_, dd), _, _, _, _, _)
+					| `dynamic_array ((_, dd), _, _, _, _) ->
+						is_function_dd dd
+					| `function_type ((_, dd), _, _, _) | `old_function_type ((_, dd), _, _, _) ->
+						is_function_ident_dd dd
+					end
+				) and is_function_ident_dd (direct_declarator: direct_declarator): bool = (
+					begin match direct_declarator with
+					| `ident _ ->
+						true
+					| `paren (_, _, `some (_, (`none, `some (_, dd), _)), _) ->
+						is_function_ident_dd dd
+					| _ ->
+						is_function_dd direct_declarator
+					end
+				) in
+				let _, direct_declarator, _ = declarator in
+				begin match direct_declarator with
+				| `some (_, direct_declarator) ->
+					is_function_dd direct_declarator
+				| `error ->
+					false
+				end
+			) in
 			let specifiers, xs = parse_declaration_specifiers error typedefs xs in
 			let declarators, xs = parse_init_declarator_list_option error typedefs xs in
-			begin match xs with
-			| lazy (`cons (_, `l_curly, _))
-			| lazy (`cons (_, (#FirstSet.firstset_of_type_specifier' | #FirstSet.typedef_name), _)) (* declaration-list *)
-			| lazy (`cons (_, #FirstSet.asm, _)) ->
-				let declarator =
-					begin match declarators with
-					| `some (decl_p, `nil (`no_init declarator)) ->
-						`some (decl_p, declarator)
+			begin match declarators with
+			| `some (decl_p, `nil (`no_init declarator)) (* single declarator with ... *)
+				when (
+					match xs with (* ... some following body *)
+					| lazy (`cons (_, `l_curly, _))
+					| lazy (`cons (_, #FirstSet.asm, _)) ->
+						true
+					| lazy (`cons (_, (#FirstSet.firstset_of_type_specifier' | #FirstSet.typedef_name), _)) (* declaration-list *)
+						when is_function_declarator declarator ->
+						true
 					| _ ->
-						error (LazyList.hd_a xs) "declarator was expected.";
-						`error
-					end
-				in
+						false) ->
+				let declarator = `some (decl_p, declarator) in
 				begin match xs with
 				| lazy (`cons (asm_p, (#FirstSet.asm as asm_e), xs)) ->
 					let asm = asm_p, asm_e in
