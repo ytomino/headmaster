@@ -624,7 +624,7 @@ struct
 						fprintf ff "%s_array" base_name;
 						begin match where with
 						| `extern ->
-							fprintf ff " (size_t)"
+							fprintf ff " (0 .. 0)" (* should be size_t, but gcc-7 has a bug *)
 						| `subtype | `name ->
 							()
 						end
