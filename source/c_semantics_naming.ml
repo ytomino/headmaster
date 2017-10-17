@@ -370,13 +370,28 @@ struct
 						| `origin | `duplicated ->
 							pair
 						| `short (before_name, before_kind) ->
-							let l_name = long_f before_name in
-							let result = add before_kind before_name l_name result in
-							let rev = StringMap.add u `duplicated rev in
-							result, rev
+							let before_name_length = String.length before_name in
+							let name_length = String.length name in
+							if before_name_length < name_length then (
+								(* the previous one is shorter *)
+								pair
+							) else if before_name_length > name_length then (
+								(* restore the previous one *)
+								let l_name = long_f before_name in
+								let result = add before_kind before_name l_name result in
+								(* new one is shorter *)
+								let result = add kind name s_name result in
+								let rev = StringMap.add u (`short (name, kind)) rev in
+								result, rev
+							) else ( (* before_name_length = name_length *)
+								let l_name = long_f before_name in
+								let result = add before_kind before_name l_name result in
+								let rev = StringMap.add u `duplicated rev in
+								result, rev
+							)
 						end
 					) else if is_hidden_per_module item result then (
-						pair (* to use short name for macro *)
+						pair (* to use long name for macro *)
 					) else (
 						let result = add kind name s_name result in
 						let rev = StringMap.add u (`short (name, kind)) rev in
