@@ -29,8 +29,6 @@ let special_name_mapping = make_mapmap [
 	"cairo.cairo", [
 		"cairo_version", "get_cairo_version"; (* cairo / conflicated with CAIRO_VERSION *)
 		"cairo_version_string", "get_cairo_version_string"]; (* cairo / conflicated with CAIRO_VERSION_STRING *)
-	"ctype", [
-		"___runetype", "qqqrunetype"]; (* darwin10 / conflicated with runetype.h *)
 	"iconv", [
 		"_LIBICONV_VERSION", "LIBICONV_VERSION"]; (* iconv / conflicted with extern const *)
 	"inttypes", [
@@ -64,8 +62,6 @@ let special_name_mapping = make_mapmap [
 		"png_unknown_chunk_ptr", "png_unknown_chunk_funcptr"]; (* libpng / conflicted with pointer of png_unknown_chunk *)
 	"psdk_inc.qfd_types", [
 		"FD_SET", "FD_SET_uppercase"]; (* mingw-w64 / conflicted with fd_set *)
-	"qctype", [
-		"___runetype", "qqqrunetype"]; (* freebsd7 / hiding C.runetype (shold use Standard prefix...) *)
 	"readline.keymaps", [
 		"KEYMAP_ENTRY_ARRAY", "Fixed_KEYMAP_ENTRY_ARRAY"]; (* readline / conflicted with unconstrained array of KEYMAP_ENTRY *)
 	"readline.readline", [
@@ -105,8 +101,7 @@ let special_name_mapping = make_mapmap [
 	"", [ (* predefined *)
 		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
 		"linux", "defined_linux"; (* linux / conflicted with include dir <linux/...> *)
-		"__ELF__", "defined_ELF"; (* linux / conflicted with elf.h *)
-		"__MACH__", "defined_MACH"; (* darwin9 / conflicted with include dir <mach/...> *)
+		"__linux", "defined_qqlinux"; (* linux / conflicted with include dir <linux/...> *)
 		"__PIC__", "PIC"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
 		"WINNT", "defined_WINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
 

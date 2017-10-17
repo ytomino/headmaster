@@ -351,7 +351,15 @@ struct
 					pair
 				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
 				| `named (_, name, kind, _) as item ->
-					if StringMap.mem name special_map then pair else
+					if StringMap.mem name special_map
+						|| ( (* do not use short name for like __XXX__ *)
+							let name_length = String.length name in
+							name_length >= 4
+							&& name.[0] = '_'
+							&& name.[1] = '_'
+							&& name.[name_length - 2] = '_'
+							&& name.[name_length - 1] = '_')
+					then pair else
 					let s_name =
 						let s = short_f name in
 						prefix_for_esu s kind
