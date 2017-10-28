@@ -538,7 +538,9 @@ struct
 						| `some (_, `chars_literal file2) ->
 							let mapping_options = {mapping_options with mo_language_mappings =
 								StringMap.modify (fun x ->
-									{x with lm_include = (file1, file2) :: x.lm_include}
+									let pair = file1, file2 in
+									if List.mem pair x.lm_include then x else
+									{x with lm_include = pair :: x.lm_include}
 								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
 							in
 							derived_types, info, alignment_stack, mapping_options
@@ -550,7 +552,9 @@ struct
 						| `some (_, `chars_literal file2) ->
 							let mapping_options = {mapping_options with mo_language_mappings =
 								StringMap.modify (fun x ->
-									{x with lm_monolithic_include = (file1, file2) :: x.lm_monolithic_include}
+									let pair = file1, file2 in
+									if List.mem pair x.lm_monolithic_include then x else
+									{x with lm_monolithic_include = pair :: x.lm_monolithic_include}
 								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
 							in
 							derived_types, info, alignment_stack, mapping_options
