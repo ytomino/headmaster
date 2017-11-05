@@ -2534,16 +2534,13 @@ struct
 					| `named (ps, name, _, _) as item ->
 						(* name mapping *)
 						let name_mapping =
-							begin try
-								(* should make mapping function in c_semantics_naming.ml... *)
-								let ada_name = ada_name_by_substitute ~prefix:"L_" ~postfix:"" name in
-								let (filename, _, _, _), _ = ps in
-								let rel_filename, package_name, map = StringMap.find filename name_mapping in
-								let map = Naming.add `namespace name ada_name map in
-								StringMap.add filename (rel_filename, package_name, map) name_mapping
-							with Not_found ->
-								assert false
-							end
+							(* should make mapping function in c_semantics_naming.ml... *)
+							let ada_name = ada_name_by_substitute ~prefix:"L_" ~postfix:"" name in
+							let (filename, _, _, _), _ = ps in
+							assert (StringMap.mem filename name_mapping);
+							let rel_filename, package_name, map = StringMap.find filename name_mapping in
+							let map = Naming.add `namespace name ada_name map in
+							StringMap.add filename (rel_filename, package_name, map) name_mapping
 						in
 						(* un-modified variable to constant *)
 						let item =
