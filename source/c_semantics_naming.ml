@@ -513,8 +513,8 @@ struct
 				) else (
 					let sn = short_f name in
 					let map, rs =
-						begin try
-							let _, (prev_name, _, _, _) = List.find (fun (item_name, _) -> item_name = sn) rs in
+						begin match Listtbl.finds (fun (item_name, _) -> item_name = sn) rs with
+						| (_, (prev_name, _, _, _)) :: _ ->
 							let prev_ln = long_f prev_name in
 							let ln = long_f name in
 							let map = StringMap.add prev_name prev_ln map in
@@ -527,7 +527,7 @@ struct
 							in
 							let rs = (ln, x) :: rs in
 							map, rs
-						with Not_found ->
+						| [] ->
 							let map = StringMap.add name sn map in
 							let rs = (sn, x) :: rs in
 							map, rs

@@ -578,9 +578,10 @@ struct
 				| `function_type _ as t ->
 					let (package_name, unique_key) =
 						let _, _, anonymous_mapping = mappings in
-						begin try
-							List.assq t anonymous_mapping
-						with Not_found ->
+						begin match Listtbl.assqs t anonymous_mapping with
+						| (_, am_item) :: _ ->
+							am_item
+						| [] ->
 							failwith "pp_derived_type_name/pp_pointer_type_name"
 						end
 					in
