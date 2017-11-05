@@ -693,18 +693,14 @@ struct
 		: [> [> opaquable_enum_var] with_name] * namespace * source_item list =
 	(
 		let id_p, `ident id_e = id in
-		try
-			begin match StringMap.find id_e namespace.ns_enum with
-			| `named (_, _, `enum _, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-		try
-			begin match StringMap.find id_e namespace.ns_opaque_enum with
-			| `named (_, _, `opaque_enum, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
+		match StringMap.find_opt id_e namespace.ns_enum with
+		| Some (`named (_, _, `enum _, _) as item) ->
+			item, namespace, source
+		| None ->
+		match StringMap.find_opt id_e namespace.ns_opaque_enum with
+		| Some (`named (_, _, `opaque_enum, _) as item) ->
+			item, namespace, source
+		| None ->
 			let item: [> [> `opaque_enum] with_name] =
 				`named (id_p, id_e, `opaque_enum, no_attributes)
 			in
@@ -720,18 +716,14 @@ struct
 		: [> [> opaquable_struct_var] with_name] * namespace * source_item list =
 	(
 		let id_p, `ident id_e = id in
-		try
-			begin match StringMap.find id_e namespace.ns_struct with
-			| `named (_, _, `struct_type _, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-		try
-			begin match StringMap.find id_e namespace.ns_opaque_struct with
-			| `named (_, _, `opaque_struct, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
+		match StringMap.find_opt id_e namespace.ns_struct with
+		| Some (`named (_, _, `struct_type _, _) as item) ->
+			item, namespace, source
+		| None ->
+		match StringMap.find_opt id_e namespace.ns_opaque_struct with
+		| Some (`named (_, _, `opaque_struct, _) as item) ->
+			item, namespace, source
+		| None ->
 			let item: [> [> `opaque_struct] with_name] =
 				`named (id_p, id_e, `opaque_struct, no_attributes)
 			in
@@ -747,18 +739,14 @@ struct
 		: [> [> opaquable_union_var] with_name] * namespace * source_item list =
 	(
 		let id_p, `ident id_e = id in
-		try
-			begin match StringMap.find id_e namespace.ns_union with
-			| `named (_, _, `union _, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
-		try
-			begin match StringMap.find id_e namespace.ns_opaque_union with
-			| `named (_, _, `opaque_union, _) as item ->
-				item, namespace, source
-			end
-		with Not_found ->
+		match StringMap.find_opt id_e namespace.ns_union with
+		| Some (`named (_, _, `union _, _) as item) ->
+			item, namespace, source
+		| None ->
+		match StringMap.find_opt id_e namespace.ns_opaque_union with
+		| Some (`named (_, _, `opaque_union, _) as item) ->
+			item, namespace, source
+		| None ->
 			let item: [> [> `opaque_union] with_name] =
 				`named (id_p, id_e, `opaque_union, no_attributes)
 			in
@@ -773,11 +761,11 @@ struct
 		(namespace: namespace)
 		: all_type =
 	(
-		begin try
-			let `named (_, element_name, `enum_element _, _) = element in
-			let result = StringMap.find element_name namespace.ns_enum_of_element in
+		let `named (_, element_name, `enum_element _, _) = element in
+		begin match StringMap.find_opt element_name namespace.ns_enum_of_element with
+		| Some result ->
 			(result :> all_type)
-		with Not_found ->
+		| None ->
 			(* when building emum type, ns_enum_of_element has not been set yet *)
 			find_predefined_type `signed_int predefined_types
 		end
@@ -789,27 +777,24 @@ struct
 	(
 		begin match t with
 		| `named (_, name, `opaque_enum, _) ->
-			begin try
-				begin match StringMap.find name namespace.ns_enum with
-				| `named (_, _, `enum _, _) as result -> result
-				end
-			with Not_found ->
+			begin match StringMap.find_opt name namespace.ns_enum with
+			| Some (`named (_, _, `enum _, _) as result) ->
+				result
+			| None ->
 				t
 			end
 		| `named (_, name, `opaque_struct, _) ->
-			begin try
-				begin match StringMap.find name namespace.ns_struct with
-				| `named (_, _, `struct_type _, _) as result -> result
-				end
-			with Not_found ->
+			begin match StringMap.find_opt name namespace.ns_struct with
+			| Some (`named (_, _, `struct_type _, _) as result) ->
+				result
+			| None ->
 				t
 			end
 		| `named (_, name, `opaque_union, _) ->
-			begin try
-				begin match StringMap.find name namespace.ns_union with
-				| `named (_, _, `union _, _) as result -> result
-				end
-			with Not_found ->
+			begin match StringMap.find_opt name namespace.ns_union with
+			| Some (`named (_, _, `union _, _) as result) ->
+				result
+			| None ->
 				t
 			end
 		| _ ->

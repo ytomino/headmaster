@@ -153,12 +153,7 @@ struct
 		if macro.Preprocessor.df_has_arguments then None else
 		begin match contents with
 		| lazy (`cons (_, `ident target_name, lazy (`nil _))) ->
-			begin try
-				let result = StringMap.find target_name macros in
-				Some result
-			with Not_found ->
-				None
-			end
+			StringMap.find_opt target_name macros
 		| _ ->
 			None
 		end

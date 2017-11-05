@@ -155,7 +155,7 @@ struct
 			StringMap.fold (fun k (items, _) r ->
 				if items = [] then r else
 				let rel_filename, module_name = StringMap.find k filename_mapping in
-				begin match StringMap.find_option rel_filename r with
+				begin match StringMap.find_opt rel_filename r with
 				| Some (_, items2) ->
 					(* same filenames are possible by #pragma include_next *)
 					let rec insert_loop_1 xs ys = (
@@ -187,9 +187,11 @@ struct
 		(* #pragma for-monolithic_include inserting items to `include_point _ *)
 		let result_per_filename =
 			List.fold_left (fun result_per_filename (includer, included) ->
-				begin try
-					let module_name, includer_items = StringMap.find includer result_per_filename in
-					let _, included_items = StringMap.find included result_per_filename in
+				begin match
+					StringMap.find_opt includer result_per_filename,
+					StringMap.find_opt included result_per_filename
+				with
+				| Some (module_name, includer_items), Some (_, included_items) ->
 					let rec insert_loop xs ys = (
 						begin match xs with
 						| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = included ->
@@ -202,7 +204,7 @@ struct
 						end
 					) in
 					insert_loop includer_items []
-				with Not_found ->
+				| _, _ ->
 					result_per_filename
 				end
 			) result_per_filename language_mapping.lm_monolithic_include
@@ -211,11 +213,11 @@ struct
 		let result_per_module =
 			StringMap.fold (fun _ (module_name, items) result_per_module ->
 				assert (items <> []);
-				begin try
-					let xs = StringMap.find module_name result_per_module in
+				begin match StringMap.find_opt module_name result_per_module with
+				| Some xs ->
 					let xs = List.append items xs in
 					StringMap.add module_name xs result_per_module
-				with Not_found ->
+				| None ->
 					StringMap.add module_name items result_per_module
 				end
 			) result_per_filename StringMap.empty
@@ -327,9 +329,10 @@ struct
 				| `named (_, name, `defined_alias (`named (_, _, kind, _)), _)
 				| `named (_, name, kind, _) ->
 					let l_name =
-						begin try
-							StringMap.find name special_map
-						with Not_found ->
+						begin match StringMap.find_opt name special_map with
+						| Some s_item ->
+							s_item
+						| None ->
 							let s = long_f name in
 							prefix_for_esu s kind
 						end
@@ -440,11 +443,9 @@ struct
 		let name_mapping_per_module =
 			StringMap.mapi (fun module_name items ->
 				let special_map =
-					begin try
-						StringMap.find module_name special_name_mapping
-					with Not_found ->
-						StringMap.empty
-					end
+					match StringMap.find_opt module_name special_name_mapping with
+					| Some sn_item -> sn_item
+					| None -> StringMap.empty
 				in
 				name_mapping_per_module ~long_f ~short_f ~foldcase special_map opaque_mapping items
 			) items_per_module
@@ -452,11 +453,9 @@ struct
 		StringMap.mapi (fun k _ ->
 			let rel_filename, module_name = StringMap.find k filename_mapping in
 			let name_mapping_per_module =
-				begin try
-					StringMap.find module_name name_mapping_per_module
-				with Not_found ->
-					empty_name_mapping_per_module
-				end
+				match StringMap.find_opt module_name name_mapping_per_module with
+				| Some nm_item -> nm_item
+				| None -> empty_name_mapping_per_module
 			in
 			rel_filename, module_name, name_mapping_per_module
 		) filename_mapping

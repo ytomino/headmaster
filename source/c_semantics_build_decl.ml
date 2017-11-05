@@ -122,7 +122,7 @@ struct
 			| `named (_, id, `function_definition (_, t, _), _) -> id, t, `none
 			end
 		in
-		begin match StringMap.find_option id namespace.ns_namespace with
+		begin match StringMap.find_opt id namespace.ns_namespace with
 		| Some previous ->
 			begin match previous with
 			| `named (_, _, `extern ((`function_type previous_prototype), prev_alias), _) as previous ->

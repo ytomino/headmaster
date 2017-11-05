@@ -276,9 +276,10 @@ let strip_package_name (name: string): string = (
 
 let ada_package_name (h: string): string = (
 	if is_special_filename h then "" else
-	begin try
-		StringMap.find h special_package_name_mapping
-	with Not_found ->
+	begin match StringMap.find_opt h special_package_name_mapping with
+	| Some spn_item ->
+		spn_item
+	| None ->
 		let p = Bytes.of_string (Filename.chop_suffix h ".h") in
 		for i = 0 to Bytes.length p - 1 do
 			if Bytes.get p i = '/' then Bytes.set p i '.' else

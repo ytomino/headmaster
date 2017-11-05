@@ -478,7 +478,7 @@ struct
 								);
 								begin match t with
 								| `function_type prototype ->
-									begin match StringMap.find_option name namespace.ns_namespace with
+									begin match StringMap.find_opt name namespace.ns_namespace with
 									| Some target_item ->
 										begin match target_item with
 										| `named (_, _, `extern ((#function_type as original_t), _), _)
@@ -1036,7 +1036,7 @@ struct
 			error (fst x) (unimplemented __LINE__);
 			assert false
 		| `ident name ->
-			begin match StringMap.find_option name namespace.ns_namespace with
+			begin match StringMap.find_opt name namespace.ns_namespace with
 			| Some the_item ->
 				begin match the_item with
 				| `named (_, _, `enum_element _, _) as item ->
@@ -1901,7 +1901,7 @@ struct
 					error (fst x) ("type-specifier was duplicated.");
 					named
 				| None ->
-					begin match StringMap.find_option name namespace.ns_namespace with
+					begin match StringMap.find_opt name namespace.ns_namespace with
 					| Some the_item ->
 						begin match the_item with
 						| (`named (_, _, #named_type_var, _)) as t ->

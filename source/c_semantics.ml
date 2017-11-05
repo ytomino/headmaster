@@ -6,11 +6,9 @@ module StringMap = struct
 	include StringMap;;
 	
 	let find_or ~(default: 'a) (key: string) (m: 'a t): 'a = (
-		try find key m with Not_found -> default
-	);;
-	
-	let find_option (key: string) (m: 'a t): 'a option = (
-		try Some (find key m) with Not_found -> None
+		match find_opt key m with
+		| Some value -> value
+		| None -> default
 	);;
 	
 	let modify (f: 'a -> 'a) ~(default: 'a) (key: string) (m: 'a t): 'a t = (
@@ -767,17 +765,20 @@ struct
 		(opaque_mapping: opaque_mapping)
 		: non_opaque_type option =
 	(
-		begin try
-			let `named (_, name, kind, _) = item in
-			let oe, os, ou = opaque_mapping in
-			Some (
-				match kind with
-				| `opaque_enum -> (snd (StringMap.find name oe) :> non_opaque_type)
-				| `opaque_struct -> (snd (StringMap.find name os) :> non_opaque_type)
-				| `opaque_union -> (snd (StringMap.find name ou) :> non_opaque_type))
-		with Not_found ->
-			None
-		end
+		let `named (_, name, kind, _) = item in
+		let oe, os, ou = opaque_mapping in
+		match
+			begin match kind with
+			| `opaque_enum ->
+				(StringMap.find_opt name oe :> (opaque_type * non_opaque_type) option)
+			| `opaque_struct ->
+				(StringMap.find_opt name os :> (opaque_type * non_opaque_type) option)
+			| `opaque_union ->
+				(StringMap.find_opt name ou :> (opaque_type * non_opaque_type) option)
+			end
+		with
+		| Some (_, t) -> Some t
+		| None -> None
 	);;
 	
 	let full_to_opaque
