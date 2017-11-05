@@ -255,20 +255,21 @@ let escape_ada_reserved_word ~(prefix: string) ~(postfix: string) (s: string): s
 (* package name *)
 
 let take_package_name (s: string): string * string = (
-	begin try
-		let i = String.index s '.' in
+	begin match String.index_opt s '.' with
+	| Some i ->
 		let j = i + 1 in
 		String.sub s 0 i, String.sub s j (String.length s - j)
-	with Not_found ->
+	| None ->
 		s, ""
 	end
 );;
 
 let strip_package_name (name: string): string = (
-	begin try
-		let p = String.rindex name '.' + 1 in
+	begin match String.rindex_opt name '.' with
+	| Some i ->
+		let p = i + 1 in
 		String.sub name p (String.length name - p)
-	with Not_found ->
+	| None ->
 		name
 	end
 );;

@@ -60,11 +60,11 @@ struct
 		: string list =
 	(
 		let add_parent package rs = (
-			begin try
-				let rindex = String.rindex package '.' in
+			begin match String.rindex_opt package '.' with
+			| Some rindex ->
 				let dir = String.sub package 0 rindex in
 				Listtbl.add dir rs
-			with Not_found ->
+			| None ->
 				rs
 			end
 		) in
