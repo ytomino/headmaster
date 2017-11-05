@@ -75,7 +75,10 @@ let of_file
 (
 	let fd = Unix.openfile filename [Unix.O_RDONLY] 0o644 in
 	let length = Unix.lseek fd 0 Unix.SEEK_END in
-	let contents = Bigarray.Array1.map_file fd ~pos:0L Bigarray.char Bigarray.c_layout false length in
+	let contents =
+		Bigarray.array1_of_genarray
+			(Unix.map_file fd ~pos:0L Bigarray.char Bigarray.c_layout false [| length |])
+	in
 	Unix.close fd;
 	of_big_string ~random_access ~tab_width filename contents
 );;
