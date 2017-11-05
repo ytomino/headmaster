@@ -156,8 +156,9 @@ struct
 		: string =
 	(
 		let (filename, _, _, _), _ = ps in
+		assert (StringMap.mem filename name_mapping);
+		let _, package_name, nspp = StringMap.find filename name_mapping in
 		begin try
-			let _, package_name, nspp = StringMap.find filename name_mapping in
 			let item_name = Naming.find kind name nspp in
 			add_package_name current ~hidden_packages ~hiding package_name item_name
 		with Not_found ->
@@ -674,11 +675,8 @@ struct
 		let (filename, _, _, _), _ = ps in
 		let _, package_name, _ =
 			let name_mapping, _ = mappings in
-			begin try
-				StringMap.find filename name_mapping
-			with Not_found ->
-				failwith "pp_anonymous_type_name"
-			end
+			assert (StringMap.mem filename name_mapping);
+			StringMap.find filename name_mapping
 		in
 		pp_print_string ff (add_package_name ~hidden_packages current package_name (postfix ^ unique_key))
 	) and pp_type_name
