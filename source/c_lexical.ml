@@ -258,10 +258,10 @@ let string_of_objcdirective (s: objc_directive): string = (
 );;
 
 let objcdirective_of_string (s: string): [objc_directive | `none] = (
-	begin try
-		let result: objc_directive = Hashtbl.find objcdirective_of_string_table s in
+	begin match Hashtbl.find_opt objcdirective_of_string_table s with
+	| Some (result: objc_directive) ->
 		(result :> [objc_directive | `none])
-	with Not_found ->
+	| None ->
 		`none
 	end
 );;
@@ -339,8 +339,8 @@ let string_of_rw (k: reserved_word): string = (
 let rw_of_string_table = snd_of_fst_table reserved_word_table;;
 
 let rw_of_string (lang: language) (s: string): [reserved_word | `ident of string] = (
-	begin try
-		let k, k_lang = Hashtbl.find rw_of_string_table s in
+	begin match Hashtbl.find_opt rw_of_string_table s with
+	| Some (k, k_lang) ->
 		begin match lang with
 		| `c ->
 			begin match k_lang with
@@ -360,7 +360,7 @@ let rw_of_string (lang: language) (s: string): [reserved_word | `ident of string
 		| `objcxx ->
 			(k :> [reserved_word | `ident of string])
 		end
-	with Not_found ->
+	| None ->
 		`ident s
 	end
 );;
@@ -385,10 +385,10 @@ let string_of_ppw (s: preprocessor_word): string = (
 );;
 
 let ppw_of_string (s: string): [preprocessor_word | `ident of string] = (
-	begin try
-		let result: preprocessor_word = Hashtbl.find ppw_of_string_table s in
+	begin match Hashtbl.find_opt ppw_of_string_table s with
+	| Some (result: preprocessor_word) ->
 		(result :> [preprocessor_word | `ident of string])
-	with Not_found ->
+	| None ->
 		`ident s
 	end
 );;
@@ -442,10 +442,10 @@ let string_of_ppdirective (s: preprocessor_directive): string = (
 );;
 
 let ppdirective_of_string (s: string): [preprocessor_directive | `none] = (
-	begin try
-		let result: preprocessor_directive = Hashtbl.find ppdirective_of_string_table s in
+	begin match Hashtbl.find_opt ppdirective_of_string_table s with
+	| Some (result: preprocessor_directive) ->
 		(result :> [preprocessor_directive | `none])
-	with Not_found ->
+	| None ->
 		`none
 	end
 );;

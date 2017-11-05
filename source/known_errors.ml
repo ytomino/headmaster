@@ -1553,11 +1553,15 @@ let make_is_known_error
 	let is_known_error (ps: ranged_position) (s: string) (k: known_error): bool = (
 		let (filename, _, _, _), _ = ps in
 		let header_name = remove_include_dir filename in
-		begin try
-			let symbol_table = Hashtbl.find header_table header_name in
-			let symbol_k = Hashtbl.find symbol_table s in
-			symbol_k = k
-		with Not_found ->
+		begin match Hashtbl.find_opt header_table header_name with
+		| Some symbol_table ->
+			begin match Hashtbl.find_opt symbol_table s with
+			| Some symbol_k ->
+				symbol_k = k
+			| None ->
+				false
+			end
+		| None ->
 			false
 		end
 	) in
