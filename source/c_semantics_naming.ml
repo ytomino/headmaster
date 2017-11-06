@@ -260,6 +260,25 @@ struct
 		end
 	);;
 	
+	let mem
+		(kind: [> opaque_type_var])
+		(key: string)
+		(map: name_mapping_per_module)
+		: bool =
+	(
+		let nmap, emap, smap, umap = map in
+		begin match kind with
+		| `opaque_enum ->
+			StringMap.mem key emap
+		| `opaque_struct ->
+			StringMap.mem key smap
+		| `opaque_union ->
+			StringMap.mem key umap
+		| _ ->
+			StringMap.mem key nmap
+		end
+	);;
+	
 	let find
 		(kind: [> opaque_type_var])
 		(key: string)

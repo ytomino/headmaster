@@ -158,12 +158,9 @@ struct
 		let (filename, _, _, _), _ = ps in
 		assert (StringMap.mem filename name_mapping);
 		let _, package_name, nspp = StringMap.find filename name_mapping in
-		begin try
-			let item_name = Naming.find kind name nspp in
-			add_package_name current ~hidden_packages ~hiding package_name item_name
-		with Not_found ->
-			failwith ("ada_name_of \"" ^ name ^ "\" in \"" ^ filename ^ "\"")
-		end
+		assert (Naming.mem kind name nspp);
+		let item_name = Naming.find kind name nspp in
+		add_package_name current ~hidden_packages ~hiding package_name item_name
 	);;
 	
 	(* types *)
