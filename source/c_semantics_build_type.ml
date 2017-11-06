@@ -408,25 +408,22 @@ struct
 		| `const _ as t ->
 			t, xs
 		| #not_const_type as t ->
-			begin try
-				let rec loop xs = (
-					begin match xs with
-					| [] ->
-						raise Not_found
-					| x :: xr ->
-						begin match x with
-						| `const (u: not_const_type) as x when u == t ->
-							(x :> [> const_type])
-						| _ ->
-							loop xr
-						end
+			let orig_xs = xs in
+			let rec loop xs = (
+				begin match xs with
+				| [] ->
+					let new_item: [> const_type] = `const t in
+					new_item, ((new_item :> derived_type) :: orig_xs)
+				| x :: xr ->
+					begin match x with
+					| `const (u: not_const_type) as x when u == t ->
+						(x :> [> const_type]), orig_xs
+					| _ ->
+						loop xr
 					end
-				) in
-				loop xs, xs
-			with Not_found ->
-				let new_item: [> const_type] = `const t in
-				new_item, ((new_item :> derived_type) :: xs)
-			end
+				end
+			) in
+			loop xs
 		end
 	);;
 	
@@ -437,25 +434,22 @@ struct
 		let make_volatile (t: not_qualified_type) (xs: derived_types)
 			: [> volatile_type] * derived_types =
 		(
-			begin try
-				let rec loop xs = (
-					begin match xs with
-					| [] ->
-						raise Not_found
-					| x :: xr ->
-						begin match x with
-						| `volatile (u: not_qualified_type) as x when u == t ->
-							(x :> [> volatile_type])
-						| _ ->
-							loop xr
-						end
+			let orig_xs = xs in
+			let rec loop xs = (
+				begin match xs with
+				| [] ->
+					let new_item: [> volatile_type] = `volatile t in
+					new_item, ((new_item :> derived_type) :: orig_xs)
+				| x :: xr ->
+					begin match x with
+					| `volatile (u: not_qualified_type) as x when u == t ->
+						(x :> [> volatile_type]), orig_xs
+					| _ ->
+						loop xr
 					end
-				) in
-				loop xs, xs
-			with Not_found ->
-				let new_item: [> volatile_type] = `volatile t in
-				new_item, ((new_item :> derived_type) :: xs)
-			end
+				end
+			) in
+			loop xs
 		) in
 		begin match t with
 		| `volatile _ | `const (`volatile _) as t ->
@@ -476,67 +470,61 @@ struct
 	let find_pointer_type (t: all_type) (xs: derived_types)
 		: [> pointer_type] * derived_types =
 	(
-		begin try
-			let rec loop xs = (
-				begin match xs with
-				| [] ->
-					raise Not_found
-				| x :: xr ->
-					begin match x with
-					| `pointer u as x when u == t ->
-						(x :> [> pointer_type])
-					| `pointer (`named (_, tag, `opaque_enum, _)) as x
-						when (
-							match t with
-							| `named (_, o_tag, `enum _, _) -> tag = o_tag
-							| _ -> false) ->
-						(x :> [> pointer_type])
-					| `pointer (`named (_, tag, `opaque_struct, _)) as x
-						when (
-							match t with
-							| `named (_, o_tag, `struct_type _, _) -> tag = o_tag
-							| _ -> false) ->
-						(x :> [> pointer_type])
-					| `pointer (`named (_, tag, `opaque_union, _)) as x
-						when (
-							match t with
-							| `named (_, o_tag, `union _, _) -> tag = o_tag
-							| _ -> false) ->
-						(x :> [> pointer_type])
-					| _ ->
-						loop xr
-					end
+		let orig_xs = xs in
+		let rec loop xs = (
+			begin match xs with
+			| [] ->
+				let new_item: [> pointer_type] = `pointer t in
+				new_item, ((new_item :> derived_type) :: orig_xs)
+			| x :: xr ->
+				begin match x with
+				| `pointer u as x when u == t ->
+					(x :> [> pointer_type]), orig_xs
+				| `pointer (`named (_, tag, `opaque_enum, _)) as x
+					when (
+						match t with
+						| `named (_, o_tag, `enum _, _) -> tag = o_tag
+						| _ -> false) ->
+					(x :> [> pointer_type]), orig_xs
+				| `pointer (`named (_, tag, `opaque_struct, _)) as x
+					when (
+						match t with
+						| `named (_, o_tag, `struct_type _, _) -> tag = o_tag
+						| _ -> false) ->
+					(x :> [> pointer_type]), orig_xs
+				| `pointer (`named (_, tag, `opaque_union, _)) as x
+					when (
+						match t with
+						| `named (_, o_tag, `union _, _) -> tag = o_tag
+						| _ -> false) ->
+					(x :> [> pointer_type]), orig_xs
+				| _ ->
+					loop xr
 				end
-			) in
-			loop xs, xs
-		with Not_found ->
-			let new_item: [> pointer_type] = `pointer t in
-			new_item, ((new_item :> derived_type) :: xs)
-		end
+			end
+		) in
+		loop xs
 	);;
 	
 	let find_block_pointer_type (t: function_type) (xs: derived_types)
 		: [> `block_pointer of function_type] * derived_types =
 	(
-		begin try
-			let rec loop xs = (
-				begin match xs with
-				| [] ->
-					raise Not_found
-				| x :: xr ->
-					begin match x with
-					| `block_pointer u as x when u == t ->
-						(x :> [> `block_pointer of function_type])
-					| _ ->
-						loop xr
-					end
+		let orig_xs = xs in
+		let rec loop xs = (
+			begin match xs with
+			| [] ->
+				let new_item: [> `block_pointer of function_type] = `block_pointer t in
+				new_item, ((new_item :> derived_type) :: orig_xs)
+			| x :: xr ->
+				begin match x with
+				| `block_pointer u as x when u == t ->
+					(x :> [> `block_pointer of function_type]), orig_xs
+				| _ ->
+					loop xr
 				end
-			) in
-			loop xs, xs
-		with Not_found ->
-			let new_item: [> `block_pointer of function_type] = `block_pointer t in
-			new_item, ((new_item :> derived_type) :: xs)
-		end
+			end
+		) in
+		loop xs
 	);;
 	
 	let find_array_type (n: Integer.t option) (t: all_type) (xs: derived_types)
@@ -549,25 +537,22 @@ struct
 			let make_n_array (n: Integer.t option) (t: not_qualified_type) (xs: derived_types)
 				: [> array_type] * derived_types =
 			(
-				begin try
-					let rec loop xs = (
-						begin match xs with
-						| [] ->
-							raise Not_found
-						| x :: xr ->
-							begin match x with
-							| `array (m, u) as x when n = m && u == t ->
-								(x :> [> array_type])
-							| _ ->
-								loop xr
-							end
+				let orig_xs = xs in
+				let rec loop xs = (
+					begin match xs with
+					| [] ->
+						let new_item: [> array_type] = `array (n, t) in
+						new_item, ((new_item :> derived_type) :: orig_xs)
+					| x :: xr ->
+						begin match x with
+						| `array (m, u) as x when n = m && u == t ->
+							(x :> [> array_type]), orig_xs
+						| _ ->
+							loop xr
 						end
-					) in
-					loop xs, xs
-				with Not_found ->
-					let new_item: [> array_type] = `array (n, t) in
-					new_item, ((new_item :> derived_type) :: xs)
-				end
+					end
+				) in
+				loop xs
 			) in
 			begin match n with
 			| Some _ ->
@@ -609,25 +594,22 @@ struct
 	);;
 	
 	let find_restrict_type (t: pointer_type) (xs: derived_types): [> restrict_type] * derived_types = (
-		begin try
-			let rec loop xs = (
-				begin match xs with
-				| [] ->
-					raise Not_found
-				| x :: xr ->
-					begin match x with
-					| `restrict u as x when u == t ->
-						(x :> [> restrict_type])
-					| _ ->
-						loop xr
-					end
+		let orig_xs = xs in
+		let rec loop xs = (
+			begin match xs with
+			| [] ->
+				let new_item: [> restrict_type] = `restrict t in
+				new_item, ((new_item :> derived_type) :: orig_xs)
+			| x :: xr ->
+				begin match x with
+				| `restrict u as x when u == t ->
+					(x :> [> restrict_type]), xs
+				| _ ->
+					loop xr
 				end
-			) in
-			loop xs, xs
-		with Not_found ->
-			let new_item: [> restrict_type] = `restrict t in
-			new_item, ((new_item :> derived_type) :: xs)
-		end
+			end
+		) in
+		loop xs
 	);;
 	
 	(* anonymous types *)
