@@ -128,8 +128,12 @@ struct
 			let rec cut_loop c a r: string list * string = (
 				let c1, c2 = take_package_name c in
 				let r1, r2 = take_package_name r in
-				if r1 <> c1 then a, r else
-				cut_loop c2 (r1 :: a) r2
+				if r1 <> c1 || String.length r2 = 0 then (
+					a, r
+				) else (
+					assert (String.length c2 > 0);
+					cut_loop c2 (r1 :: a) r2
+				)
 			) in
 			let rec add_loop a r: string = (
 				let r1, _ = take_package_name r in
