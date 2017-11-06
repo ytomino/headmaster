@@ -162,12 +162,13 @@ let dirs = T.dir_packages filename_mapping;;
 List.iter (fun x ->
 	let filename = Filename.concat destdir (T.spec_filename x) in
 	print_string filename;
-	print_newline ();
+	flush stdout;
 	let f = open_out filename in
 	let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 	T.pp_dir_package_spec ff ~name:x;
 	Format.pp_print_flush ff ();
 	close_out f;
+	print_newline ();
 	ada_sources := filename :: !ada_sources
 ) dirs;;
 
@@ -179,6 +180,7 @@ let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_pack
 StringMap.iter (fun package items ->
 	let ads_filename = Filename.concat destdir (T.spec_filename package) in
 	print_string ads_filename;
+	flush stdout;
 	let context_clauses =
 		T.context_clauses
 			~language_mapping:ada_mapping
@@ -220,6 +222,7 @@ StringMap.iter (fun package items ->
 	if T.body_required items then (
 		let adb_filename = Filename.concat destdir (T.body_filename package) in
 		print_string adb_filename;
+		flush stdout;
 		let f = open_out adb_filename in
 		let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 		begin try

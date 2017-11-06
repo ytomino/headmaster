@@ -267,6 +267,7 @@ begin match options.to_lang with
 		print_string "generating ";
 		print_string filename;
 		print_string "...";
+		flush stdout;
 		let f = open_out filename in
 		let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 		begin try
@@ -291,6 +292,7 @@ begin match options.to_lang with
 		print_string "generating ";
 		print_string ads_filename;
 		print_string "...";
+		flush stdout;
 		let context_clauses =
 			T.context_clauses
 				~language_mapping:ada_mapping
@@ -332,6 +334,7 @@ begin match options.to_lang with
 			print_string "generating ";
 			print_string adb_filename;
 			print_string "...";
+			flush stdout;
 			let f = open_out adb_filename in
 			let ff = Format.make_formatter (output_substring f) (fun () -> flush f) in
 			begin try
