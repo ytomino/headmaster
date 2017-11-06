@@ -55,6 +55,8 @@ let special_name_mapping = make_mapmap [
 		"X86_EXCEPTION_STATE64_COUNT", "X86_EXCEPTION_STATE64_COUNT_uppercase"]; (* darwin9 / conflicted with x86_EXCEPTION_STATE64_COUNT *)
 	"mach.message", [
 		"MACH_MSG_OVERWRITE", "MACH_MSG_OVERWRITE_option"]; (* darwin9 / confilicted with mach_msg_overwrite *)
+	"minwindef", [
+		"FLOAT", "C_FLOAT"]; (* mingw-w64 / conflicted with float *)
 	"mpfr", [
 		"mpfr_version", "get_mpfr_version"]; (* mpfr / conflicted with MPFR_VERSION *)
 	"png", [
@@ -96,6 +98,10 @@ let special_name_mapping = make_mapmap [
 		"SID_AND_ATTRIBUTES_ARRAY", "Fixed_SID_AND_ATTRIBUTES_ARRAY"]; (* mingw-w64 conflicted with unconstrained array of SID_AND_ATTRIBUTES *)
 	"winuser", [
 		"TRACKMOUSEEVENT", "TRACKMOUSEEVENT_t"]; (* mingw-w64 / conflicted with TrackMouseEvent *)
+	"ws2tcpip", [
+		"FreeAddrInfo", "FreeAddrInfoAW"; (* mingw-w64 / conflicted with freeaddrinfo *)
+		"GetAddrInfo", "GetAddrInfoAW"; (* mingw-w64 / conflicted with getaddrinfo *)
+		"GetNameInfo", "GetNameInfoAW"]; (* mingw-w64 / conflicted with getnameinfo *)
 	"zlib", [
 		"zlib_version", "get_zlib_version"]; (* zlib / conflicted with ZLIB_VERSION *)
 	"", [ (* predefined *)
@@ -103,7 +109,8 @@ let special_name_mapping = make_mapmap [
 		"linux", "defined_linux"; (* linux / conflicted with include dir <linux/...> *)
 		"__linux", "defined_qqlinux"; (* linux / conflicted with include dir <linux/...> *)
 		"__PIC__", "PIC"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
-		"WINNT", "defined_WINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
+		"WINNT", "defined_WINNT"; (* mingw-w64 / conflicted with winnt.h *)
+		"__WINNT", "defined_qqWINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
 
 let ada_reserved_words =
 	let list = [
