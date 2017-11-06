@@ -166,8 +166,8 @@ let gcc_env
 					line_length > nr_length
 					&& String.sub line (line_length - nr_length) nr_length = nr
 				) then (
-					let (_: Unix.process_status) = Unix.close_process_full ps in
-					raise (Failure command)
+					let status = Unix.close_process_full ps in
+					raise (Process_failure (command, status))
 				) else if line = "End of search list." then (
 					state := `none
 				) else if line = "#include \"...\" search starts here:" then (
@@ -210,7 +210,7 @@ let gcc_env
 	done;
 	begin match Unix.close_process_full ps with
 	| Unix.WEXITED 0 -> ()
-	| _ -> raise (Failure command)
+	| _ as status -> raise (Process_failure (command, status))
 	end;
 	assert (!target <> "");
 	let target =

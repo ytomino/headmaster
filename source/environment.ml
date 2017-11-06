@@ -172,3 +172,7 @@ let compact_filename (filename: string): string = (
 	if filename = "" then "." else
 	loop 0 filename ""
 );;
+
+(* for each compiler *)
+
+exception Process_failure of string * Unix.process_status;;
