@@ -195,13 +195,15 @@ let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 
 let read_include_file = make_include read_file env;;
 
-let predefined_tokens: PP.in_t =
-	let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
-	lazy (S.scan error ignore file S.make_nil);;
-let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
-
 let predefined =
+	let predefined_tokens: PP.in_t =
+		let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
+		lazy (S.scan error ignore file S.make_nil)
+	in
+	let predefined_tokens': PP.out_t =
+		lazy (PP.preprocess
+			error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens)
+	in
 	begin match predefined_tokens' with
 	| lazy (`nil (_, predefined)) ->
 		predefined
@@ -211,26 +213,26 @@ let predefined =
 		predefined
 	end;;
 
-let source_tokens: PP.in_t =
-	let dummy_position = "<dummy>", 0, 0, 0 in
-	let dummy_ps = dummy_position, dummy_position in
-	let rec loop (source_filenames: string list) (ps: ranged_position): PP.in_t = (
-		begin match source_filenames with
-		| source_filename :: source_filenames_r ->
-			lazy (read_file source_filename (fun ps -> Lazy.force (loop source_filenames_r ps)))
-		| [] ->
-			assert (ps != dummy_ps);
-			lazy (S.make_nil ps)
-		end
-	) in
-	loop (List.rev options.source_filenames) dummy_ps;;
-
-let source_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error read_include_file `top_level predefined StringMap.empty source_tokens);;
-
 let (tu: AST.translation_unit),
 		(typedefs: P.typedef_set),
 		(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) =
+	let source_tokens: PP.in_t =
+		let dummy_position = "<dummy>", 0, 0, 0 in
+		let dummy_ps = dummy_position, dummy_position in
+		let rec loop (source_filenames: string list) (ps: ranged_position): PP.in_t = (
+			begin match source_filenames with
+			| source_filename :: source_filenames_r ->
+				lazy (read_file source_filename (fun ps -> Lazy.force (loop source_filenames_r ps)))
+			| [] ->
+				assert (ps != dummy_ps);
+				lazy (S.make_nil ps)
+			end
+		) in
+		loop (List.rev options.source_filenames) dummy_ps
+	in
+	let source_tokens': PP.out_t = lazy (PP.preprocess
+		error is_known_error read_include_file `top_level predefined StringMap.empty source_tokens)
+	in
 	P.parse_translation_unit error source_tokens';;
 
 let defines: DP.define AST.p StringMap.t = DP.map error is_known_error typedefs defined_tokens;;

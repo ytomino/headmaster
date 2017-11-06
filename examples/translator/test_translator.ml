@@ -85,13 +85,15 @@ let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 
 let read_include_file = make_include read_file env;;
 
-let predefined_tokens: PP.in_t =
-	let file = TextFile.of_string ~random_access:false ~tab_width predefined_name env.en_predefined in
-	lazy (S.scan error ignore file S.make_nil);;
-let predefined_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens);;
-
 let predefined =
+	let predefined_tokens: PP.in_t =
+		let file = TextFile.of_string ~random_access:false ~tab_width predefined_name env.en_predefined in
+		lazy (S.scan error ignore file S.make_nil)
+	in
+	let predefined_tokens': PP.out_t =
+		lazy (PP.preprocess
+			error is_known_error read_include_file `top_level StringMap.empty StringMap.empty predefined_tokens)
+	in
 	begin match predefined_tokens' with
 	| lazy (`nil (_, predefined)) ->
 		predefined
@@ -101,13 +103,14 @@ let predefined =
 		predefined
 	end;;
 
-let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil);;
-let lib_tokens': PP.out_t = lazy (PP.preprocess
-	error is_known_error read_include_file `top_level predefined StringMap.empty lib_tokens);;
-
 let (tu: AST.translation_unit),
 		(typedefs: P.typedef_set),
 		(lazy (`nil (_, defined_tokens)): (ranged_position, PP.define_map) LazyList.nil) =
+	let lib_tokens: PP.in_t = lazy (read_file !source_filename S.make_nil) in
+	let lib_tokens': PP.out_t =
+		lazy (PP.preprocess
+			error is_known_error read_include_file `top_level predefined StringMap.empty lib_tokens)
+	in
 	P.parse_translation_unit error lib_tokens';;
 
 let defines: DP.define AST.p StringMap.t = DP.map error is_known_error typedefs defined_tokens;;
