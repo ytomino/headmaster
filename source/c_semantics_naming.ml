@@ -14,23 +14,21 @@ struct
 	let find_by_relative_path
 		(relative_filename: string)
 		(filename_mapping: (string * string) StringMap.t)
-		: string * string * string = (* header-filename, header-filename(relative), module-name *)
+		: (string * string * string) option =
+			(* header-filename, header-filename(relative), module-name *)
 	(
-		let module Local = struct exception Break of (string * string * string) end in
-		begin try
-			let (_: (string * string) StringMap.t) =
-				StringMap.filter (fun k (rk, v) ->
-					if rk = relative_filename then (
-						raise (Local.Break (k, rk, v))
-					) else (
-						false
-					)
-				) filename_mapping
-			in
-			raise Not_found
-		with Local.Break result ->
-			result
-		end
+		let result = ref None in
+		let (_: bool) =
+			StringMap.exists (fun k (rk, v) ->
+				if rk = relative_filename then (
+					result := Some (k, rk, v);
+					true (* break *)
+				) else (
+					false
+				)
+			) filename_mapping
+		in
+		!result
 	);;
 	
 	let filename_mapping
@@ -61,10 +59,10 @@ struct
 		in
 		(* for #pragma for-include making aliases into blank header *)
 		List.fold_left (fun r (k, _) ->
-			begin try
-				let (_, _, _: string * string * string) = find_by_relative_path k result in
+			begin match find_by_relative_path k result with
+			| Some _ ->
 				r
-			with Not_found ->
+			| None ->
 				let module_name = module_name_of_h k in
 				StringMap.add k (k, module_name) r
 			end
@@ -83,9 +81,11 @@ struct
 		(
 			let result =
 				List.fold_left (fun (items_pp: source_item list StringMap.t) (file1, file2) ->
-					begin try
-						let h, _, module1 = find_by_relative_path file1 filename_mapping in
-						let source_h, _, module2 = find_by_relative_path file2 filename_mapping in
+					begin match
+						find_by_relative_path file1 filename_mapping,
+						find_by_relative_path file2 filename_mapping
+					with
+					| Some (h, _, module1), Some (source_h, _, module2) ->
 						let source_items: source_item list = StringMap.find module2 items_pp in
 						let dest_items: source_item list =
 							StringMap.find_or ~default:[] module1 items_pp
@@ -142,7 +142,7 @@ struct
 						) else (
 							items_pp (* already included *)
 						)
-					with Not_found ->
+					| _, _ ->
 						items_pp (* destination/source header was not found *)
 					end
 				) items_per_module language_mapping.lm_include
