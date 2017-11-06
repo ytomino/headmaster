@@ -181,7 +181,7 @@ let succ_line (s: t) (index: int): int = (
 			index
 		)
 	| _ ->
-		raise (Failure "junk_newline")
+		failwith "TextFile.succ_line"
 	end
 );;
 
