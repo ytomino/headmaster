@@ -128,7 +128,11 @@ print_defined predefined;;
 
 print_string "---- stddef ----\n";;
 
-let stddef_tokens: PP.in_t = lazy (read_include_file ~current:"" `system "stddef.h" S.make_nil);;
+let stddef_tokens: PP.in_t =
+	lazy (
+		match read_include_file ~current:"" `system "stddef.h" S.make_nil with
+		| Some x -> x
+		| None -> assert false);; (* stddef.h is not found *)
 let stddef_tokens': PP.out_t = lazy (PP.preprocess
 	error is_known_error read_include_file `top_level predefined StringMap.empty stddef_tokens);;
 let `nil (_, stddef_defined) = LazyList.find_nil stddef_tokens';;

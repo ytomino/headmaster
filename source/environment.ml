@@ -45,16 +45,16 @@ let find_include
 	?(next: bool = false)
 	(from: include_from)
 	(name: string)
-	: string =
+	: string option =
 (
-	let rec find_loop (xs: string list): string = (
+	let rec find_loop (xs: string list): string option = (
 		begin match xs with
 		| x :: xr ->
 			let p = Filename.concat x name in
-			if Sys.file_exists p then p else
+			if Sys.file_exists p then Some p else
 			find_loop xr
 		| [] ->
-			raise Not_found
+			None
 		end
 	) in
 	let current_dir = Filename.dirname current in
@@ -66,7 +66,7 @@ let find_include
 					if x = current_dir then xr else
 					loop xr
 				| [] ->
-					raise Not_found
+					[]
 				end
 			) in
 			loop xs
@@ -76,13 +76,15 @@ let find_include
 	) in
 	begin match from with
 	| `user ->
-		begin try
-			find_loop (next_filter env.en_include)
-		with Not_found ->
-			begin try
-				if next then raise Not_found else
-				find_loop (current_dir :: [])
-			with Not_found ->
+		begin match find_loop (next_filter env.en_include) with
+		| Some _ as result ->
+			result
+		| None ->
+			if next then None else
+			begin match find_loop (current_dir :: []) with
+			| Some _ as result ->
+				result
+			| None ->
 				find_loop (next_filter env.en_sys_include)
 			end
 		end
@@ -92,16 +94,21 @@ let find_include
 );;
 
 let make_include
-	(f: string -> 'a)
+	(f: string -> 'a -> 'b)
 	(env: environment)
 	~(current: string)
 	?(next: bool = false)
 	(from: include_from)
 	(name: string)
-	: 'a =
+	(a: 'a)
+	: 'b option =
 (
-	let name = find_include env ~current ~next from name in
-	f name
+	begin match find_include env ~current ~next from name with
+	| Some name ->
+		Some (f name a)
+	| None ->
+		None
+	end
 );;
 
 let make_remove_include_dir (env: environment) (filename: string): string = (

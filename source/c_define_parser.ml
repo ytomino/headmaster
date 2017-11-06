@@ -206,7 +206,7 @@ struct
 						ignore current;
 						ignore next;
 						has_error := true;
-						(LazyList.find_nil xs :> Preprocessor.in_prim))
+						Some (LazyList.find_nil xs :> Preprocessor.in_prim))
 					`top_level
 					other_macros
 					StringMap.empty

@@ -43,7 +43,7 @@ module type PreprocessorType = sig
 	val preprocess:
 		(ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_preprocessor] -> bool) ->
-		(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim) ->
+		(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim option) ->
 		state_t ->
 		define_map ->
 		macro_argument_map ->
@@ -688,7 +688,7 @@ struct
 	let preprocess
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_preprocessor] -> bool)
-		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim)
+		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim option)
 		: state_t -> define_map -> macro_argument_map -> in_t -> out_prim =
 	(
 		let rec process
@@ -1081,18 +1081,20 @@ struct
 					begin match xs with
 					| lazy (`cons (_, `directive_parameter s,
 						lazy (`cons (_, `end_of_line, xs)))) ->
-						let filename, from = extract_filename s in
-						begin try
-							let included: in_t =
+						let chained_xs =
+							lazy (
+								let filename, from = extract_filename s in
 								let (current, _, _, _), _ = ps in
 								let next = token = `sharp_INCLUDE_NEXT in
-								lazy (read ~current ~next from filename (fun _ -> Lazy.force xs))
-							in
-							process state predefined StringMap.empty included
-						with Not_found ->
-							error ps (header_file_is_not_found s);
-							process state predefined StringMap.empty xs
-						end
+								begin match read ~current ~next from filename (fun _ -> Lazy.force xs) with
+								| Some (included: in_prim) ->
+									included
+								| None ->
+									error ps (header_file_is_not_found s);
+									Lazy.force xs
+								end)
+						in
+						process state predefined StringMap.empty chained_xs
 					| _ ->
 						assert false
 					end
@@ -1261,12 +1263,12 @@ struct
 							lazy (`cons ((_, _), `r_paren, xs)))))) ->
 						let filename, from = extract_filename s in
 						let has =
-							begin try
-								let (current, _, _, _), _ = ps in
-								let next = token = `__has_include_next in
-								let _: in_prim = read ~current ~next from filename (fun _ -> `nil (ps, ())) in
+							let (current, _, _, _), _ = ps in
+							let next = token = `__has_include_next in
+							begin match read ~current ~next from filename (fun _ -> `nil (ps, ())) with
+							| Some (_: in_prim) ->
 								Integer.one
-							with Not_found ->
+							| None ->
 								Integer.zero
 							end
 						in
