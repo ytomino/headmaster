@@ -74,7 +74,6 @@ let special_name_mapping = make_mapmap [
 		"rl_vi_eWord", "rl_vi_eWord_uppercase"; (* readline / conflicted with rl_vi_eword *)
 		"rl_vi_fWord", "rl_vi_fWord_uppercase"]; (* readline / conflicted with rl_vi_fword *)
 	"stdlib", [
-		"exit", "C_exit"; (* w64-mingw32 / conflicted with _Exit *)
 		"_exit", "C_qexit"; (* w64-mingw32 / conflicted with _Exit *)
 		"_Exit", "C_qExit_U"; (* w64-mingw32 / conflicted with _exit *)
 		"system", "C_system"]; (* darwin9 / hiding System package (should use Standard prefix...) *)
