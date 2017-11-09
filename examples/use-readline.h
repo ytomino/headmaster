@@ -3,6 +3,7 @@
 #if defined(__FreeBSD__)
 #include <stdint.h> /* uintptr_t is used in <sys/cdefs.h> */
 #elif defined(__APPLE__)
+#include <string.h> /* bcopy */
 #include <sys/time.h> /* struct timeval */
 #include <sys/termios.h> /* struct termios */
 #endif
