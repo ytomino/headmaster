@@ -32,29 +32,29 @@ let special_name_mapping = make_mapmap [
 	"iconv", [
 		"_LIBICONV_VERSION", "LIBICONV_VERSION"]; (* iconv / conflicted with extern const *)
 	"inttypes", [
-		"PRIX16", "PRIX16_uppercase"; (* darwin9 / conflicted with PRIx16 *)
-		"PRIX32", "PRIX32_uppercase"; (* darwin9 / conflicted with PRIx32 *)
-		"PRIX64", "PRIX64_uppercase"; (* darwin9 / conflicted with PRIx64 *)
-		"PRIX8", "PRIX8_uppercase"; (* darwin9 / conflicted with PRIx8 *)
-		"PRIXFAST16", "PRIXFAST16_uppercase"; (* darwin9 / conflicted with PRIxFAST16 *)
-		"PRIXFAST32", "PRIXFAST32_uppercase"; (* darwin9 / conflicted with PRIxFAST32 *)
-		"PRIXFAST64", "PRIXFAST64_uppercase"; (* darwin9 / conflicted with PRIxFAST64 *)
-		"PRIXFAST8", "PRIXFAST8_uppercase"; (* darwin9 / conflicted with PRIxFAST8 *)
-		"PRIXLEAST16", "PRIXLEAST16_uppercase"; (* darwin9 / conflicted with PRIxLEAST16 *)
-		"PRIXLEAST32", "PRIXLEAST32_uppercase"; (* darwin9 / conflicted with PRIxLEAST32 *)
-		"PRIXLEAST64", "PRIXLEAST64_uppercase"; (* darwin9 / conflicted with PRIxLEAST64 *)
-		"PRIXLEAST8", "PRIXLEAST8_uppercase"; (* darwin9 / conflicted with PRIxLEAST8 *)
-		"PRIXMAX", "PRIXMAX_uppercase"; (* darwin9 / conflicted with PRIxMAX *)
-		"PRIXPTR", "PRIXPTR_uppercase"]; (* darwin9 / conflicted with PRIxPTR *)
+		"PRIX16", "PRIX16_U"; (* darwin9 / conflicted with PRIx16 *)
+		"PRIX32", "PRIX32_U"; (* darwin9 / conflicted with PRIx32 *)
+		"PRIX64", "PRIX64_U"; (* darwin9 / conflicted with PRIx64 *)
+		"PRIX8", "PRIX8_U"; (* darwin9 / conflicted with PRIx8 *)
+		"PRIXFAST16", "PRIXFAST16_U"; (* darwin9 / conflicted with PRIxFAST16 *)
+		"PRIXFAST32", "PRIXFAST32_U"; (* darwin9 / conflicted with PRIxFAST32 *)
+		"PRIXFAST64", "PRIXFAST64_U"; (* darwin9 / conflicted with PRIxFAST64 *)
+		"PRIXFAST8", "PRIXFAST8_U"; (* darwin9 / conflicted with PRIxFAST8 *)
+		"PRIXLEAST16", "PRIXLEAST16_U"; (* darwin9 / conflicted with PRIxLEAST16 *)
+		"PRIXLEAST32", "PRIXLEAST32_U"; (* darwin9 / conflicted with PRIxLEAST32 *)
+		"PRIXLEAST64", "PRIXLEAST64_U"; (* darwin9 / conflicted with PRIxLEAST64 *)
+		"PRIXLEAST8", "PRIXLEAST8_U"; (* darwin9 / conflicted with PRIxLEAST8 *)
+		"PRIXMAX", "PRIXMAX_U"; (* darwin9 / conflicted with PRIxMAX *)
+		"PRIXPTR", "PRIXPTR_U"]; (* darwin9 / conflicted with PRIxPTR *)
 	"libxml.tree", [
 		"xmlBufferWriteCHAR", "xmlBufferWriteCHAR_uppercase"]; (* libxml2 / conflicted with xmlBufferWriteChar *)
 	"mach.i386.thread_status", [
-		"I386_EXCEPTION_STATE_COUNT", "I386_EXCEPTION_STATE_COUNT_uppercase"; (* darwin9 / conflicated with i386_EXCEPTION_STATE_COUNT *)
-		"X86_DEBUG_STATE32_COUNT", "X86_DEBUG_STATE32_COUNT_uppercase"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
-		"X86_DEBUG_STATE64_COUNT", "X86_DEBUG_STATE64_COUNT_uppercase"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
-		"X86_EXCEPTION_STATE64_COUNT", "X86_EXCEPTION_STATE64_COUNT_uppercase"]; (* darwin9 / conflicted with x86_EXCEPTION_STATE64_COUNT *)
+		"I386_EXCEPTION_STATE_COUNT", "I386_EXCEPTION_STATE_COUNT_U"; (* darwin9 / conflicated with i386_EXCEPTION_STATE_COUNT *)
+		"X86_DEBUG_STATE32_COUNT", "X86_DEBUG_STATE32_COUNT_U"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
+		"X86_DEBUG_STATE64_COUNT", "X86_DEBUG_STATE64_COUNT_U"; (* darwin9 / conflicated with x86_DEBUG_STATE32_COUNT *)
+		"X86_EXCEPTION_STATE64_COUNT", "X86_EXCEPTION_STATE64_COUNT_U"]; (* darwin9 / conflicted with x86_EXCEPTION_STATE64_COUNT *)
 	"mach.message", [
-		"MACH_MSG_OVERWRITE", "MACH_MSG_OVERWRITE_option"]; (* darwin9 / confilicted with mach_msg_overwrite *)
+		"MACH_MSG_OVERWRITE", "MACH_MSG_OVERWRITE_U"]; (* darwin9 / confilicted with mach_msg_overwrite *)
 	"minwindef", [
 		"FLOAT", "C_FLOAT"]; (* mingw-w64 / conflicted with float *)
 	"mpfr", [
@@ -63,7 +63,7 @@ let special_name_mapping = make_mapmap [
 		"png_libpng_ver", "get_png_libpng_ver"; (* libpng / conflicted with PNG_LIBPNG_VER *)
 		"png_unknown_chunk_ptr", "png_unknown_chunk_funcptr"]; (* libpng / conflicted with pointer of png_unknown_chunk *)
 	"psdk_inc.qfd_types", [
-		"FD_SET", "FD_SET_uppercase"]; (* mingw-w64 / conflicted with fd_set *)
+		"FD_SET", "FD_SET_U"]; (* mingw-w64 / conflicted with fd_set *)
 	"readline.keymaps", [
 		"KEYMAP_ENTRY_ARRAY", "Fixed_KEYMAP_ENTRY_ARRAY"]; (* readline / conflicted with unconstrained array of KEYMAP_ENTRY *)
 	"readline.readline", [
@@ -76,39 +76,39 @@ let special_name_mapping = make_mapmap [
 	"stdlib", [
 		"exit", "C_exit"; (* w64-mingw32 / conflicted with _Exit *)
 		"_exit", "C_qexit"; (* w64-mingw32 / conflicted with _Exit *)
-		"_Exit", "C_qExit2"; (* w64-mingw32 / conflicted with _exit *)
+		"_Exit", "C_qExit_U"; (* w64-mingw32 / conflicted with _exit *)
 		"system", "C_system"]; (* darwin9 / hiding System package (should use Standard prefix...) *)
 	"unistd", [
 		"_exit", "C_qexit"; (* darwin9 / conflicted with _Exit *)
-		"_Exit", "C_qExit2"; (* darwin9 / conflicted with _exit *)
-		"execvP", "execvP2"]; (* darwin9 / conflicted with execvp *)
+		"_Exit", "C_qExit_U"; (* darwin9 / conflicted with _exit *)
+		"execvP", "execvP_U"]; (* darwin9 / conflicted with execvp *)
 	"windef", [
 		"FLOAT", "C_FLOAT"]; (* mingw-w64 / conflicted with float *)
 	"wingdi", [
-		"ABORTDOC", "C_ABORTDOC"; (* mingw-w64 / conflicted with AbortDoc *)
-		"ENDDOC", "C_ENDDOC"; (* mingw-w64 / conflicted with EndDoc *)
-		"EXTTEXTOUT", "C_EXTTEXTOUT"; (* mingw-w64 / conflicted with ExtTextOut *)
-		"SETABORTPROC", "C_SETABORTPROC"; (* mingw-w64 / conflicted with SetAbortProc *)
-		"SETMITERLIMIT", "C_SETMITERLIMIT"; (* mingw-w64 / conflicted with SetMiterLimit *)
-		"STARTDOC", "C_STARTDOC"; (* mingw-w64 / conflicted with StartDoc *)
-		"STRETCHBLT", "C_STRETCHBLT"]; (* mingw-w64 / conflicted with StretchBlt *)
+		"ABORTDOC", "ABORTDOC_U"; (* mingw-w64 / conflicted with AbortDoc *)
+		"ENDDOC", "ENDDOC_U"; (* mingw-w64 / conflicted with EndDoc *)
+		"EXTTEXTOUT", "EXTTEXTOUT_U"; (* mingw-w64 / conflicted with ExtTextOut *)
+		"SETABORTPROC", "SETABORTPROC_U"; (* mingw-w64 / conflicted with SetAbortProc *)
+		"SETMITERLIMIT", "SETMITERLIMIT_U"; (* mingw-w64 / conflicted with SetMiterLimit *)
+		"STARTDOC", "STARTDOC_U"; (* mingw-w64 / conflicted with StartDoc *)
+		"STRETCHBLT", "STRETCHBLT_U"]; (* mingw-w64 / conflicted with StretchBlt *)
 	"winnt", [
 		"CHAR", "C_CHAR"; (* mingw-w64 / conflicted with char *)
 		"LUID_AND_ATTRIBUTES_ARRAY", "Fixed_LUID_AND_ATTRIBUTES_ARRAY"; (* mingw-w64 conflicted with unconstrained array of LUID_AND_ATTRIBUTES *)
 		"SID_AND_ATTRIBUTES_ARRAY", "Fixed_SID_AND_ATTRIBUTES_ARRAY"]; (* mingw-w64 conflicted with unconstrained array of SID_AND_ATTRIBUTES *)
 	"winuser", [
-		"TRACKMOUSEEVENT", "TRACKMOUSEEVENT_t"]; (* mingw-w64 / conflicted with TrackMouseEvent *)
+		"TRACKMOUSEEVENT", "TRACKMOUSEEVENT_U"]; (* mingw-w64 / conflicted with TrackMouseEvent *)
 	"ws2tcpip", [
-		"FreeAddrInfo", "FreeAddrInfoAW"; (* mingw-w64 / conflicted with freeaddrinfo *)
-		"GetAddrInfo", "GetAddrInfoAW"; (* mingw-w64 / conflicted with getaddrinfo *)
-		"GetNameInfo", "GetNameInfoAW"]; (* mingw-w64 / conflicted with getnameinfo *)
+		"FreeAddrInfo", "FreeAddrInfo_U"; (* mingw-w64 / conflicted with freeaddrinfo *)
+		"GetAddrInfo", "GetAddrInfo_U"; (* mingw-w64 / conflicted with getaddrinfo *)
+		"GetNameInfo", "GetNameInfo_U"]; (* mingw-w64 / conflicted with getnameinfo *)
 	"zlib", [
 		"zlib_version", "get_zlib_version"]; (* zlib / conflicted with ZLIB_VERSION *)
 	"", [ (* predefined *)
 		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
 		"linux", "defined_linux"; (* linux / conflicted with include dir <linux/...> *)
 		"__linux", "defined_qqlinux"; (* linux / conflicted with include dir <linux/...> *)
-		"__PIC__", "PIC"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
+		"__PIC__", "defined_qqPICqq_U"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
 		"WINNT", "defined_WINNT"; (* mingw-w64 / conflicted with winnt.h *)
 		"__WINNT", "defined_qqWINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
 
