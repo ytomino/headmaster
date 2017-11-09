@@ -1505,6 +1505,16 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"png.h", [
 			`unparsible_macro, [
 				"PNG_GAMMA_THRESHOLD"; (* PNG_GAMMA_THRESHOLD_FIXED is undefined *)
+				"PNG_IMAGE_BUFFER_SIZE"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_COMPRESSED_SIZE_MAX"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_COLORMAP_SIZE"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_DATA_SIZE"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_FAILED"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_PIXEL_"; (* calling the untyped parameter as function *)
+				"PNG_IMAGE_PNG_SIZE_MAX"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_PNG_SIZE_MAX_"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_ROW_STRIDE"; (* accessing element of untyped parameter *)
+				"PNG_IMAGE_SIZE"; (* accessing element of untyped parameter *)
 				"PNG_READ_16_TO_8"]]; (* SUPPORTED is undefined *)
 		"pngconf.h", [
 			`unparsible_macro, [
