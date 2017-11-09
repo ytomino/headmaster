@@ -26,7 +26,7 @@ let special_package_name_mapping =
 
 (* package name -> C identifier -> Ada Identifier *)
 let special_name_mapping = make_mapmap [
-	"cairo.cairo", [
+	"cairo", [
 		"cairo_version", "get_cairo_version"; (* cairo / conflicated with CAIRO_VERSION *)
 		"cairo_version_string", "get_cairo_version_string"]; (* cairo / conflicated with CAIRO_VERSION_STRING *)
 	"iconv", [
