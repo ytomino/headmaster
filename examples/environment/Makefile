@@ -40,10 +40,10 @@ else
 endif
 
 $(BINLN):
-	ln -sfh $(BUILDDIR) $@
+	ln -s $(BUILDDIR) $@
 
 $(SOURCELN):
-	ln -sfh $(SOURCEDIR) $@
+	ln -s $(SOURCEDIR) $@
 
 test: $(EXENAME)
 	$(EXENAME) --gcc "$(GCC)"

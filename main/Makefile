@@ -56,10 +56,10 @@ $(BUILDDIR)/unicode.cmxa:
 	$(MAKE) -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
 
 $(BINLN):
-	ln -sfh $(BUILDDIR) $@
+	ln -s $(BUILDDIR) $@
 
 $(SOURCELN):
-	ln -sfh $(SOURCEDIR) $@
+	ln -s $(SOURCEDIR) $@
 
 man: man1/headmaster.1
 
