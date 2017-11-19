@@ -668,6 +668,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`redefine_compiler_macro, [
 				"__STDC_IEC_559__";
 				"__STDC_IEC_559_COMPLEX__"]];
+		"bits/pthreadtypes.h", [
+			`unparsible_macro, [
+				"__PTHREAD_RWLOCK_ELISION_EXTRA"; (* partial initializer *)
+				"__PTHREAD_SPINS"]]; (* partial initializer *)
 		"bits/sched.h", [
 			`unparsible_macro, [
 				"__CPU_OP_S"]; (* parameterized operator *)
