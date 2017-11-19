@@ -266,7 +266,6 @@ module Syntax (Literals: LiteralsType) = struct
 		| `struct_or_union_specifier of struct_or_union_specifier
 		| `enum_specifier of enum_specifier
 		| `typedef_name of typedef_name
-		| `__int64 (* extended *)
 		| `__builtin_va_list] (* extended *)
 	and struct_or_union_specifier = [
 		(* (6.7.2.1) struct-or-union-specifier *)

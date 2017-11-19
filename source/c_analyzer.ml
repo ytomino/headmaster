@@ -92,7 +92,6 @@ struct
 		ts_bool: int;
 		ts_imaginary: int;
 		ts_complex: int;
-		ts_int64: int;
 		ts_builtin_va_list: int};;
 	
 	let no_type_specifier_set = {
@@ -108,7 +107,6 @@ struct
 		ts_bool = 0;
 		ts_imaginary = 0;
 		ts_complex = 0;
-		ts_int64 = 0;
 		ts_builtin_va_list = 0};;
 	
 	let get_type_by_specifier_set
@@ -205,27 +203,6 @@ struct
 					`complex `double
 				) else if set = {no_type_specifier_set with ts_long = 1; ts_double = 1; ts_complex = 1} then (
 					`complex `long_double
-				) else if set = {no_type_specifier_set with ts_int64 = 1} then (
-					let t, err = Typing.select_bit_width_int predefined_types 8 `signed_long `signed_long_long in
-					begin match err with
-					| `none -> ()
-					| `not_had size -> error ps (not_had_bit_width_int size)
-					end;
-					t
-				) else if set = {no_type_specifier_set with ts_signed = 1; ts_int64 = 1} then (
-					let t, err = Typing.select_bit_width_int predefined_types 8 `signed_long `signed_long_long in
-					begin match err with
-					| `none -> ()
-					| `not_had size -> error ps (not_had_bit_width_int size)
-					end;
-					t
-				) else if set = {no_type_specifier_set with ts_unsigned = 1; ts_int64 = 1} then (
-					let t, err = Typing.select_bit_width_int predefined_types 8 `unsigned_long `unsigned_long_long in
-					begin match err with
-					| `none -> ()
-					| `not_had size -> error ps (not_had_bit_width_int size)
-					end;
-					t
 				) else if set = {no_type_specifier_set with ts_builtin_va_list = 1} then (
 					`__builtin_va_list
 				) else (
@@ -1917,8 +1894,6 @@ struct
 				end
 			in
 			derived_types, namespace, source, (set, named)
-		| `__int64 ->
-			derived_types, namespace, source, ({set with ts_int64 = set.ts_int64 + 1}, named)
 		| `__builtin_va_list ->
 			derived_types, namespace, source, ({set with ts_builtin_va_list = set.ts_builtin_va_list + 1}, named)
 		end

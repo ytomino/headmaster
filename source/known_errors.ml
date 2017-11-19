@@ -929,8 +929,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`undefined_macro, [
 				"__clang_major__";
 				"__cplusplus"];
-			`redefine_extended_word, [
-				"__int64"];
 			`unparsible_macro, [
 				"_CRT_DEPRECATE_TEXT"; (* __declspec *)
 				"_CRT_glob"; (* _dowildcard is undefined *)

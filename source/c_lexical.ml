@@ -286,7 +286,6 @@ type extended_word = [
 	| `__imag__
 	| `__inline
 	| `__inline__
-	| `__int64
 	| `__real__
 	| `__restrict
 	| `__restrict__
@@ -310,7 +309,6 @@ let extended_word_table = [
 	"__imag__", `__imag__;
 	"__inline", `__inline;
 	"__inline__", `__inline__;
-	"__int64", `__int64;
 	"__real__", `__real__;
 	"__restrict", `__restrict;
 	"__restrict__", `__restrict__;
