@@ -50,6 +50,7 @@ struct
 				| `unsigned_long -> "UL"
 				| `signed_long_long -> "LL"
 				| `unsigned_long_long -> "ULL"
+				| `__int128_t | `__uint128_t -> assert false (* no suffix *)
 				end
 			| `numeric_literal (_, `float_literal (prec, value)) ->
 				let m, e = Real.frexp value in

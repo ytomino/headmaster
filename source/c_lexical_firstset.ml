@@ -92,6 +92,8 @@ struct
 		| `_BOOL
 		| `_IMAGINARY
 		| `_COMPLEX
+		| `__int128_t
+		| `__uint128_t
 		| `__builtin_va_list];;
 	type struct_or_union = [
 		| `STRUCT

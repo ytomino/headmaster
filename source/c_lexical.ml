@@ -286,6 +286,7 @@ type extended_word = [
 	| `__imag__
 	| `__inline
 	| `__inline__
+	| `__int128_t
 	| `__real__
 	| `__restrict
 	| `__restrict__
@@ -293,6 +294,7 @@ type extended_word = [
 	| `__signed__
 	| `__thread
 	| `__typeof__
+	| `__uint128_t
 	| `__volatile__];;
 
 let extended_word_table = [
@@ -309,6 +311,7 @@ let extended_word_table = [
 	"__imag__", `__imag__;
 	"__inline", `__inline;
 	"__inline__", `__inline__;
+	"__int128_t", `__int128_t;
 	"__real__", `__real__;
 	"__restrict", `__restrict;
 	"__restrict__", `__restrict__;
@@ -316,6 +319,7 @@ let extended_word_table = [
 	"__signed__", `__signed__;
 	"__thread", `__thread;
 	"__typeof__", `__typeof__;
+	"__uint128_t", `__uint128_t;
 	"__volatile__", `__volatile__];;
 
 (* string_of/of_string for reserved word *)

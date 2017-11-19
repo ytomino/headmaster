@@ -317,6 +317,8 @@ struct
 			((`complex `double), sizeof_double * 2) ::
 			((`complex `long_double), sizeof_long_double * 2) ::
 			(`char, 1) ::
+			(`__int128_t, 16) ::
+			(`__uint128_t, 16) ::
 			(`__builtin_va_list, sizeof_intptr) ::
 			(match Language.lang with
 				| `c | `objc ->
@@ -329,6 +331,7 @@ struct
 						| `signed_int | `unsigned_int -> sizeof_int
 						| `signed_long | `unsigned_long -> sizeof_long
 						| `signed_long_long | `unsigned_long_long -> sizeof_long_long
+						| `__int128_t | `__uint128_t -> 16
 						end
 					in
 					(`wchar, sizeof_wchar) :: [])

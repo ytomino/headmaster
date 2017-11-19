@@ -92,6 +92,8 @@ struct
 		ts_bool: int;
 		ts_imaginary: int;
 		ts_complex: int;
+		ts_int128_t: int;
+		ts_uint128_t: int;
 		ts_builtin_va_list: int};;
 	
 	let no_type_specifier_set = {
@@ -107,6 +109,8 @@ struct
 		ts_bool = 0;
 		ts_imaginary = 0;
 		ts_complex = 0;
+		ts_int128_t = 0;
+		ts_uint128_t = 0;
 		ts_builtin_va_list = 0};;
 	
 	let get_type_by_specifier_set
@@ -203,6 +207,10 @@ struct
 					`complex `double
 				) else if set = {no_type_specifier_set with ts_long = 1; ts_double = 1; ts_complex = 1} then (
 					`complex `long_double
+				) else if set = {no_type_specifier_set with ts_int128_t = 1} then (
+					`__int128_t
+				) else if set = {no_type_specifier_set with ts_uint128_t = 1} then (
+					`__uint128_t
 				) else if set = {no_type_specifier_set with ts_builtin_va_list = 1} then (
 					`__builtin_va_list
 				) else (
@@ -1894,6 +1902,10 @@ struct
 				end
 			in
 			derived_types, namespace, source, (set, named)
+		| `__int128_t ->
+			derived_types, namespace, source, ({set with ts_int128_t = set.ts_int128_t + 1}, named)
+		| `__uint128_t ->
+			derived_types, namespace, source, ({set with ts_uint128_t = set.ts_uint128_t + 1}, named)
 		| `__builtin_va_list ->
 			derived_types, namespace, source, ({set with ts_builtin_va_list = set.ts_builtin_va_list + 1}, named)
 		end

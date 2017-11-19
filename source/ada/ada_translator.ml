@@ -804,6 +804,11 @@ struct
 				pp_type ff name pp_derived_type_definition
 					pp_print_string "Boolean";
 				pp_pragma_convention ff `cdecl name
+			| `__int128_t | `__uint128_t ->
+				(* Is unsigned_long_long always 128bit? *)
+				pp_type ff name pp_record_definition [
+					(fun ff () -> fprintf ff "@ Lo, Hi : unsigned_long_long;")];
+				pp_pragma_convention ff `c_pass_by_copy name
 			| #int_prec as p ->
 				let body =
 					begin match p with
@@ -816,7 +821,11 @@ struct
 					| `signed_long -> "new Long_Integer"
 					| `unsigned_long -> "mod 2 ** signed_long'Size"
 					| `signed_long_long -> "new Long_Long_Integer"
-					| `unsigned_long_long -> "mod 2 ** signed_long_long'Size"
+					| `unsigned_long_long ->
+						assert (snd item = 8); (* for __int128_t and __uint128_t *)
+						"mod 2 ** signed_long_long'Size"
+					| `__int128_t -> "range -(2 ** 127) .. 2 ** 127 - 1" (* unused *)
+					| `__uint128_t -> "mod 2 ** 128" (* unused *)
 					end
 				in
 				fprintf ff "@ type %s is %s;" name body;
@@ -882,6 +891,8 @@ struct
 	(
 		let t, _ = item in
 		begin match t with
+		| `__int128_t | `__uint128_t ->
+			() (* unsupported *)
 		| #int_prec as p ->
 			let name = ada_name_of_int_prec p in
 			pp_print_space ff ();
@@ -899,6 +910,8 @@ struct
 				pp_open_box ff indent;
 				fprintf ff "function Shift_Right (Left : %s; Right : Natural)@ return %s;" name name;
 				pp_close_box ff ()
+			| `__int128_t | `__uint128_t ->
+				assert false (* ignored in above *)
 			end
 		| _ ->
 			()

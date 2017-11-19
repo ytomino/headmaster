@@ -388,6 +388,8 @@ let ada_name_of_int_prec (p: int_prec): string = (
 	| `unsigned_long -> "unsigned_long"
 	| `signed_long_long -> "signed_long_long"
 	| `unsigned_long_long -> "unsigned_long_long"
+	| `__int128_t -> "int128_t"
+	| `__uint128_t -> "uint128_t"
 	end
 );;
 

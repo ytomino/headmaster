@@ -16,7 +16,9 @@ type unsigned_int_prec = [
 	| `unsigned_long
 	| `unsigned_long_long];;
 
-type int_prec = [signed_int_prec | unsigned_int_prec];;
+type int_prec = [signed_int_prec | unsigned_int_prec
+	| `__int128_t
+	| `__uint128_t];;
 
 type float_prec = [
 	| `float
