@@ -1,12 +1,6 @@
 HOST=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
-ifneq ($(findstring mingw,$(TARGET)),)
-EXEEXT=.exe
-else
-EXEEXT=
-endif
-
 ifneq ($(shell rlwrap --version),)
 RLWRAP=rlwrap
 endif
@@ -24,17 +18,17 @@ export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
 
 TEST=test_scanner
-EXENAME=$(BUILDDIR)/$(TEST).byte$(EXEEXT)
+LIBNAME=$(BUILDDIR)/$(TEST).cma
 
-.PHONY: $(EXENAME) all test interactive clean
+.PHONY: $(LIBNAME) all test interactive clean
 
-all: $(EXENAME) $(BINLN)
+all: $(LIBNAME) $(BINLN)
 
-$(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma $(SOURCELN)
+$(LIBNAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma $(SOURCELN)
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $<
+	$(OCAMLMAKE) -a -o $@ -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $<
 else
-	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -cflags "$(OCAMLCFLAGS)" $(TEST).byte
+	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -cflags "$(OCAMLCFLAGS)" $(TEST).cma
 endif
 
 $(BINLN):
@@ -43,12 +37,16 @@ $(BINLN):
 $(SOURCELN):
 	ln -s $(SOURCEDIR) $@
 
-test: $(EXENAME)
-	$(EXENAME)
+test: $(LIBNAME)
+	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --ocaml
+	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --ocaml64
+	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --gmp
 
 interactive:
 ifneq ($(OCAMLMAKE),)
 	$(RLWRAP) $(OCAMLMAKE) -interact -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $(TEST).ml
+else
+	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME)
 endif
 
 $(BUILDDIR)/gmp.cma:
