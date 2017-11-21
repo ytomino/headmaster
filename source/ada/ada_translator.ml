@@ -270,6 +270,28 @@ struct
 		end
 	);;
 	
+	let has_extended_floatN (prototype: Semantics.prototype): bool = (
+		let _, args, _, ret_t = prototype in
+		begin match Semantics.resolve_typedef ret_t with
+		| #extended_floatN_prec
+		| `imaginary #extended_floatN_prec
+		| `complex #extended_floatN_prec ->
+			true
+		| _ ->
+			List.exists (fun e ->
+				let `named (_, _, `variable (arg_t, _), _) = e in
+				begin match Semantics.resolve_typedef arg_t with
+				| `imaginary #extended_floatN_prec
+				| `complex #extended_floatN_prec
+				| #extended_floatN_prec ->
+					true
+				| _ ->
+					false
+				end
+			) args
+		end
+	);;
+	
 	(* dependency *)
 	
 	let add_to_with_caluse_map
@@ -3011,6 +3033,12 @@ struct
 				| _ -> false)
 			then (
 				fprintf ff "@ --  extern %s (opaque type)" name
+			) else if (
+				match t with
+				| `function_type prototype when has_extended_floatN prototype -> true
+				| _ -> false)
+			then (
+				fprintf ff "@ --  function %s ... (_FloatN)" name
 			) else (
 				let ada_name = ada_name_of current ps name `namespace name_mapping in
 				begin match item with
