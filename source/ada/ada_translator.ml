@@ -1496,6 +1496,15 @@ struct
 				(match where with
 					| `typedef -> "typedef"
 					| `macro -> "macro")
+		| #extended_floatN_prec as e ->
+			let e_name = ada_name_of_extended_float_prec e in
+			fprintf ff "@ --  subtype %s is %s;" name e_name
+		| `imaginary (#extended_floatN_prec as e) ->
+			let e_name = ada_name_of_extended_float_prec e in
+			fprintf ff "@ --  subtype %s is %s_imaginary;" name e_name
+		| `complex (#extended_floatN_prec as e) ->
+			let e_name = ada_name_of_extended_float_prec e in
+			fprintf ff "@ --  subtype %s is %s_complex;" name e_name
 		| _ ->
 			begin match t with
 			| `function_type _ ->
