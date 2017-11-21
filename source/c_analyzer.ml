@@ -92,6 +92,11 @@ struct
 		ts_bool: int;
 		ts_imaginary: int;
 		ts_complex: int;
+		ts_float32: int;
+		ts_float32x: int;
+		ts_float64: int;
+		ts_float64x: int;
+		ts_float128: int;
 		ts_int128_t: int;
 		ts_uint128_t: int;
 		ts_builtin_va_list: int};;
@@ -109,6 +114,11 @@ struct
 		ts_bool = 0;
 		ts_imaginary = 0;
 		ts_complex = 0;
+		ts_float32 = 0;
+		ts_float32x = 0;
+		ts_float64 = 0;
+		ts_float64x = 0;
+		ts_float128 = 0;
 		ts_int128_t = 0;
 		ts_uint128_t = 0;
 		ts_builtin_va_list = 0};;
@@ -195,18 +205,48 @@ struct
 					`double
 				) else if set = {no_type_specifier_set with ts_long = 1; ts_double = 1} then (
 					`long_double
+				) else if set = {no_type_specifier_set with ts_float32 = 1} then (
+					`_Float32
+				) else if set = {no_type_specifier_set with ts_float32x = 1} then (
+					`_Float32x
+				) else if set = {no_type_specifier_set with ts_float64 = 1} then (
+					`_Float64
+				) else if set = {no_type_specifier_set with ts_float64x = 1} then (
+					`_Float64x
+				) else if set = {no_type_specifier_set with ts_float128 = 1} then (
+					`_Float128
 				) else if set = {no_type_specifier_set with ts_float = 1; ts_imaginary = 1} then (
 					`imaginary `float
 				) else if set = {no_type_specifier_set with ts_double = 1; ts_imaginary = 1} then (
 					`imaginary `double
 				) else if set = {no_type_specifier_set with ts_long = 1; ts_double = 1; ts_imaginary = 1} then (
 					`imaginary `long_double
+				) else if set = {no_type_specifier_set with ts_imaginary = 1; ts_float32 = 1} then (
+					`imaginary `_Float32
+				) else if set = {no_type_specifier_set with ts_imaginary = 1; ts_float32x = 1} then (
+					`imaginary `_Float32x
+				) else if set = {no_type_specifier_set with ts_imaginary = 1; ts_float64 = 1} then (
+					`imaginary `_Float64
+				) else if set = {no_type_specifier_set with ts_imaginary = 1; ts_float64x = 1} then (
+					`imaginary `_Float64x
+				) else if set = {no_type_specifier_set with ts_imaginary = 1; ts_float128 = 1} then (
+					`imaginary `_Float128
 				) else if set = {no_type_specifier_set with ts_float = 1; ts_complex = 1} then (
 					`complex `float
 				) else if set = {no_type_specifier_set with ts_double = 1; ts_complex = 1} then (
 					`complex `double
 				) else if set = {no_type_specifier_set with ts_long = 1; ts_double = 1; ts_complex = 1} then (
 					`complex `long_double
+				) else if set = {no_type_specifier_set with ts_complex = 1; ts_float32 = 1} then (
+					`complex `_Float32
+				) else if set = {no_type_specifier_set with ts_complex = 1; ts_float32x = 1} then (
+					`complex `_Float32x
+				) else if set = {no_type_specifier_set with ts_complex = 1; ts_float64 = 1} then (
+					`complex `_Float64
+				) else if set = {no_type_specifier_set with ts_complex = 1; ts_float64x = 1} then (
+					`complex `_Float64x
+				) else if set = {no_type_specifier_set with ts_complex = 1; ts_float128 = 1} then (
+					`complex `_Float128
 				) else if set = {no_type_specifier_set with ts_int128_t = 1} then (
 					`__int128_t
 				) else if set = {no_type_specifier_set with ts_uint128_t = 1} then (
@@ -1902,6 +1942,16 @@ struct
 				end
 			in
 			derived_types, namespace, source, (set, named)
+		| `_Float32 ->
+			derived_types, namespace, source, ({set with ts_float32 = set.ts_float32 + 1}, named)
+		| `_Float32x ->
+			derived_types, namespace, source, ({set with ts_float32x = set.ts_float32x + 1}, named)
+		| `_Float64 ->
+			derived_types, namespace, source, ({set with ts_float64 = set.ts_float64 + 1}, named)
+		| `_Float64x ->
+			derived_types, namespace, source, ({set with ts_float64x = set.ts_float64x + 1}, named)
+		| `_Float128 ->
+			derived_types, namespace, source, ({set with ts_float128 = set.ts_float128 + 1}, named)
 		| `__int128_t ->
 			derived_types, namespace, source, ({set with ts_int128_t = set.ts_int128_t + 1}, named)
 		| `__uint128_t ->

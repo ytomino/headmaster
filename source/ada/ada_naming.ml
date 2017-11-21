@@ -393,11 +393,16 @@ let ada_name_of_int_prec (p: int_prec): string = (
 	end
 );;
 
-let ada_name_of_float_prec (p: float_prec): string = (
+let ada_name_of_extended_float_prec (p: extended_float_prec): string = (
 	begin match p with
 	| `float -> "float"
 	| `double -> "double"
 	| `long_double -> "long_double"
+	| `_Float32 -> "Float32"
+	| `_Float32x -> "Float32x"
+	| `_Float64 -> "Float64"
+	| `_Float64x -> "Float64x"
+	| `_Float128 -> "Float128"
 	end
 );;
 

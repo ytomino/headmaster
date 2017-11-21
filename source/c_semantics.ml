@@ -71,8 +71,8 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		| `bool
 		| int_prec
 		| real_prec
-		| `imaginary of float_prec
-		| `complex of float_prec
+		| `imaginary of extended_float_prec
+		| `complex of extended_float_prec
 		| `char
 		| `wchar];; (* only C++ or Objective-C++ *)
 	
@@ -99,7 +99,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 	type literal_value = [
 		| `int_literal of int_prec * Integer.t
 		| `float_literal of real_prec * Real.t
-		| `imaginary_literal of float_prec * Real.t
+		| `imaginary_literal of extended_float_prec * Real.t
 		| `char_literal of char
 		| `chars_literal of string
 		| `wchar_literal of WideString.elm

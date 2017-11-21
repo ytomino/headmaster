@@ -283,6 +283,11 @@ type extended_word = [
 	| `__builtin_va_start
 	| `__const
 	| `__extension__
+	| `_Float32
+	| `_Float32x
+	| `_Float64
+	| `_Float64x
+	| `_Float128
 	| `__imag__
 	| `__inline
 	| `__inline__
@@ -308,6 +313,11 @@ let extended_word_table = [
 	"__builtin_va_start", `__builtin_va_start;
 	"__const", `__const;
 	"__extension__", `__extension__;
+	"_Float32", `_Float32;
+	"_Float32x", `_Float32x;
+	"_Float64", `_Float64;
+	"_Float64x", `_Float64x;
+	"_Float128", `_Float128;
 	"__imag__", `__imag__;
 	"__inline", `__inline;
 	"__inline__", `__inline__;

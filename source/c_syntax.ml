@@ -114,7 +114,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `ident of string
 		| `int_literal of int_prec * Integer.t
 		| `float_literal of real_prec * Real.t
-		| `imaginary_literal of float_prec * Real.t (* extended *)
+		| `imaginary_literal of extended_float_prec * Real.t (* extended *)
 		| `char_literal of char
 		| `chars_literal of string
 		| `wchar_literal of WideString.elm
@@ -266,6 +266,11 @@ module Syntax (Literals: LiteralsType) = struct
 		| `struct_or_union_specifier of struct_or_union_specifier
 		| `enum_specifier of enum_specifier
 		| `typedef_name of typedef_name
+		| `_Float32 (* extended *)
+		| `_Float32x (* extended *)
+		| `_Float64 (* extended *)
+		| `_Float64x (* extended *)
+		| `_Float128 (* extended *)
 		| `__int128_t (* extended *)
 		| `__uint128_t (* extended *)
 		| `__builtin_va_list] (* extended *)

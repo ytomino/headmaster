@@ -28,6 +28,7 @@ module type ExpressingType = sig
 	
 	val int_prec: int_prec -> int_prec -> int_prec
 	val float_prec: float_prec -> float_prec -> float_prec
+	val extended_float_prec: extended_float_prec -> extended_float_prec -> extended_float_prec
 	val real_prec: real_prec -> real_prec -> real_prec
 	
 	val result_type_of:
@@ -114,17 +115,23 @@ struct
 		end
 	);;
 	
-	let real_prec (prec1: real_prec) (prec2: real_prec): real_prec = (
+	let extended_float_prec (prec1: extended_float_prec) (prec2: extended_float_prec): [> extended_float_prec] = (
 		begin match prec1, prec2 with
-		| `_Decimal128, _ | _, `_Decimal128 -> `_Decimal128
-		| `_Decimal64, _ | _, `_Decimal64 -> `_Decimal64
-		| `_Decimal32, _ | _, `_Decimal32 -> `_Decimal32
 		| `_Float128, _ | _, `_Float128 -> `_Float128
 		| `_Float64x, _ | _, `_Float64x -> `_Float64x (* fNx is higher than fN *)
 		| `_Float64, _ | _, `_Float64 -> `_Float64
 		| `_Float32x, _ | _, `_Float32x -> `_Float32x
 		| `_Float32, _ | _, `_Float32 -> `_Float32
 		| (#float_prec as prec1), (#float_prec as prec2) -> float_prec prec1 prec2
+		end
+	);;
+	
+	let real_prec (prec1: real_prec) (prec2: real_prec): real_prec = (
+		begin match prec1, prec2 with
+		| `_Decimal128, _ | _, `_Decimal128 -> `_Decimal128
+		| `_Decimal64, _ | _, `_Decimal64 -> `_Decimal64
+		| `_Decimal32, _ | _, `_Decimal32 -> `_Decimal32
+		| (#extended_float_prec as prec1), (#extended_float_prec as prec2) -> extended_float_prec prec1 prec2
 		end
 	);;
 	
@@ -155,11 +162,11 @@ struct
 		| (#real_prec as prec1), (#real_prec as prec2) ->
 			Some (find_predefined_type (real_prec prec1 prec2) predefined_types), derived_types
 		| (`imaginary prec1), (`imaginary prec2) when op <> `multiplicative ->
-			Some (find_predefined_type (`imaginary (float_prec prec1 prec2)) predefined_types), derived_types
+			Some (find_predefined_type (`imaginary (extended_float_prec prec1 prec2)) predefined_types), derived_types
 		| (#float_prec as prec1), (`imaginary prec2 | `complex prec2)
 		| (`imaginary prec1 | `complex prec1), (#float_prec as prec2)
 		| (`imaginary prec1 | `complex prec1), (`imaginary prec2 | `complex prec2) ->
-			Some (find_predefined_type (`complex (float_prec prec1 prec2)) predefined_types), derived_types
+			Some (find_predefined_type (`complex (extended_float_prec prec1 prec2)) predefined_types), derived_types
 		| (`pointer _ as ptr_t), #int_prec
 		| (`restrict (`pointer _) as ptr_t), #int_prec
 			when op = `add || op = `sub ->

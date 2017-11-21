@@ -85,6 +85,11 @@ struct
 		| `LONG
 		| `FLOAT
 		| `DOUBLE
+		| `_Float32
+		| `_Float32x
+		| `_Float64
+		| `_Float64x
+		| `_Float128
 		| `SIGNED
 		| `__signed
 		| `__signed__

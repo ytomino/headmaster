@@ -511,18 +511,8 @@ struct
 			pp_print_string ff "bool"
 		| #int_prec as p ->
 			pp_print_string ff (ada_name_of_int_prec p)
-		| #float_prec as p ->
-			pp_print_string ff (ada_name_of_float_prec p)
-		| `_Float32 ->
-			pp_print_string ff "Float32"
-		| `_Float64 ->
-			pp_print_string ff "Float64"
-		| `_Float128 ->
-			pp_print_string ff "Float128"
-		| `_Float32x ->
-			pp_print_string ff "Float32x"
-		| `_Float64x ->
-			pp_print_string ff "Float64x"
+		| #extended_float_prec as p ->
+			pp_print_string ff (ada_name_of_extended_float_prec p)
 		| `_Decimal32 ->
 			pp_print_string ff "Decimal32"
 		| `_Decimal64 ->
@@ -530,9 +520,9 @@ struct
 		| `_Decimal128 ->
 			pp_print_string ff "Decimal128"
 		| `imaginary e ->
-			fprintf ff "%s_imaginary" (ada_name_of_float_prec e)
+			fprintf ff "%s_imaginary" (ada_name_of_extended_float_prec e)
 		| `complex e ->
-			fprintf ff "%s_complex" (ada_name_of_float_prec e)
+			fprintf ff "%s_complex" (ada_name_of_extended_float_prec e)
 		| `char ->
 			pp_print_string ff "char"
 		| `wchar ->
@@ -857,15 +847,25 @@ struct
 			| `_Decimal128 ->
 				fprintf ff "@ --  type Decimal128 is ..."
 			| `imaginary e ->
-				let e_name = ada_name_of_float_prec e in
-				pp_type ff name pp_derived_type_definition pp_print_string e_name;
-				pp_pragma_convention ff `cdecl name
+				let e_name = ada_name_of_extended_float_prec e in
+				begin match e with
+				| #float_prec ->
+					pp_type ff name pp_derived_type_definition pp_print_string e_name;
+					pp_pragma_convention ff `cdecl name
+				| _ ->
+					fprintf ff "@ --  type %s_imaginary is ..." e_name
+				end
 			| `complex e ->
-				let e_name = ada_name_of_float_prec e in
-				pp_type ff name pp_record_definition [
-					(fun ff () -> fprintf ff "@ Re, Im : %s'Base;" e_name)];
-				pp_pragma_complex_representation ff name;
-				pp_pragma_convention ff `cdecl name
+				let e_name = ada_name_of_extended_float_prec e in
+				begin match e with
+				| #float_prec ->
+					pp_type ff name pp_record_definition [
+						(fun ff () -> fprintf ff "@ Re, Im : %s'Base;" e_name)];
+					pp_pragma_complex_representation ff name;
+					pp_pragma_convention ff `cdecl name
+				| _ ->
+					fprintf ff "@ --  type %s_complex is ..." e_name
+				end
 			| `char ->
 				pp_type ff name pp_derived_type_definition pp_print_string "Character"
 				(* dirty hack: pragma Convention set word-size alignment...so omitted... *)

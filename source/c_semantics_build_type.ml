@@ -313,9 +313,19 @@ struct
 			((`imaginary `float), sizeof_float) ::
 			((`imaginary `double), sizeof_double) ::
 			((`imaginary `long_double), sizeof_long_double) ::
+			((`imaginary `_Float32), 4) ::
+			((`imaginary `_Float32x), 8) ::
+			((`imaginary `_Float64), 8) ::
+			((`imaginary `_Float64x), 16) ::
+			((`imaginary `_Float128), 16) ::
 			((`complex `float), sizeof_float * 2) ::
 			((`complex `double), sizeof_double * 2) ::
 			((`complex `long_double), sizeof_long_double * 2) ::
+			((`complex `_Float32), 8) ::
+			((`complex `_Float32x), 16) ::
+			((`complex `_Float64), 16) ::
+			((`complex `_Float64x), 32) ::
+			((`complex `_Float128), 32) ::
 			(`char, 1) ::
 			(`__int128_t, 16) ::
 			(`__uint128_t, 16) ::

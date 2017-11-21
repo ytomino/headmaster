@@ -25,7 +25,7 @@ type float_prec = [
 	| `double
 	| `long_double];;
 
-type extended_float_prec = [ (* ISO/IEC TS 18661-3:2015 *)
+type extended_float_prec = [float_prec (* ISO/IEC TS 18661-3:2015 *)
 	| `_Float32
 	| `_Float64
 	| `_Float128
@@ -37,7 +37,7 @@ type extended_decimal_prec = [ (* ISO/IEC WDTR24732 *)
 	| `_Decimal64
 	| `_Decimal128];;
 
-type real_prec = [float_prec | extended_float_prec | extended_decimal_prec];;
+type real_prec = [extended_float_prec | extended_decimal_prec];;
 
 (* for __attribute__((__mode__)) *)
 
