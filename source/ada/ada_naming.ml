@@ -26,6 +26,12 @@ let special_package_name_mapping =
 
 (* package name -> C identifier -> Ada Identifier *)
 let special_name_mapping = make_mapmap [
+	"bits.types", [
+		"__clock_t", "qqclock_t"; (* linux / conflicted with <clock_t.h> *)
+		"__clockid_t", "qqclockid_t"; (* linux / conflicted with <clock_t.h> *)
+		"__sig_atomic_t", "qqsig_atomic_t"; (* linux / conflicted with <sig_atomic_t.h> *)
+		"__time_t", "qqtime_t"; (* linux / conflicted with <time_t.h> *)
+		"__timer_t", "qqtimer_t"]; (* linux / conflicted with <timer_t.h> *)
 	"cairo", [
 		"cairo_version", "get_cairo_version"; (* cairo / conflicated with CAIRO_VERSION *)
 		"cairo_version_string", "get_cairo_version_string"]; (* cairo / conflicated with CAIRO_VERSION_STRING *)

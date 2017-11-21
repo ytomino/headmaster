@@ -653,6 +653,12 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"bits/cmathcalls.h", [
 			`unparsible_macro, [
 				"_Mdouble_complex_"]]; (* type specifier with an identifier to redefine *)
+		"bits/cpu-set.h", [
+			`unparsible_macro, [
+				"__CPU_CLR_S"; (* accessing element of untyped parameter *)
+				"__CPU_ISSET_S"; (* accessing element of untyped parameter *)
+				"__CPU_OP_S"; (* accessing element of untyped parameter *)
+				"__CPU_SET_S"]]; (* accessing element of untyped parameter *)
 		"bits/dlfcn.h", [
 			`unparsible_macro, [
 				"DL_CALL_FCT"]]; (* parameterized argument expression list *)
@@ -672,6 +678,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"__PTHREAD_RWLOCK_ELISION_EXTRA"; (* partial initializer *)
 				"__PTHREAD_SPINS"]]; (* partial initializer *)
+		"bits/pthreadtypes-arch.h", [
+			`unparsible_macro, [
+				"__PTHREAD_RWLOCK_ELISION_EXTRA"]]; (* partial initializer *)
 		"bits/sched.h", [
 			`unparsible_macro, [
 				"__CPU_OP_S"]; (* parameterized operator *)
@@ -701,6 +710,14 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"bits/termios.h", [
 			`unparsible_macro, [
 				"_IOT_termios"]]; (* _IOT is undefined *)
+		"bits/thread-shared-types.h", [
+			`unparsible_macro, [
+				"__PTHREAD_SPINS"; (* partial initializer *)
+				"__PTHREAD_SPINS_DATA"]]; (* new struct in macro *)
+		"bits/types/siginfo_t.h", [
+			`unparsible_macro, [
+				"si_int"; (* (siginfo_t)._sifields._rt.si_sigval is not struct *)
+				"si_ptr"]]; (* (siginfo_t)._sifields._rt.si_sigval is not struct *)
 		"bits/typesizes.h", [
 			`unparsible_macro, [
 				"__TIMER_T_TYPE"]]; (* declaration specifier and pointer *)
@@ -754,6 +771,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"_IO_feof_unlocked"; (* accessing element of untyped parameter *)
 				"_IO_ferror_unlocked"; (* accessing element of untyped parameter *)
 				"_IO_getc_unlocked"; (* accessing element of untyped parameter *)
+				"_IO_need_lock"; (* accessing element of untyped parameter *)
 				"_IO_peekc"; (* accessing element of untyped parameter *)
 				"_IO_peekc_unlocked"; (* accessing element of untyped parameter *)
 				"_IO_PENDING_OUTPUT_COUNT"; (* accessing element of untyped parameter *)
@@ -824,6 +842,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__extern_always_inline"; (* __inline and attributes *)
 				"__flexarr"; (* [] *)
 				"__fortify_function"; (* attribute and storage class *)
+				"__glibc_macro_warning"; (* illegal _Pragma *)
 				"__LEAF"; (* attribute and comma *)
 				"__LDBL_REDIR"; (* parameterized partial declaration *)
 				"__LDBL_REDIR_NTH"; (* parameterized partial declaration *)
@@ -855,6 +874,11 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"S_TYPEISMQ"; (* accessing element of untyped parameter *)
 				"S_TYPEISSEM"; (* accessing element of untyped parameter *)
 				"S_TYPEISSHM"]]; (* accessing element of untyped parameter *)
+		"sys/sysmacros.h", [
+			`unparsible_macro, [
+				"makedev"; (* illegal text *)
+				"major"; (* illegal text *)
+				"minor"]]; (* illegal text *)
 		"sys/time.h", [
 			`unparsible_macro, [
 				"timercmp"]; (* parameterized operator *)

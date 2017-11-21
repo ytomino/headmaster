@@ -104,4 +104,5 @@
 #if defined(__linux__)
 #pragma for Ada "signal.h" monolithic_include "bits/sigaction.h"
 #pragma for Ada "signal.h" monolithic_include "bits/signum.h"
+#pragma for Ada "signal.h" monolithic_include "bits/signum-generic.h"
 #endif
