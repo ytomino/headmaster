@@ -521,6 +521,7 @@ module LexicalElement (Literals: LiteralsType) = struct
 		| `xor_assign (* ^= *)
 		| `or_assign (* |= *)
 		| `comma
+		| `backslash (* only in macro *)
 		| `sharp (* # or %: *)
 		| `d_sharp (* ## or %:%: *)
 		| `d_colon (* C++ :: *)

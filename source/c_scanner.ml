@@ -231,18 +231,25 @@ struct
 			| '\\' ->
 				let index = TextFile.succ source index in
 				if state = `pp then (
-					(* macro-line continuation *)
-					let index =
-						begin match TextFile.get source index with
-						| '\n' | '\r' | '\x0c' ->
-							TextFile.succ_line source index
-						| _ ->
-							let p = TextFile.prev_position source index in
-							error (p, p) (unexpected '\\');
-							index
-						end
-					in
-					process state index
+					let e = TextFile.get source index in
+					if e = 'n' then (
+						(* \n in outside of string in glibc <sys/sysmacros.h> *)
+						let p = TextFile.prev_position source index in
+						`cons ((p, p), `backslash, lazy (process state index))
+					) else (
+						(* macro-line continuation *)
+						let index =
+							begin match e with
+							| '\n' | '\r' | '\x0c' ->
+								TextFile.succ_line source index
+							| _ ->
+								let p = TextFile.prev_position source index in
+								error (p, p) (unexpected '\\');
+								index
+							end
+						in
+						process state index
+					)
 				) else (
 					begin match TextFile.get source index with
 					| '\n' | '\r' | '\x0c' ->

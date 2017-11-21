@@ -192,6 +192,8 @@ struct
 				"|="
 			| `comma ->
 				","
+			| `backslash ->
+				"\\"
 			| `sharp ->
 				"#"
 			| `d_sharp ->
