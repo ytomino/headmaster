@@ -113,6 +113,7 @@ let special_name_mapping = make_mapmap [
 		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
 		"linux", "defined_linux"; (* linux / conflicted with include dir <linux/...> *)
 		"__linux", "defined_qqlinux"; (* linux / conflicted with include dir <linux/...> *)
+		"__PIE__", "defined_qqPIEqq_U"; (* linux / confilicted with __pie__, presence is depending on environment *)
 		"__PIC__", "defined_qqPICqq_U"; (* darwin9 / confilicted with __pic__ on gcc-4.4 *)
 		"WINNT", "defined_WINNT"; (* mingw-w64 / conflicted with winnt.h *)
 		"__WINNT", "defined_qqWINNT"]];; (* mingw-w64 / conflicted with winnt.h *)
