@@ -15,6 +15,8 @@ MPFR
  http://www.mpfr.org/
 Objective Caml
  http://caml.inria.fr/
+Docutils (optional, only used for the manual page)
+ http://docutils.sourceforge.net/
 
 Download
 --------
