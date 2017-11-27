@@ -14,8 +14,13 @@ let match_target ~(pattern: string) (target: string): bool = (
 			assert (next_c <> '*');
 			let rec find_loop target_index = (
 				if target_index >= target_length then false else
-				if target.[target_index] = next_c then loop (next_pattern_index + 1) (target_index + 1) else
-				find_loop (target_index + 1)
+				if target.[target_index] = next_c
+					&& loop (next_pattern_index + 1) (target_index + 1)
+				then (
+					true
+				) else (
+					find_loop (target_index + 1)
+				)
 			) in
 			find_loop target_index
 		| _ as c ->
@@ -639,7 +644,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		predefined_name, [
 			`unparsible_macro, [
 				"__DBL_DENORM_MIN__"]]]; (* freebsd7 / underflow *)
-	"*-pc-linux*", [
+	"*-linux-gnu*", [
 		"asm-generic/ioctls.h", [
 			`unparsible_macro, [
 				"TCGETS2"; (* struct termios2 is undefined *)
