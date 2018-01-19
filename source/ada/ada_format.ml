@@ -481,14 +481,14 @@ let pp_loop
 );;
 
 let pp_while
-	(pp_cond: formatter -> unit -> unit)
-	: formatter -> unit -> unit =
+	(ff: formatter)
+	~(pp_cond: formatter -> unit -> unit)
+	()
+	: unit =
 (
-	begin fun ff ->
-		pp_print_string ff "while";
-		pp_print_space ff ();
-		pp_cond ff
-	end
+	pp_print_string ff "while";
+	pp_print_space ff ();
+	pp_cond ff ()
 );;
 
 let pp_exit

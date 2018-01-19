@@ -2714,7 +2714,7 @@ struct
 			let mappings_for_expr = opaque_mapping, name_mapping in
 			pp_loop ff
 				~pp_cond:
-					(Some (pp_while (fun ff () ->
+					(Some (pp_while ~pp_cond:(fun ff () ->
 						pp_expression ff ~mappings:mappings_for_expr ~current ~outside:`lowest cond)))
 				~pp_loop:
 					begin fun ff () ->
