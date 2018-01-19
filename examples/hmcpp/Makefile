@@ -51,7 +51,7 @@ else
 endif
 
 version.ml: | ../../main/version.ml
-	ln -s $< $@
+	ln -s $| $@
 
 ../../main/version.ml: ../../main/version.txt $(HEAD)
 	$(MAKE) -C ../../main version.ml

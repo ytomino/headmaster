@@ -46,7 +46,7 @@ else
 	cd $(BUILDDIR) && ln -sf main.native $(notdir $(EXENAME))
 endif
 
-version.ml: version.txt $(HEAD)
+version.ml: version.txt version $(HEAD)
 	echo "let version = \"version $(shell ./version)\";;" > version.ml
 
 $(BUILDDIR)/gmp.cmxa:
@@ -69,7 +69,7 @@ man1:
 man1/headmaster.1: headmaster.1.rst version.rst | man1
 	rst2man.py $< $@
 
-version.rst: version.txt $(HEAD)
+version.rst: version.txt version $(HEAD)
 	echo ".. |version| replace:: $(shell ./version)" > version.rst
 
 testman: man1/headmaster.1
