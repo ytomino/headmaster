@@ -1,4 +1,4 @@
-HOST=$(shell gcc -dumpmachine)
+HOST:=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
 ifneq ($(shell rlwrap --version),)
