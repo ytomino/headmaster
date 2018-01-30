@@ -818,8 +818,8 @@ struct
 				pp_pragma_convention ff `cdecl name
 			| `__int128_t | `__uint128_t ->
 				(* Is unsigned_long_long always 128bit? *)
-				pp_type ff name pp_record_definition [
-					(fun ff () -> fprintf ff "@ Lo, Hi : unsigned_long_long;")];
+				pp_type ff name pp_record_definition
+					[fun ff () -> fprintf ff "@ Lo, Hi : unsigned_long_long;"];
 				pp_pragma_convention ff `c_pass_by_copy name
 			| #int_prec as p ->
 				let body =
@@ -881,8 +881,8 @@ struct
 				let e_name = ada_name_of_extended_float_prec e in
 				begin match e with
 				| #float_prec ->
-					pp_type ff name pp_record_definition [
-						(fun ff () -> fprintf ff "@ Re, Im : %s'Base;" e_name)];
+					pp_type ff name pp_record_definition
+						[fun ff () -> fprintf ff "@ Re, Im : %s'Base;" e_name];
 					pp_pragma_complex_representation ff name;
 					pp_pragma_convention ff `cdecl name
 				| _ ->
@@ -952,7 +952,8 @@ struct
 				begin match x with
 				| `named (_, "size_t", _, _) -> true
 				| _ -> false
-				end) language_mapping.Semantics.lm_type
+				end
+			) language_mapping.Semantics.lm_type
 		with
 		| (_, alias) :: _ ->
 			pp_subtype ff name pp_print_string alias
@@ -1012,11 +1013,11 @@ struct
 			let pp_sized_array ff ~mappings name n base_type = (
 				let n = Integer.to_int n in
 				pp_subtype ff name
-					begin fun ff () ->
+					(fun ff () ->
 						fprintf ff "%a (0 .. %d)"
 							(pp_derived_type_name ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name) (`array (None, base_type))
-							(n - 1)
-					end ()
+							(n - 1))
+					()
 			) in
 			begin match typedef with
 			| None ->
@@ -1110,11 +1111,13 @@ struct
 					in
 					if is_language_typedef then (
 						let re_t = Finding.expand_typedef is_typedef_of_language_typedef (item :> Semantics.all_type) in
-						pp_subtype ff name (
-							begin fun ff ->
+						pp_subtype ff name
+							(fun ff ->
 								pp_print_string ff "Standard.C.";
-								pp_type_name ff ~mappings ~current ?hidden_packages:None ?hiding:None ~where:`name
-							end)
+								pp_type_name ff ~mappings ~current
+									?hidden_packages:None
+									?hiding:None
+									~where:`name)
 							re_t
 					) else (
 						pp_subtype ff name
@@ -1411,8 +1414,8 @@ struct
 		let has_bitfield = ref false in
 		let field_map, _ = name_mapping_for_struct_items items in
 		pp_type ff name
-			~pp_discriminants:[
-				fun ff () -> fprintf ff "Unchecked_Tag : unsigned_int := 0"]
+			~pp_discriminants:[fun ff () ->
+				fprintf ff "Unchecked_Tag : unsigned_int := 0"]
 			pp_record_definition
 			[fun ff () ->
 				pp_print_space ff ();
@@ -1591,8 +1594,10 @@ struct
 				begin match Semantics.opaque_to_full item opaque_mapping with
 				| None ->
 					(* as opaque *)
-					pp_type ff name ~pp_discriminants:[fun ff () -> pp_print_string ff "<>"]
-						pp_private_type_declaration `limited
+					pp_type ff name
+						~pp_discriminants:[fun ff () -> pp_print_string ff "<>"]
+						pp_private_type_declaration
+						`limited
 				| Some full ->
 					let `named (full_ps, _, _, _) = full in
 					let module_having_full = Naming.module_of full_ps name_mapping in
@@ -2431,17 +2436,17 @@ struct
 				pp_close_box ff ();
 				pp_begin ff ();
 				pp_if ff
-					~pp_cond:(fun ff () -> pp_expression ff ~mappings ~current ~outside:`lowest cond)
-					~pp_true_case: (
-						begin fun ff () ->
-							pp_return ff (Some (fun ff () ->
-								pp_expression ff ~mappings ~current ~outside:`lowest true_case))
-						end)
-					~pp_false_case: (Some (
-						begin fun ff () ->
-							pp_return ff (Some (fun ff () ->
-								pp_expression ff ~mappings ~current ~outside:`lowest false_case))
-						end));
+					~pp_cond:(fun ff () ->
+						pp_expression ff ~mappings ~current
+							~outside:`lowest cond)
+					~pp_true_case:(fun ff () ->
+						pp_return ff (Some (fun ff () ->
+							pp_expression ff ~mappings ~current
+								~outside:`lowest true_case)))
+					~pp_false_case:(Some (fun ff () ->
+						pp_return ff (Some (fun ff () ->
+							pp_expression ff ~mappings ~current
+								~outside:`lowest false_case))));
 				pp_end ff ~label:("Cond_" ^ hash) ()
 			) conditional_expressions;
 			List.iter (fun (`statement stmts, t as expr) ->
@@ -2694,21 +2699,19 @@ struct
 			let opaque_mapping, name_mapping, _ = mappings in
 			let mappings_for_expr = opaque_mapping, name_mapping in
 			pp_expression_in_statement ff ~mappings:mappings_for_expr ~current cond
-				~pp_statement:(
-					begin fun ff () ->
-						pp_if ff
-							~pp_cond:(fun ff () -> pp_expression ff ~mappings:mappings_for_expr ~current ~outside:`lowest cond)
-							~pp_true_case:
-								begin fun ff () ->
-									pp_statement_list ff ~mappings ~current
-										~null_statement:true true_case
-								end
-							~pp_false_case:(if false_case = [] then None else Some (
-								begin fun ff () ->
-									pp_statement_list ff ~mappings ~current
-										~null_statement:true false_case
-								end))
-					end)
+				~pp_statement:(fun ff () ->
+					pp_if ff
+						~pp_cond:(fun ff () ->
+							pp_expression ff ~mappings:mappings_for_expr ~current
+								~outside:`lowest cond)
+						~pp_true_case:(fun ff () ->
+							pp_statement_list ff ~mappings ~current
+								~null_statement:true true_case)
+						~pp_false_case:(
+							if false_case = [] then None else
+							Some (fun ff () ->
+								pp_statement_list ff ~mappings ~current
+									~null_statement:true false_case)))
 		| `while_loop (cond, stmts) ->
 			let opaque_mapping, name_mapping, _ = mappings in
 			let mappings_for_expr = opaque_mapping, name_mapping in
@@ -2716,25 +2719,23 @@ struct
 				~pp_cond:
 					(Some (pp_while ~pp_cond:(fun ff () ->
 						pp_expression ff ~mappings:mappings_for_expr ~current ~outside:`lowest cond)))
-				~pp_loop:
-					begin fun ff () ->
-						pp_statement_list ff ~mappings ~current
-							~null_statement:true stmts
-					end
+				~pp_loop:(fun ff () ->
+					pp_statement_list ff ~mappings ~current
+						~null_statement:true stmts)
 		| `do_loop (stmts, cond) ->
 			let opaque_mapping, name_mapping, _ = mappings in
 			let mappings_for_expr = opaque_mapping, name_mapping in
 			pp_loop ff
 				~pp_cond:None
-				~pp_loop:
-					begin fun ff () ->
-						pp_statement_list ff ~mappings ~current
-							~null_statement:true stmts;
-						pp_exit ff ~pp_when:(Some (fun ff () ->
+				~pp_loop:(fun ff () ->
+					pp_statement_list ff ~mappings ~current
+						~null_statement:true stmts;
+					pp_exit ff
+						~pp_when:(Some (fun ff () ->
 							pp_print_string ff "not";
 							pp_print_space ff ();
-							pp_expression ff ~mappings:mappings_for_expr ~current ~outside:`factor cond))
-					end
+							pp_expression ff ~mappings:mappings_for_expr ~current
+								~outside:`factor cond)))
 		| `for_loop _ ->
 			fprintf ff "@ **** unimplemented. ****\n";
 			assert false
@@ -2750,11 +2751,10 @@ struct
 				let opaque_mapping, name_mapping, _ = mappings in
 				let mappings = opaque_mapping, name_mapping in
 				pp_expression_in_statement ff ~mappings ~current expr
-					~pp_statement:(
-						begin fun ff () ->
-							pp_return ff (Some (fun ff () ->
-								pp_expression ff ~mappings ~current ~hidden_packages ~outside:`lowest expr))
-						end)
+					~pp_statement:(fun ff () ->
+						pp_return ff (Some (fun ff () ->
+							pp_expression ff ~mappings ~current
+								~hidden_packages ~outside:`lowest expr)))
 			| None ->
 				pp_return ff None
 			end
@@ -3428,11 +3428,9 @@ struct
 			pp_begin ff ();
 			let mappings = opaque_mapping, name_mapping in
 			pp_expression_in_statement ff ~mappings ~current expr
-				~pp_statement:(
-					begin fun ff () ->
-						pp_return ff (Some (fun ff () ->
-							pp_expression ff ~mappings ~current ~outside:`lowest expr))
-					end);
+				~pp_statement:(fun ff () ->
+					pp_return ff (Some (fun ff () ->
+						pp_expression ff ~mappings ~current ~outside:`lowest expr)));
 			pp_end ff ~label:name ()
 		| _ ->
 			assert false (* does not come here *)
@@ -3744,8 +3742,8 @@ struct
 				)
 			)
 			~pp_private:(
-				if has_private_part then Some (
-					begin fun ff () ->
+				if has_private_part then (
+					Some (fun ff () ->
 						List.iter (fun item ->
 							begin match item with
 							| `named (ps, t_name, (`opaque_enum | `opaque_struct | `opaque_union as kind), _) as item
@@ -3755,8 +3753,7 @@ struct
 							| _ ->
 								()
 							end
-						) items
-					end
+						) items)
 				) else None
 			)
 	);;

@@ -629,9 +629,8 @@ struct
 					n :: rs
 				| None ->
 					rs
-				end)
-				list
-				[]
+				end
+			) list []
 		) in
 		begin match snd x with
 		| `aligned (_, param) ->

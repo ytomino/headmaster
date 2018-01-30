@@ -237,7 +237,7 @@ struct
 									| _ ->
 										let p2 = prev_position source index in
 										error (p1, p2) bad_fN_suffix;
-										`_Float128  (* fallback *)
+										`_Float128 (* fallback *)
 									end
 								in
 								prec, index
