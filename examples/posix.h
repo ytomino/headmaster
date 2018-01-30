@@ -4,7 +4,7 @@
 #include <strings.h> /* bcopy for FD_COPY */
 #elif defined(__FreeBSD__)
 #define _DONT_USE_CTYPE_INLINE_
-#elif defined (__linux__)
+#elif defined (__gnu_linux__)
 #include <limits.h> /* LONG_MAX for bits/posix1_lim.h */
 #endif
 #include <sys/types.h> /* before other system headers */
@@ -21,11 +21,11 @@
 #include <sys/sysctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#if defined (__linux__)
+#if defined (__gnu_linux__)
 #include <stdlib.h> /* before sys/wait.h */
 #endif
 #include <sys/wait.h>
-#if defined(__linux__)
+#if defined(__gnu_linux__)
 #include <sys/stat.h> /* before fcntl.h */
 #include <fcntl.h>
 #else
@@ -34,7 +34,7 @@
 #endif
 #include <sys/file.h>
 #include <poll.h>
-#if defined(__linux__)
+#if defined(__gnu_linux__)
 #define _SYS_SOCKET_H
 #include <bits/socket.h> /* before netinet/in.h */
 #include <netinet/in.h> /* before sys/socket.h */
@@ -42,11 +42,11 @@
 #endif
 #include <sys/socket.h> /* before sys/mount.h */
 #include <netdb.h>
-#if !defined(__linux__)
+#if !defined(__gnu_linux__)
 #include <netinet/in.h> /* after netdb.h in FreeBSD */
 #endif
 #include <sys/mount.h>
-#if defined(__linux__)
+#if defined(__gnu_linux__)
 #include <sys/statfs.h>
 #endif
 #include <dirent.h>
@@ -64,7 +64,7 @@
 #if !defined(__FreeBSD__) || __FreeBSD__ >= 8
 #include <spawn.h>
 #endif
-#if !defined(__linux__)
+#if !defined(__gnu_linux__)
 #include <pwd.h>
 #include <grp.h>
 #endif
@@ -83,7 +83,7 @@
 #include <malloc_np.h>
 #include <pthread_np.h>
 #include <link.h>
-#elif defined(__linux__)
+#elif defined(__gnu_linux__)
 #include <sys/sendfile.h>
 #include <sys/statvfs.h>
 #include <link.h>
@@ -101,7 +101,7 @@
 #pragma instance pthread_cond_t "PTHREAD_COND_INITIALIZER"
 #pragma instance pthread_once_t "PTHREAD_ONCE_INIT"
 
-#if defined(__linux__)
+#if defined(__gnu_linux__)
 #pragma for Ada "signal.h" monolithic_include "bits/sigaction.h"
 #pragma for Ada "signal.h" monolithic_include "bits/signum.h"
 #pragma for Ada "signal.h" monolithic_include "bits/signum-generic.h"
