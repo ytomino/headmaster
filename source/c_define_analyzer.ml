@@ -481,6 +481,9 @@ struct
 					if is_known_error def_p name `uninterpretable_macro then (
 						let source = new_any "uninterpretable" :: source in
 						derived_types, source
+					) else if varargs = `varargs then (
+						let source = new_any "variadic macro" :: source in
+						derived_types, source
 					) else (
 						let local, formal_types, args = new_local args in
 						let derived_types, source, expr =
@@ -508,6 +511,9 @@ struct
 				| `function_stmt (args, varargs, stmt) ->
 					if is_known_error def_p name `uninterpretable_macro then (
 						let source = new_any "uninterpretable" :: source in
+						derived_types, source
+					) else if varargs = `varargs then (
+						let source = new_any "variadic macro" :: source in
 						derived_types, source
 					) else (
 						let local, formal_types, args = new_local args in

@@ -181,7 +181,8 @@ module Syntax (Literals: LiteralsType) = struct
 		(* (6.5.16) assignment-expression *)
 		| `assign of expression p * assignment_operator p * expression e
 		(* (6.5.17) expression *)
-		| `comma of expression p * [`comma] p * expression e]
+		| `comma of expression p * [`comma] p * expression e
+		| `__VA_ARGS__] (* for parsing the macro *)
 	and argument_expression_list = [
 		(* (6.5.2) argument-expression-list *)
 		| `nil of assignment_expression

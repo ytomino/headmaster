@@ -182,10 +182,6 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`unparsible_macro, [
 				"pthread_cleanup_pop"; (* darwin10 / partial statement *)
 				"pthread_cleanup_push"]]; (* darwin10 / partial statement *)
-		"secure/_stdio.h", [
-			`unparsible_macro, [
-				"snprintf"; (* darwin10 / varargs macro *)
-				"sprintf"]]; (* darwin10 / varargs macro *)
 		"secure/_string.h", [
 			`undefined_macro, [
 				"__IPHONE_OS_VERSION_MIN_REQUIRED"]]; (* darwin13 *)

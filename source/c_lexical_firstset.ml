@@ -62,6 +62,9 @@ struct
 	type firstset_of_binary_op_expression = firstset_of_cast_expression;;
 	type firstset_of_conditional_expression = firstset_of_binary_op_expression;;
 	type firstset_of_assignment_expression = firstset_of_conditional_expression;;
+	type firstset_of_va_expression = [
+		| firstset_of_assignment_expression
+		| `__VA_ARGS__];;
 	type firstset_of_expression = firstset_of_assignment_expression;;
 	type firstset_of_constant_expression = firstset_of_conditional_expression;;
 	type firstset_of_initializer = [

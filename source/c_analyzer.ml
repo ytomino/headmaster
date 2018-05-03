@@ -44,6 +44,8 @@ struct
 		("__attribute__((" ^ s ^ "(...))) requires string literal.");;
 	let function_with_initializer =
 		"the function can not have any initializer.";;
+	let varargs_in_function_call =
+		"__VA_ARGS__ is left in the function call.";;
 	let unimplemented (line: int) =
 		"unimplemented at " ^ __FILE__ ^ ":" ^ string_of_int line;;
 	
@@ -1556,6 +1558,9 @@ struct
 					derived_types, Some (`comma (left, right), snd right)
 				end
 			) left right
+		| `__VA_ARGS__ ->
+			error (fst x) varargs_in_function_call;
+			derived_types, source, None
 		end
 	) and handle_declaration
 		(error: ranged_position -> string -> unit)

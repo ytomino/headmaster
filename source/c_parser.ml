@@ -1217,21 +1217,21 @@ struct
 	) and parse_argument_expression_list
 		(error: ranged_position -> string -> unit)
 		(typedefs: typedef_set)
-		(xs: [`cons of ranged_position * FirstSet.firstset_of_assignment_expression * 'a in_t] lazy_t)
+		(xs: [`cons of ranged_position * FirstSet.firstset_of_va_expression * 'a in_t] lazy_t)
 		: argument_expression_list p * 'a in_t =
 	(
 		let rec loop rs xs = (
 			begin match xs with
 			| lazy (`cons (c_p, (`comma as c_e), xs)) ->
 				let comma = c_p, c_e in
-				let second, xs = parse_assignment_expression_or_error error typedefs xs in
+				let second, xs = parse_va_expression_or_error error typedefs xs in
 				let `some (ps, ()) = (`some rs) & (`some comma) &^ second in
 				loop (ps, `cons (rs, comma, second)) xs
 			| _ ->
 				rs, xs
 			end
 		) in
-		let (f_p, f_e), xs = parse_assignment_expression error typedefs xs in
+		let (f_p, f_e), xs = parse_va_expression error typedefs xs in
 		loop (f_p, `nil f_e) xs
 	) and parse_argument_expression_list_option
 		(error: ranged_position -> string -> unit)
@@ -1240,7 +1240,7 @@ struct
 		: argument_expression_list opt * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_assignment_expression as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_va_expression as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let result, xs = parse_argument_expression_list error typedefs xs in
 			`some result, xs
@@ -1254,7 +1254,7 @@ struct
 		: argument_expression_list e * 'a in_t =
 	(
 		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_assignment_expression as it), xr)) ->
+		| lazy (`cons (a, (#FirstSet.firstset_of_va_expression as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let result, xs = parse_argument_expression_list error typedefs xs in
 			`some result, xs
@@ -1833,6 +1833,36 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_assignment_expression error typedefs xs in
 			`some r, xs
+		| _ ->
+			error (LazyList.hd_a xs) "assignment-expression was expected.";
+			`error, xs
+		end
+	) and parse_va_expression
+		(error: ranged_position -> string -> unit)
+		(typedefs: typedef_set)
+		(xs: [`cons of ranged_position * FirstSet.firstset_of_va_expression * 'a in_t] lazy_t)
+		: assignment_expression p * 'a in_t =
+	(
+		(* assignment-expression or __VA_ARGS__ *)
+		begin match xs with
+		| lazy (`cons (a, (#FirstSet.firstset_of_assignment_expression as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			parse_assignment_expression error typedefs xs
+		| lazy (`cons (va_p, (`__VA_ARGS__ as va_e), xs)) ->
+			let va = va_p, va_e in
+			va, xs
+		end
+	) and parse_va_expression_or_error
+		(error: ranged_position -> string -> unit)
+		(typedefs: typedef_set)
+		(xs: 'a in_t)
+		: assignment_expression e * 'a in_t =
+	(
+		begin match xs with
+		| lazy (`cons (a, (#FirstSet.firstset_of_va_expression as it), xr)) ->
+			let xs = lazy (`cons (a, it, xr)) in
+			let result, xs = parse_va_expression error typedefs xs in
+			`some result, xs
 		| _ ->
 			error (LazyList.hd_a xs) "assignment-expression was expected.";
 			`error, xs
