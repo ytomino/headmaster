@@ -1191,9 +1191,9 @@ struct
 					let expr, xs =
 						begin match xs with
 						| lazy (`cons (_, `l_paren,
-							lazy (`cons (_, (`ident _ | #extended_word | #preprocessor_word | #compiler_macro as e_item),
+							lazy (`cons (_, (`ident _ | #reserved_word | #preprocessor_word as e_item),
 								lazy (`cons ((_, p2), `r_paren, xs))))))
-						| lazy (`cons ((_, p2), (`ident _ | #extended_word | #preprocessor_word | #compiler_macro as e_item), xs)) ->
+						| lazy (`cons ((_, p2), (`ident _ | #reserved_word | #preprocessor_word as e_item), xs)) ->
 							(* defined X or defined(X) *)
 							let (p1, _) = ps in
 							Some ((p1, p2), e_item), xs
@@ -1240,15 +1240,15 @@ struct
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
 						`cons (ps, value, lazy (
 							process `in_macro_expr predefined macro_arguments xs))
-					| Some (ps, (#extended_word | #preprocessor_word as w)) ->
+					| Some (ps, #compiler_macro) ->
+						`cons (ps, the_one, lazy (
+							process `in_macro_expr predefined macro_arguments xs))
+					| Some (ps, (#reserved_word | #preprocessor_word as w)) ->
 						let name = string_of_rw_or_ppw w in
 						let cond = leinteger_of_bool (StringMap.mem name predefined) in
 						let image = Integer.to_based_string ~base:10 cond in
 						let value = `numeric_literal (image, `int_literal (`signed_int, cond)) in
 						`cons (ps, value, lazy (
-							process `in_macro_expr predefined macro_arguments xs))
-					| Some (ps, #compiler_macro) ->
-						`cons (ps, the_one, lazy (
 							process `in_macro_expr predefined macro_arguments xs))
 					| Some (ps, _) ->
 						error ps defined_syntax_error;
