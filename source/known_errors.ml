@@ -1527,6 +1527,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		(* OpenSSL *)
 		"openssl/opensslconf.h", [
 			`unparsible_macro, [
+				"NON_EMPTY_TRANSLATION_UNIT"; (* declaration *)
 				"OPENSSL_UNISTD"]]; (* header *)
 		(* libpng *)
 		"png.h", [
