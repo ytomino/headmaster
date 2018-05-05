@@ -8,6 +8,9 @@
 
 #include <libxml/xmlversion.h>
 #undef LIBXML_EXPR_ENABLED
+#if defined(LIBXML_ICU_ENABLED)
+#undef LIBXML_ICU_ENABLED
+#endif
 /* unremovable circular dependency is in xmlregexp.h and xmltree.h */
 #include <libxml/xmlreader.h>
 #include <libxml/xmlwriter.h>

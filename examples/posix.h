@@ -104,5 +104,7 @@
 #if defined(__gnu_linux__)
 #pragma for Ada "signal.h" monolithic_include "bits/sigaction.h"
 #pragma for Ada "signal.h" monolithic_include "bits/signum.h"
+#if __GLIBC_PREREQ(2, 26)
 #pragma for Ada "signal.h" monolithic_include "bits/signum-generic.h"
+#endif
 #endif
