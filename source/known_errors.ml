@@ -663,9 +663,28 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"bits/dlfcn.h", [
 			`unparsible_macro, [
 				"DL_CALL_FCT"]]; (* parameterized argument expression list *)
+		"bits/_G_config.h", [
+			`unparsible_macro, [
+				"_G_HAVE_ST_BLKSIZE"]]; (* using defined outside of #if *)
 		"bits/in.h", [
 			`unparsible_macro, [
 				"SCM_SRCRT"]]; (* IPV6_RXSRCRT is undefined *)
+		"bits/libio.h", [
+			`unparsible_macro, [
+				"_IO_iconv_t"; (* _G_iconv_t is undefined *)
+				"_IO_stderr"; (* _IO_2_1_stderr_ is opaque *)
+				"_IO_stdin"; (* _IO_2_1_stdin_ is opaque *)
+				"_IO_stdout"; (* _IO_2_1_stdout_ is opaque *)
+				"_IO_wint_t"]; (* _G_wint_t is undefined *)
+			`uninterpretable_macro, [
+				"_IO_PENDING_OUTPUT_COUNT"; (* accessing element of untyped parameter *)
+				"_IO_feof_unlocked"; (* accessing element of untyped parameter *)
+				"_IO_ferror_unlocked"; (* accessing element of untyped parameter *)
+				"_IO_getc_unlocked"; (* accessing element of untyped parameter *)
+				"_IO_need_lock"; (* accessing element of untyped parameter *)
+				"_IO_peekc"; (* accessing element of untyped parameter *)
+				"_IO_peekc_unlocked"; (* accessing element of untyped parameter *)
+				"_IO_putc_unlocked"]]; (* accessing element of untyped parameter *)
 		"bits/mathdef.h", [
 			`undefined_macro, [
 				"__FP_FAST_FMA";
