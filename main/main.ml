@@ -119,12 +119,12 @@ then (
 		&& (options.source_filenames = [] || options.to_lang = `none)
 	in
 	if error && options.source_filenames = [] then (
-		print_string "no input file was specified.";
-		print_newline ()
+		prerr_string "no input file was specified.";
+		prerr_newline ()
 	);
 	if error && options.to_lang = `none then (
-		print_string "no destination language was specified.";
-		print_newline ()
+		prerr_string "no destination language was specified.";
+		prerr_newline ()
 	);
 	if options.version then (
 		print_string "headmaster ";

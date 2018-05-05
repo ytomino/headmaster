@@ -81,8 +81,8 @@ let options = CommandLine.parse option_spec Sys.argv initial_options;;
 if options.usage || options.version || options.source_filename = "" then (
 	let no_input = not options.usage && not options.version && options.source_filename = "" in
 	if no_input then (
-		print_string "no input file was specified.";
-		print_newline ()
+		prerr_string "no input file was specified.";
+		prerr_newline ()
 	);
 	if options.version then (
 		print_string "headmaster cpp ";
