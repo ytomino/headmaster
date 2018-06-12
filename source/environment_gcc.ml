@@ -275,6 +275,7 @@ let gcc_env
 	in
 	let builtin = [
 		"__builtin_alloca", [`size_t], `pointer `char;
+		"__builtin_bswap16", [`unsigned_short], `unsigned_short;
 		"__builtin_bswap32", [`unsigned_int], `unsigned_int;
 		"__builtin_bswap64", [`unsigned_long_long], `unsigned_long_long;
 		"__builtin_bzero", [`pointer `char; `size_t], `void;
