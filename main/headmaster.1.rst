@@ -36,6 +36,7 @@ OPTIONS
                          | (ex. --gcc ~/bin/i686-w64-mingw32-gcc)
 -h, --help               | Display the usage.
 -I PATH, --include PATH  | Add PATH to user header search path list.
+--iquote PATH            | Add PATH to quote form header search path list.
 --isystem PATH           | Add PATH to system header search path list.
 -p                       | Create missing destination directory
 --tab N                  | Count tab as N characters. (default: 1)

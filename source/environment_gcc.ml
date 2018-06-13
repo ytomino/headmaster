@@ -59,8 +59,8 @@ let gcc_env
 	let double_mantissa = ref 0 in
 	let long_double_mantissa = ref 0 in
 	let predefined = Buffer.create 4096 in
-	let include_path = ref [] in
-	let sys_include_path = ref [] in
+	let iquote_path = ref [] in
+	let isystem_path = ref [] in
 	let gnu_inline = ref false in
 	(* execute cpp *)
 	let command =
@@ -75,7 +75,7 @@ let gcc_env
 	let (p_in, _, p_err) as ps = Unix.open_process_full command (Unix.environment ()) in
 	let in_eof = ref false in
 	let err_eof = ref false in
-	let state: [`none | `in_include | `in_sys_include] ref = ref `none in
+	let state: [`none | `in_iquote | `in_isystem] ref = ref `none in
 	while not !in_eof || not !err_eof do
 		if not !in_eof then (
 			begin try
@@ -171,9 +171,9 @@ let gcc_env
 				) else if line = "End of search list." then (
 					state := `none
 				) else if line = "#include \"...\" search starts here:" then (
-					state := `in_include
+					state := `in_iquote
 				) else if line = "#include <...> search starts here:" then (
-					state := `in_sys_include
+					state := `in_isystem
 				) else (
 					begin match !state with
 					| `none ->
@@ -184,11 +184,11 @@ let gcc_env
 						then (
 							target := String.sub line tg_length (line_length - tg_length)
 						)
-					| `in_include ->
+					| `in_iquote ->
 						assert (line.[0] = ' ');
 						let item = String.sub line 1 (String.length line - 1) in
-						include_path := item :: !include_path
-					| `in_sys_include ->
+						iquote_path := item :: !iquote_path
+					| `in_isystem ->
 						assert (line.[0] = ' ');
 						let item = String.sub line 1 (String.length line - 1) in
 						let item_length = String.length item in
@@ -199,7 +199,7 @@ let gcc_env
 						then (
 							(* not handling frameworks *)
 						) else (
-							sys_include_path := item :: !sys_include_path
+							isystem_path := item :: !isystem_path
 						)
 					end
 				)
@@ -315,8 +315,9 @@ let gcc_env
 		en_precision = precision;
 		en_predefined = Buffer.contents predefined;
 		en_builtin = builtin;
-		en_include = List.rev !include_path;
-		en_sys_include = List.rev !sys_include_path;
+		en_iquote = List.rev !iquote_path;
+		en_include = [];
+		en_isystem = List.rev !isystem_path;
 		en_gnu_inline = !gnu_inline}
 	in
 	result

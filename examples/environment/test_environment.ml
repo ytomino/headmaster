@@ -24,10 +24,12 @@ let print_env (env: environment): unit = (
 	print_newline ();
 	print_string "---- predefined ----\n";
 	print_string env.en_predefined;
+	print_string "---- iquote ----\n";
+	List.iter (fun i -> print_string i; print_newline ()) env.en_iquote;
 	print_string "---- include ----\n";
 	List.iter (fun i -> print_string i; print_newline ()) env.en_include;
-	print_string "---- sys include ----\n";
-	List.iter (fun i -> print_string i; print_newline ()) env.en_sys_include;
+	print_string "---- isystem ----\n";
+	List.iter (fun i -> print_string i; print_newline ()) env.en_isystem;
 	print_string "---- inlining ---\n";
 	print_string (if env.en_gnu_inline then "GNU mode" else "C99 mode");
 	print_newline ();

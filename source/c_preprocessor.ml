@@ -17,8 +17,6 @@ module type PreprocessorType = sig
 	module LexicalElement: LexicalElementType
 		with module Literals := Literals
 	
-	type include_from = [`user | `system]
-	
 	type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
 	and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
 	and out_t = (ranged_position, LexicalElement.t, define_map) LazyList.t
@@ -43,7 +41,7 @@ module type PreprocessorType = sig
 	val preprocess:
 		(ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_preprocessor] -> bool) ->
-		(current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim option) ->
+		(quote:bool -> current:string -> ?next:bool -> string -> (ranged_position -> in_prim) -> in_prim option) ->
 		state_t ->
 		define_map ->
 		macro_argument_map ->
@@ -153,8 +151,6 @@ struct
 	
 	(* types *)
 	
-	type include_from = [`user | `system];;
-	
 	type in_t = (ranged_position, LexicalElement.t, unit) LazyList.t
 	and in_prim = (ranged_position, LexicalElement.t, unit) LazyList.prim
 	and out_t = (ranged_position, LexicalElement.t, define_map) LazyList.t
@@ -221,15 +217,15 @@ struct
 	
 	(* include *)
 	
-	let extract_filename (s: string): string * include_from = (
+	let extract_filename (s: string): string * bool = (
 		let s_length = String.length s in
 		let from =
 			if s_length <= 2 then (
 				assert false
 			) else if s.[0] = '<' && s.[s_length - 1] = '>' then (
-				`system
+				false
 			) else if s.[0] = '\"' && s.[s_length - 1] = '\"' then (
-				`user
+				true
 			) else (
 				assert false
 			)
@@ -688,7 +684,7 @@ struct
 	let preprocess
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_preprocessor] -> bool)
-		(read: current:string -> ?next:bool -> include_from -> string -> (ranged_position -> in_prim) -> in_prim option)
+		(read: quote:bool -> current:string -> ?next:bool -> string -> (ranged_position -> in_prim) -> in_prim option)
 		: state_t -> define_map -> macro_argument_map -> in_t -> out_prim =
 	(
 		let rec process
@@ -1083,10 +1079,10 @@ struct
 						lazy (`cons (_, `end_of_line, xs)))) ->
 						let chained_xs =
 							lazy (
-								let filename, from = extract_filename s in
+								let filename, quote = extract_filename s in
 								let (current, _, _, _), _ = ps in
 								let next = token = `sharp_INCLUDE_NEXT in
-								begin match read ~current ~next from filename (fun _ -> Lazy.force xs) with
+								begin match read ~quote ~current ~next filename (fun _ -> Lazy.force xs) with
 								| Some (included: in_prim) ->
 									included
 								| None ->
@@ -1261,11 +1257,11 @@ struct
 					| lazy (`cons (_, `l_paren,
 						lazy (`cons (_, `directive_parameter s,
 							lazy (`cons ((_, _), `r_paren, xs)))))) ->
-						let filename, from = extract_filename s in
+						let filename, quote = extract_filename s in
 						let has =
 							let (current, _, _, _), _ = ps in
 							let next = token = `__has_include_next in
-							begin match read ~current ~next from filename (fun _ -> `nil (ps, ())) with
+							begin match read ~quote ~current ~next filename (fun _ -> `nil (ps, ())) with
 							| Some (_: in_prim) ->
 								Integer.one
 							| None ->

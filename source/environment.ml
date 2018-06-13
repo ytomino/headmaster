@@ -33,17 +33,16 @@ type environment = {
 	en_precision: int * int * int; (* mantissa-bits of float, double, long double *)
 	en_predefined: string;
 	en_builtin: (string * type_for_builtin list * type_for_builtin) list;
+	en_iquote: string list;
 	en_include: string list;
-	en_sys_include: string list;
+	en_isystem: string list;
 	en_gnu_inline: bool};;
-
-type include_from = [`user | `system];;
 
 let find_include
 	(env: environment)
+	~(quote: bool)
 	~(current: string)
 	?(next: bool = false)
-	(from: include_from)
 	(name: string)
 	: string option =
 (
@@ -74,8 +73,12 @@ let find_include
 			xs
 		)
 	) in
-	begin match from with
-	| `user ->
+	begin match
+		(if quote then find_loop (next_filter env.en_iquote) else None)
+	with
+	| Some _ as result ->
+		result
+	| None ->
 		begin match find_loop (next_filter env.en_include) with
 		| Some _ as result ->
 			result
@@ -85,25 +88,23 @@ let find_include
 			| Some _ as result ->
 				result
 			| None ->
-				find_loop (next_filter env.en_sys_include)
+				find_loop (next_filter env.en_isystem)
 			end
 		end
-	| `system ->
-		find_loop (next_filter env.en_sys_include)
 	end
 );;
 
 let make_include
 	(f: string -> 'a -> 'b)
 	(env: environment)
+	~(quote: bool)
 	~(current: string)
 	?(next: bool = false)
-	(from: include_from)
 	(name: string)
 	(a: 'a)
 	: 'b option =
 (
-	begin match find_include env ~current ~next from name with
+	begin match find_include env ~quote ~current ~next name with
 	| Some name ->
 		Some (f name a)
 	| None ->
@@ -140,8 +141,9 @@ let make_remove_include_dir (env: environment) (filename: string): string = (
 			r
 		end
 	) in
-	let r = loop None env.en_include in
-	let r = loop r env.en_sys_include in
+	let r = loop None env.en_iquote in
+	let r = loop r env.en_include in
+	let r = loop r env.en_isystem in
 	begin match r with
 	| Some r ->
 		r

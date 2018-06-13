@@ -202,7 +202,8 @@ struct
 				let xs = lazy (Preprocessor.preprocess
 					dummy_error
 					is_known_error
-					(fun ~current ?next _ _ _ ->
+					(fun ~quote ~current ?next _ _ ->
+						ignore quote;
 						ignore current;
 						ignore next;
 						has_error := true;

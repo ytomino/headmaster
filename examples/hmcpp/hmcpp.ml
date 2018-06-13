@@ -14,8 +14,9 @@ type options = {
 	source_filename: string;
 	tab_width: int;
 	gcc_command: string;
+	iquote_dirs: string list;
 	include_dirs: string list;
-	sys_include_dirs: string list;
+	isystem_dirs: string list;
 	nostdinc: bool;
 	lang: language;
 	usage: bool;
@@ -25,8 +26,9 @@ let initial_options = {
 	source_filename = "";
 	tab_width = 1;
 	gcc_command = "gcc";
+	iquote_dirs = [];
 	include_dirs = [];
-	sys_include_dirs = [];
+	isystem_dirs = [];
 	nostdinc = false;
 	lang = `c;
 	usage = false;
@@ -59,9 +61,13 @@ let option_spec =
 		=>? (fun arg options ->
 			{options with include_dirs = arg :: options.include_dirs}
 		);
+	case "iquote" ~desc:"Add path to quote form header search path list"
+		=>? (fun arg options ->
+			{options with iquote_dirs = arg :: options.iquote_dirs}
+		);
 	case "isystem" ~desc:"Add path to system header search path list"
 		=>? (fun arg options ->
-			{options with sys_include_dirs = arg :: options.sys_include_dirs}
+			{options with isystem_dirs = arg :: options.isystem_dirs}
 		);
 	case "nostdinc" ~desc:"Do not search standard system include directories"
 		=> (fun options -> {options with nostdinc = true});
@@ -110,8 +116,9 @@ let error (ps: ranged_position) (m: string): unit = (
 let env: environment =
 	gcc_env options.gcc_command ~nostdinc:options.nostdinc ~x:options.lang;;
 let env = {env with
-	en_sys_include = List.rev_append options.include_dirs (
-		List.rev_append options.sys_include_dirs env.en_sys_include)};;
+	en_iquote = List.rev_append options.iquote_dirs env.en_iquote;
+	en_include = List.rev_append options.include_dirs env.en_include;
+	en_isystem = List.rev_append options.isystem_dirs env.en_isystem};;
 
 module Literals = struct
 	let float_prec, double_prec, long_double_prec = env.en_precision;;
