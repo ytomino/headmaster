@@ -74,7 +74,14 @@ let find_include
 		)
 	) in
 	begin match
-		(if quote then find_loop (next_filter env.en_iquote) else None)
+		if quote then (
+			begin match find_loop (next_filter env.en_iquote) with
+			| Some _ as result ->
+				result
+			| None ->
+				if next then None else find_loop (current_dir :: [])
+			end
+		) else None
 	with
 	| Some _ as result ->
 		result
@@ -83,13 +90,7 @@ let find_include
 		| Some _ as result ->
 			result
 		| None ->
-			if next then None else
-			begin match find_loop (current_dir :: []) with
-			| Some _ as result ->
-				result
-			| None ->
-				find_loop (next_filter env.en_isystem)
-			end
+			find_loop (next_filter env.en_isystem)
 		end
 	end
 );;
