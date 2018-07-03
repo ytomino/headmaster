@@ -32,15 +32,29 @@ Install
 "headmaster" command
 ++++++++++++++++++++
 
-``make -C main install BINDIR=$HOME/bin``
-
 "headmaster" command is a translator.
+
+Run ``make`` to install the command and the manual page: ::
+
+ make -C main install PREFIX=$HOME/opt/headmaster
+
+Or, to install only the command: ::
+
+ make -C main install-bin BINDIR=$HOME/bin
+
+These destination paths are only instances.
 
 Makefile variables to specify the destination directory
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``BINDIR=...``
- Specify the directory that an executable file should be copied to.
+``PREFIX=...``
+ Specify the toplevel installation directory.
+
+``BINDIR=...`` (the default is ``$PREFIX/bin``)
+ Specify the directory that the executable file should be copied to.
+
+``MANDIR=...`` (the default is ``$PREFIX/share/man``)
+ Specify the directory that the manual page should be copied to.
 
 Makefile variables for the library locations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,9 +68,11 @@ Makefile variables for the library locations
 "hmcpp" command
 +++++++++++++++
 
-``make -C examples/hmcpp install BINDIR=$HOME/bin``
-
 "hmcpp" command is a simple C preprocessor based on "headmaster"
 for purpose to check myself.
 It is NOT satisfied all ANSI-C specifications.
 Please do NOT use it (except searching bugs of "headmaster").
+
+Run ``make`` to install the command: ::
+
+ make -C examples/hmcpp install-bin BINDIR=$HOME/bin

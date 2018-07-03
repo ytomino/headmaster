@@ -22,6 +22,7 @@ else
 PREFIX=.
 endif
 BINDIR=$(PREFIX)/bin
+MANDIR=$(PREFIX)/share/man
 
 ifneq ($(wildcard ../.git),)
 HEAD=$(wildcard ../.git/*HEAD) $(wildcard ../.git/refs/heads/master)
@@ -83,5 +84,14 @@ clean:
 	$(MAKE) -C ../lib/gmp-ocaml clean
 	$(MAKE) -C ../lib/unicode-ocaml clean
 
-install: $(EXENAME)
-	install $(EXENAME) $(BINDIR)
+install-bin: $(EXENAME) | $(BINDIR)
+	install $(EXENAME) $(BINDIR)/$(notdir $(EXENAME))
+
+install: install-bin man1/headmaster.1 | $(MANDIR)/man1
+	install man1/headmaster.1 $(MANDIR)/man1/headmaster.1
+
+$(BINDIR):
+	mkdir -p $@
+
+$(MANDIR)/man1:
+	mkdir -p $@

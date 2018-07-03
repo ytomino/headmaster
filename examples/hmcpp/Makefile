@@ -75,5 +75,10 @@ clean:
 	-rm -r $(BUILDDIR)
 	-rm $(BINLN) $(SOURCELN)
 
-install: $(EXENAME)
-	install $(EXENAME) $(BINDIR)
+install-bin: $(EXENAME) | $(BINDIR)
+	install $(EXENAME) $(BINDIR)/$(notdir $(EXENAME))
+
+install: install-bin
+
+$(BINDIR):
+	mkdir -p $@
