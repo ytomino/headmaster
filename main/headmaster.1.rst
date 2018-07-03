@@ -33,7 +33,7 @@ OPTIONS
                          | but it is only affected reserved words.
 --gcc COMMAND            | Specify using gcc (default) and command location.
                          | This option is usable for cross-compiling.
-                         | (ex. --gcc ~/bin/i686-w64-mingw32-gcc)
+                         | (e.g. --gcc ~/bin/i686-w64-mingw32-gcc)
 -h, --help               | Display the usage.
 -I PATH, --include PATH  | Add PATH to user header search path list.
 --iquote PATH            | Add PATH to quote form header search path list.

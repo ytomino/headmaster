@@ -60,7 +60,7 @@ Makefile variables for the library locations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``WITH_GMP=...``
- Specify GMP directory. (ex. ``WITH_GMP=/opt/gmp``,
+ Specify GMP directory. (e.g. ``WITH_GMP=/opt/gmp``,
  then ``/opt/gmp/include`` and ``/opt/gmp/lib`` would be used.)
 ``WITH_MPFR=...``
  Specify MPFR directory.

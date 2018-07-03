@@ -1281,7 +1281,7 @@ struct
 			(ps, `decrement (op, right)), xs
 		| lazy (`cons (unary_p, (#FirstSet.unary_operator as unary_e), xs)) ->
 			let op = unary_p, unary_e in
-			(* many compilers accept cast-expression, ex. (~ (unsigned) 0) *)
+			(* many compilers accept cast-expression, e.g. (~ (unsigned) 0) *)
 			let right, xs = parse_cast_expression_or_error error typedefs xs in
 			let `some (ps, ()) = (`some op) &^ right in
 			(ps, `unary (op, right)), xs
