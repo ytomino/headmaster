@@ -1,6 +1,8 @@
 HOST:=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
+RST2MAN=$(firstword $(wildcard /usr/bin/rst2man) rst2man.py)
+
 ifneq ($(findstring mingw,$(TARGET)),)
 EXEEXT=.exe
 else
@@ -67,7 +69,7 @@ man1:
 	mkdir man1
 
 man1/headmaster.1: headmaster.1.rst version.rst | man1
-	rst2man.py $< $@
+	$(RST2MAN) $< $@
 
 version.rst: version.txt version $(HEAD)
 	echo ".. |version| replace:: $(shell ./version)" > version.rst
