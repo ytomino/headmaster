@@ -38,6 +38,44 @@ type environment = {
 	en_isystem: string list;
 	en_gnu_inline: bool};;
 
+let is_dir_sep c = c = '/' || c = '\\';;
+
+let include_dir_sep_index (env: environment) (filename: string): int = (
+	let fn_length = String.length filename in
+	let rec loop (r: int) (xs: string list): int = (
+		begin match xs with
+		| x :: xr ->
+			let x_length = String.length x in
+			let sep_index =
+				if is_dir_sep x.[x_length - 1] then x_length - 1 else x_length
+			in
+			if sep_index < fn_length then (
+				if String.sub filename 0 x_length = x && is_dir_sep filename.[sep_index] then (
+					loop (max r sep_index) xr
+				) else (
+					loop r xr
+				)
+			) else (
+				loop r xr
+			)
+		| [] ->
+			r
+		end
+	) in
+	let r = loop (-1) env.en_iquote in
+	let r = loop r env.en_include in
+	let r = loop r env.en_isystem in
+	if r < 0 then (
+		(* specified in command line *)
+		let rec last_dir_sep i = (
+			if i < 0 || is_dir_sep filename.[i] then i else last_dir_sep (i - 1)
+		) in
+		last_dir_sep (fn_length - 1)
+	) else (
+		r
+	)
+);;
+
 let find_include
 	(env: environment)
 	~(quote: bool)
@@ -56,7 +94,10 @@ let find_include
 			None
 		end
 	) in
-	let current_dir = Filename.dirname current in
+	let current_dir =
+		let sep_index = include_dir_sep_index env current in
+		if sep_index < 0 then "." else String.sub current 0 sep_index
+	in
 	let next_filter (xs: string list): string list = (
 		if next then (
 			let rec loop xs = (
@@ -114,43 +155,11 @@ let make_include
 );;
 
 let make_remove_include_dir (env: environment) (filename: string): string = (
-	let rec loop (r: string option) (xs: string list): string option = (
-		begin match xs with
-		| x :: xr ->
-			let x_length = String.length x in
-			let sep_index = if x.[x_length - 1] = '/' then x_length - 1 else x_length in
-			let fn_length = String.length filename in
-			if sep_index < fn_length then (
-				if String.sub filename 0 x_length = x
-					&& (filename.[sep_index] = '/' || filename.[sep_index] = '\\')
-				then (
-					let i = sep_index + 1 in
-					let h_part = String.sub filename i (fn_length - i) in
-					begin match r with
-					| Some prev when String.length prev < String.length h_part ->
-						loop r xr
-					| _ ->
-						loop (Some h_part) xr
-					end
-				) else (
-					loop r xr
-				)
-			) else (
-				loop r xr
-			)
-		| [] ->
-			r
-		end
-	) in
-	let r = loop None env.en_iquote in
-	let r = loop r env.en_include in
-	let r = loop r env.en_isystem in
-	begin match r with
-	| Some r ->
-		r
-	| None ->
-		Filename.basename filename (* specified in command line *)
-	end
+	let sep_index = include_dir_sep_index env filename in
+	let fn_length = String.length filename in
+	assert (sep_index < 0 || is_dir_sep filename.[sep_index]);
+	let i = sep_index + 1 in
+	String.sub filename i (fn_length - i)
 );;
 
 let compact_filename (filename: string): string = (
