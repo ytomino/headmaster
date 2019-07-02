@@ -1546,6 +1546,10 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		(* OpenSSL *)
 		"openssl/opensslconf.h", [
 			`unparsible_macro, [
+				"DECLARE_DEPRECATED"; (* attribute with an identifier *)
+				"DEPRECATEDIN_0_9_8"; (* use the above *)
+				"DEPRECATEDIN_1_0_0";
+				"DEPRECATEDIN_1_1_0";
 				"NON_EMPTY_TRANSLATION_UNIT"; (* declaration *)
 				"OPENSSL_UNISTD"]]; (* header *)
 		(* libpng *)
