@@ -84,7 +84,7 @@ $(BUILDDIR)/unicode.cmxa:
 
 clean:
 	-rm -r $(BUILDDIR)
-	-rm $(BINLN) $(SOURCELN)
+	-rm version.ml $(BINLN) $(SOURCELN)
 
 install-bin: $(EXENAME) | $(BINDIR)
 	install $(EXENAME) $(BINDIR)/$(notdir $(EXENAME))
