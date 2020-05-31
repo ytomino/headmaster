@@ -34,7 +34,7 @@ else
 HEAD=
 endif
 
-OCAMLCFLAGS=-g -w Aer-48
+OCAMLCFLAGS=-g -w Aer-44-48
 
 export OCAMLRUNPARAM=b
 
