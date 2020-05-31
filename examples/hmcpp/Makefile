@@ -9,6 +9,8 @@ endif
 
 BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
+GMP_BUILDDIR=$(BUILDDIR)/gmp$(BUILDSUFFIX)
+UNICODE_BUILDDIR=$(BUILDDIR)/unicode$(BUILDSUFFIX)
 
 SOURCEDIR=../../source
 BINLN=bin
@@ -68,10 +70,17 @@ test: $(EXENAME)
 	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 $(BUILDDIR)/gmp.cmxa:
-	$(MAKE) -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../../lib/gmp-ocaml install \
+		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
+		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		OCAMLCFLAGS=-safe-string \
+		WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cmxa:
-	$(MAKE) -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../../lib/unicode-ocaml install \
+		BUILDDIR=$(abspath $(UNICODE_BUILDDIR)) \
+		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		OCAMLCFLAGS=-safe-string
 
 clean:
 	-rm -r $(BUILDDIR)

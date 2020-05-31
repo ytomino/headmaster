@@ -13,6 +13,8 @@ endif
 
 BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
+GMP_BUILDDIR=$(BUILDDIR)/gmp$(BUILDSUFFIX)
+UNICODE_BUILDDIR=$(BUILDDIR)/unicode$(BUILDSUFFIX)
 
 SOURCEDIR=../../source
 BINLN=bin
@@ -59,10 +61,15 @@ ifneq ($(OCAMLMAKE),)
 endif
 
 $(BUILDDIR)/gmp.cma:
-	$(MAKE) -C ../../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr
+	$(MAKE) -C ../../lib/gmp-ocaml install \
+		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
+		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cma:
-	$(MAKE) -C ../../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR))
+	$(MAKE) -C ../../lib/unicode-ocaml install \
+		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
+		INSTALLDIR=$(abspath $(BUILDDIR))
 
 import:
 	mkdir import

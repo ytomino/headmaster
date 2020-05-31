@@ -11,6 +11,8 @@ endif
 
 BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
+GMP_BUILDDIR=$(BUILDDIR)/gmp$(BUILDSUFFIX)
+UNICODE_BUILDDIR=$(BUILDDIR)/unicode$(BUILDSUFFIX)
 
 SOURCEDIR=../source
 BINLN=bin
@@ -55,10 +57,17 @@ version.ml: version.txt version $(HEAD)
 	echo "let version = \"version $(shell ./version)\";;" > version.ml
 
 $(BUILDDIR)/gmp.cmxa:
-	$(MAKE) -C ../lib/gmp-ocaml install DESTDIR=$(abspath $(BUILDDIR)) WITH=gmp,mpfr OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../lib/gmp-ocaml install \
+		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
+		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		OCAMLCFLAGS=-safe-string \
+		WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cmxa:
-	$(MAKE) -C ../lib/unicode-ocaml install DESTDIR=$(abspath $(BUILDDIR)) OCAMLCFLAGS=-safe-string
+	$(MAKE) -C ../lib/unicode-ocaml install \
+		BUILDDIR=$(abspath $(UNICODE_BUILDDIR)) \
+		INSTALLDIR=$(abspath $(BUILDDIR)) \
+		OCAMLCFLAGS=-safe-string
 
 $(BINLN):
 	ln -s $(BUILDDIR) $@
@@ -83,8 +92,6 @@ testman: man1/headmaster.1
 clean:
 	-rm -r $(BUILDDIR) man1
 	-rm version.ml version.rst $(BINLN) $(SOURCELN)
-	$(MAKE) -C ../lib/gmp-ocaml clean
-	$(MAKE) -C ../lib/unicode-ocaml clean
 
 install-bin: $(EXENAME) | $(BINDIR)
 	install $(EXENAME) $(BINDIR)/$(notdir $(EXENAME))
