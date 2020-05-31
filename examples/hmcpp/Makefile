@@ -33,7 +33,6 @@ endif
 
 OCAMLCFLAGS=-g -w Aer-48
 
-export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
 
 EXENAME=$(BUILDDIR)/hmcpp$(EXEEXT)
