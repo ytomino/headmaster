@@ -34,7 +34,7 @@ else
 HEAD=
 endif
 
-OCAMLCFLAGS=-g -safe-string -w Aer-48
+OCAMLCFLAGS=-g -w Aer-48
 
 export CAML_LD_LIBRARY_PATH=$(abspath build/stublibs)
 export OCAMLRUNPARAM=b
@@ -60,14 +60,12 @@ $(BUILDDIR)/gmp.cmxa:
 	$(MAKE) -C ../lib/gmp-ocaml install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		OCAMLCFLAGS=-safe-string \
 		WITH=gmp,mpfr
 
 $(BUILDDIR)/unicode.cmxa:
 	$(MAKE) -C ../lib/unicode-ocaml install \
 		BUILDDIR=$(abspath $(UNICODE_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		OCAMLCFLAGS=-safe-string
+		INSTALLDIR=$(abspath $(BUILDDIR))
 
 $(BINLN):
 	ln -s $(BUILDDIR) $@

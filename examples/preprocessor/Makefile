@@ -20,7 +20,7 @@ ifeq ($(OCAMLMAKE),)
 SOURCELN=source
 endif
 
-OCAMLCFLAGS=-g -safe-string -w Aer-48
+OCAMLCFLAGS=-g -w Aer-48
 
 # export CAML_LD_LIBRARY_PATH=$(abspath $(BUILDDIR)/stublibs)
 export OCAMLRUNPARAM=b
