@@ -11,7 +11,9 @@ ifneq ($(shell rlwrap --version),)
 RLWRAP=rlwrap
 endif
 
-BUILDDIR=$(TARGET).build
+BUILDSUFFIX=.noindex
+BUILDDIR=$(TARGET)$(BUILDSUFFIX)
+
 SOURCEDIR=../../source
 BINLN=bin
 ifeq ($(OCAMLMAKE),)

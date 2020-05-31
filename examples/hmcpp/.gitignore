@@ -1,4 +1,4 @@
-/*.build
+/*.noindex
 /bin
 /source
 /version.ml
