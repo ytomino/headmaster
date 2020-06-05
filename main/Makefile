@@ -20,11 +20,8 @@ ifeq ($(OCAMLMAKE),)
 SOURCELN=source
 endif
 
-ifneq ($(HOMELOCAL),)
-PREFIX=$(HOMELOCAL)
-else
-PREFIX=.
-endif
+DESTDIR=
+PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 MANDIR=$(PREFIX)/share/man
 
@@ -90,14 +87,14 @@ clean:
 	-rm -r $(BUILDDIR) man1
 	-rm version.ml version.rst $(BINLN) $(SOURCELN)
 
-install-bin: $(EXENAME) | $(BINDIR)
-	install $(EXENAME) $(BINDIR)/$(notdir $(EXENAME))
+install-bin: $(EXENAME) | $(DESTDIR)$(BINDIR)
+	install $(EXENAME) $(DESTDIR)$(BINDIR)/$(notdir $(EXENAME))
 
-install: install-bin man1/headmaster.1 | $(MANDIR)/man1
-	install man1/headmaster.1 $(MANDIR)/man1/headmaster.1
+install: install-bin man1/headmaster.1 | $(DESTDIR)$(MANDIR)/man1
+	install man1/headmaster.1 $(DESTDIR)$(MANDIR)/man1/headmaster.1
 
-$(BINDIR):
+$(DESTDIR)$(BINDIR):
 	mkdir -p $@
 
-$(MANDIR)/man1:
+$(DESTDIR)$(MANDIR)/man1:
 	mkdir -p $@

@@ -18,11 +18,8 @@ ifeq ($(OCAMLMAKE),)
 SOURCELN=source
 endif
 
-ifneq ($(HOMELOCAL),)
-PREFIX=$(HOMELOCAL)
-else
-PREFIX=.
-endif
+DESTDIR=
+PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 
 ifneq ($(wildcard ../../.git),)
@@ -83,10 +80,10 @@ clean:
 	-rm -r $(BUILDDIR)
 	-rm version.ml $(BINLN) $(SOURCELN)
 
-install-bin: $(EXENAME) | $(BINDIR)
-	install $(EXENAME) $(BINDIR)/$(notdir $(EXENAME))
+install-bin: $(EXENAME) | $(DESTDIR)$(BINDIR)
+	install $(EXENAME) $(DESTDIR)$(BINDIR)/$(notdir $(EXENAME))
 
 install: install-bin
 
-$(BINDIR):
+$(DESTDIR)$(BINDIR):
 	mkdir -p $@
