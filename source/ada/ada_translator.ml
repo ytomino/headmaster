@@ -3557,7 +3557,6 @@ struct
 			~kind:`preelaborate
 			~pp_contents:(fun ff () ->
 				if current = "" then (
-					fprintf ff "@ use type System.Address;";
 					(* predefined types *)
 					List.iter (fun item ->
 						pp_predefined_type ff ~language_mapping item
@@ -3577,6 +3576,12 @@ struct
 							~casts ~sized_arrays:all_sized_arrays
 							~current (item :> Semantics.all_type) derived_types [])
 					) (fst predefined_types);
+					(* primitives for derived types of predefined type *)
+					pp_print_space ff ();
+					pp_open_box ff indent;
+					fprintf ff "function \"=\" (Left, Right : System.Address) return Boolean";
+					fprintf ff "@ renames System.\"=\";";
+					pp_close_box ff ();
 					(* derived types of special typedefs *)
 					List.iter (fun item ->
 						begin match item with
