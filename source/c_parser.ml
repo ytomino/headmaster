@@ -772,6 +772,8 @@ struct
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let `some (ps, ()) = (`some n) &^ l_paren &^ args &^ r_paren in
 				`some (ps, `nonnull (n, l_paren, args, r_paren)), xs
+			| "nonstring" | "__nonstring__" ->
+				`some (p4, `noreturn attr_keyword), xs
 			| "noreturn" | "__noreturn__" ->
 				`some (p4, `noreturn attr_keyword), xs
 			| "nothrow" | "__nothrow__" ->

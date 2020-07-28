@@ -746,6 +746,8 @@ struct
 			| `error ->
 				attributes
 			end
+		| `nonstring _ ->
+			{attributes with at_nonstring = true}
 		| `noreturn _ ->
 			{attributes with at_noreturn = true}
 		| `nothrow _ ->

@@ -47,6 +47,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_may_alias: bool;
 		at_mode: bit_width_mode option;
 		at_nonnull: int list;
+		at_nonstring: bool;
 		at_noreturn: bool;
 		at_nothrow: bool;
 		at_objc_gc: [`none | `weak];
@@ -556,6 +557,7 @@ struct
 		at_may_alias = false;
 		at_mode = None;
 		at_nonnull = [];
+		at_nonstring = false;
 		at_noreturn = false;
 		at_nothrow = false;
 		at_objc_gc = `none;
