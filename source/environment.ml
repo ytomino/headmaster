@@ -40,6 +40,13 @@ type environment = {
 
 let is_dir_sep c = c = '/' || c = '\\';;
 
+let last_dir_sep_index (filename: string): int = (
+	let rec last_dir_sep i = (
+		if i < 0 || is_dir_sep filename.[i] then i else last_dir_sep (i - 1)
+	) in
+	last_dir_sep (String.length filename - 1)
+);;
+
 let include_dir_sep_index (env: environment) (filename: string): int = (
 	let fn_length = String.length filename in
 	let rec loop (r: int) (xs: string list): int = (
@@ -67,10 +74,7 @@ let include_dir_sep_index (env: environment) (filename: string): int = (
 	let r = loop r env.en_isystem in
 	if r < 0 then (
 		(* specified in command line *)
-		let rec last_dir_sep i = (
-			if i < 0 || is_dir_sep filename.[i] then i else last_dir_sep (i - 1)
-		) in
-		last_dir_sep (fn_length - 1)
+		last_dir_sep_index filename
 	) else (
 		r
 	)
@@ -120,7 +124,12 @@ let find_include
 			| Some _ as result ->
 				result
 			| None ->
-				if next then None else find_loop (current_dir :: [])
+				if next then None else
+				let current_dir =
+					let sep_index = last_dir_sep_index current in
+					if sep_index < 0 then current_dir else String.sub current 0 sep_index
+				in
+				find_loop (current_dir :: [])
 			end
 		) else None
 	with

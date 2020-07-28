@@ -39,9 +39,8 @@ let error (ps: ranged_position) (m: string): unit = (
 );;
 
 let env: environment = gcc_env !gcc_command ~nostdinc:false ~x:`c;;
-let env = {env with
-	en_iquote = "." :: env.en_iquote;
-	en_include = List.rev_append !include_dirs env.en_include};;
+let env =
+	{env with en_include = List.rev_append !include_dirs env.en_include};;
 
 module Literals = struct
 	module Integer = Integer;;
