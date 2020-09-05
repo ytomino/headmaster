@@ -636,10 +636,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"TIMESPEC_TO_TIMEVAL"]]; (* freebsd7 / accessing element of untyped parameter *)
 		"sys/ucred.h", [
 			`unparsible_macro, [
-				"cr_gid"]]; (* freebsd7 / alias of element and dereferencing *)
-		predefined_name, [
-			`unparsible_macro, [
-				"__DBL_DENORM_MIN__"]]]; (* freebsd7 / underflow *)
+				"cr_gid"]]]; (* freebsd7 / alias of element and dereferencing *)
 	"*-linux-gnu*", [
 		"asm-generic/ioctls.h", [
 			`unparsible_macro, [

@@ -497,6 +497,7 @@ module type SemanticsType = sig
 	val is_static_expression: expression -> bool
 	
 	val integer_of_expression: expression -> (int_prec * Integer.t) option
+	val float_of_expression: expression -> (extended_float_prec * Real.t) option
 	
 	val exists_in_expression: (statement -> bool) -> (expression -> bool) ->
 		expression -> bool
@@ -929,6 +930,29 @@ struct
 			begin match resolve_typedef (snd expr) with
 			| #int_prec as t ->
 				begin match integer_of_expression expr with
+				| Some (_, value) ->
+					Some (t, value)
+				| None ->
+					None
+				end
+			| _ ->
+				None
+			end
+		| _ ->
+			None
+		end
+	);;
+	
+	let rec float_of_expression (x: expression)
+		: (extended_float_prec * Real.t) option =
+	(
+		begin match fst x with
+		| `float_literal (#extended_float_prec as prec, value) ->
+			Some (prec, value)
+		| `implicit_conv expr ->
+			begin match resolve_typedef (snd expr) with
+			| #extended_float_prec as t ->
+				begin match float_of_expression expr with
 				| Some (_, value) ->
 					Some (t, value)
 				| None ->

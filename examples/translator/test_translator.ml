@@ -47,10 +47,12 @@ let env =
 	{env with en_include = List.rev_append !include_dirs env.en_include};;
 
 module Literals = struct
-	let float_prec, double_prec, long_double_prec = env.en_precision;;
+	let float_repr, double_repr, long_double_repr = env.en_fp;;
 	module Integer = Gmp.Z;;
-	module Long_double = struct let prec = long_double_prec end;;
-	module FR_long_double = Mpfr.FR (Long_double);;
+	module FR_long_double = Mpfr.FR (
+		struct
+			let prec = let `mantissa prec, _ = long_double_repr in prec;;
+		end);;
 	module Real = FR_long_double.F (struct let rounding_mode = `N end);;
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Mpfr.z_of_truncated_fr;;

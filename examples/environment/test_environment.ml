@@ -18,10 +18,24 @@ let rec parse_args i = (
 ) in
 parse_args 1;;
 
+let print_fp_repr (fp_repr: fp_repr): unit = (
+	let `mantissa mantissa, `emin emin = fp_repr in
+	print_string "mantissa: ";
+	print_int mantissa;
+	print_string ", emin: ";
+	print_int emin;
+	print_newline ()
+);;
+
 let print_env (env: environment): unit = (
 	print_string "---- target ----\n";
 	print_string env.en_target;
 	print_newline ();
+	print_string "---- floating point types ----\n";
+	let float_repr, double_repr, long_double_repr = env.en_fp in
+	print_fp_repr float_repr;
+	print_fp_repr double_repr;
+	print_fp_repr long_double_repr;
 	print_string "---- predefined ----\n";
 	print_string env.en_predefined;
 	print_string "---- iquote ----\n";

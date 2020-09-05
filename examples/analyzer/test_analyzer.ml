@@ -54,8 +54,9 @@ module Literals = struct
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;
 	let round ~prec x = (ignore prec; x);;
-	let float_prec = 24;;
-	let double_prec = 53;;
+	let float_repr = `mantissa 24, `emin ~-125;;
+	let double_repr = `mantissa 53, `emin ~-1021;;
+	let long_double_repr = double_repr;;
 end;;
 
 module Language = struct

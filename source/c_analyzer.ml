@@ -1426,6 +1426,13 @@ struct
 								derived_types, source, Some (`cast expr, t)
 							end
 						end
+					| #extended_float_prec as float_t ->
+						begin match float_of_expression expr with
+						| Some (_, value) ->
+							derived_types, source, Some (Expressing.float_conv float_t value)
+						| _ ->
+							derived_types, source, Some (`cast expr, t)
+						end
 					| #predefined_numeric_type ->
 						begin match resolve_typedef (snd expr) with
 						| #predefined_numeric_type ->

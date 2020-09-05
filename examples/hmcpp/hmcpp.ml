@@ -121,9 +121,12 @@ let env = {env with
 	en_isystem = List.rev_append options.isystem_dirs env.en_isystem};;
 
 module Literals = struct
-	let float_prec, double_prec, long_double_prec = env.en_precision;;
+	let float_repr, double_repr, long_double_repr = env.en_fp;;
 	module Integer = Gmp.Z;;
-	module Real = Gmp.F (struct let prec = long_double_prec end);;
+	module Real = Gmp.F (
+		struct
+			let prec = let `mantissa prec, _ = long_double_repr in prec;;
+		end);;
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Gmp.z_of_truncated_f;;
 	let real_of_integer = Real.of_z;;

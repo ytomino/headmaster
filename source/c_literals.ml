@@ -41,6 +41,10 @@ type extended_decimal_prec = [ (* ISO/IEC WDTR24732 *)
 
 type real_prec = [extended_float_prec | extended_decimal_prec];;
 
+type fp_repr =
+	[`mantissa of int] *
+	[`emin of int];;
+
 (* for __attribute__((__mode__)) *)
 
 type bit_width_mode = [
@@ -76,6 +80,7 @@ module type LiteralsType = sig
 	val integer_of_real: Real.t -> Integer.t
 	val real_of_integer: Integer.t -> Real.t
 	val round: prec:int -> Real.t -> Real.t
-	val float_prec: int
-	val double_prec: int
+	val float_repr: fp_repr
+	val double_repr: fp_repr
+	val long_double_repr: fp_repr
 end;;

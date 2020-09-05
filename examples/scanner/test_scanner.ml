@@ -42,8 +42,9 @@ module Literals_ocaml = struct
 	let integer_of_real = int_of_float;;
 	let real_of_integer = float_of_int;;
 	let round ~prec x = (ignore prec; x);;
-	let float_prec = 24;;
-	let double_prec = 53;;
+	let float_repr = `mantissa 24, `emin ~-125;;
+	let double_repr = `mantissa 53, `emin ~-1021;;
+	let long_double_repr = double_repr;;
 end;;
 
 module Literals_ocaml64 = struct
@@ -53,8 +54,9 @@ module Literals_ocaml64 = struct
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;
 	let round ~prec x = (ignore prec; x);;
-	let float_prec = 24;;
-	let double_prec = 53;;
+	let float_repr = `mantissa 24, `emin ~-125;;
+	let double_repr = `mantissa 53, `emin ~-1021;;
+	let long_double_repr = double_repr;;
 end;;
 
 module Literals_gmp = struct
@@ -64,8 +66,9 @@ module Literals_gmp = struct
 	let integer_of_real = Gmp.z_of_truncated_f;;
 	let real_of_integer = Real.of_z;;
 	let round = Gmp.f_of_f;;
-	let float_prec = 24;;
-	let double_prec = 53;;
+	let float_repr = `mantissa 24, `emin ~-125;;
+	let double_repr = `mantissa 53, `emin ~-1021;;
+	let long_double_repr = `mantissa 64, `emin ~-16381;;
 end;;
 
 module Literals =

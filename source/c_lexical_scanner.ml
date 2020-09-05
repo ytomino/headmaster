@@ -248,9 +248,11 @@ struct
 					| 'i' | 'I' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
+						let `mantissa float_prec, _ = float_repr in
 						let value = round ~prec:float_prec value in
 						wrap (`imaginary_literal (`float, value)) index
 					| _ ->
+						let `mantissa float_prec, _ = float_repr in
 						let value = round ~prec:float_prec value in
 						wrap (`float_literal (`float, value)) index
 					end
@@ -261,6 +263,7 @@ struct
 					| 'f' | 'F' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
+						let `mantissa float_prec, _ = float_repr in
 						let value = round ~prec:float_prec value in
 						wrap (`imaginary_literal (`float, value)) index
 					| 'l' | 'L' as h ->
@@ -268,6 +271,7 @@ struct
 						let index = succ source index in
 						wrap (`imaginary_literal (`long_double, value)) index
 					| _ ->
+						let `mantissa double_prec, _ = double_repr in
 						let value = round ~prec:double_prec value in
 						wrap (`imaginary_literal (`double, value)) index
 					end
@@ -283,6 +287,7 @@ struct
 						wrap (`float_literal (`long_double, value)) index
 					end
 				| _ ->
+					let `mantissa double_prec, _ = double_repr in
 					let value = round ~prec:double_prec value in
 					wrap (`float_literal (`double, value)) index
 				end

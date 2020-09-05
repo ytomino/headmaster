@@ -52,6 +52,11 @@ module type ExpressingType = sig
 		Literals.Integer.t ->
 		Semantics.expression
 	
+	val float_conv:
+		extended_float_prec ->
+		Literals.Real.t ->
+		Semantics.expression
+	
 	val zero:
 		Semantics.all_type ->
 		Semantics.expression option
@@ -293,6 +298,35 @@ struct
 				`int_literal (t, x2), (t :> all_type)
 			end
 		)
+	);;
+	
+	let float_conv (t: extended_float_prec) (x: Real.t): expression = (
+		let `mantissa mantissa, `emin emin =
+			match t with
+			| `float -> float_repr
+			| `double -> double_repr
+			| `long_double -> long_double_repr
+			| `_Float32 -> `mantissa 24, `emin ~-125
+			| `_Float64 | `_Float32x -> `mantissa 53, `emin ~-1021
+			| `_Float128 | `_Float64x -> `mantissa 113, `emin ~-16381
+		in
+		let x =
+			let emin2 = emin - mantissa in
+			let m, e = Real.frexp x in
+			if e < emin2 then (
+				Real.zero (* underflow *)
+			) else if e = emin2 then (
+				let threshold = Real.scale ~base:2 ~exponent:~-1 Real.one in
+				if Real.compare m threshold <= 0 then (
+					Real.zero (* underflow, just 0.5 is to even *)
+				) else (
+					Real.scale ~base:2 ~exponent:e Real.one (* round up *)
+				)
+			) else (
+				round ~prec:mantissa x
+			)
+		in
+		`float_literal ((t :> real_prec), x), (t :> all_type)
 	);;
 	
 	let rec zero

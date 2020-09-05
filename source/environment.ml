@@ -26,11 +26,15 @@ type type_for_builtin = [
 	| `pointer of [`void | `char | `const of [`void | `char]]
 	| `size_t];;
 
+type fp_repr =
+	[`mantissa of int] * (* mantissa bits *)
+	[`emin of int];; (* minimum exponent *)
+
 type environment = {
 	en_target: string;
 	en_sizeof: sizeof;
 	en_typedef: language_typedef;
-	en_precision: int * int * int; (* mantissa-bits of float, double, long double *)
+	en_fp: fp_repr * fp_repr * fp_repr; (* float, double, and long double *)
 	en_predefined: string;
 	en_builtin: (string * type_for_builtin list * type_for_builtin) list;
 	en_iquote: string list;

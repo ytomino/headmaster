@@ -10,6 +10,15 @@ let gcc_lang (lang: [< language]): string = (
 	end
 );;
 
+let int_of_stringp (s: string): int = (
+	let length = String.length s in
+	if s.[0] = '(' && s.[length - 1] = ')' then (
+		int_of_string (String.sub s 1 (length - 2))
+	) else (
+		int_of_string s
+	)
+);;
+
 let float_of_stringl (s: string): float = (
 	let h1 = String.length s - 1 in
 	if s.[h1] = 'L' then (
@@ -56,8 +65,11 @@ let gcc_env
 	let typedef_size_t = ref None in
 	let typedef_wchar_t = ref None in
 	let float_mantissa = ref 0 in
+	let float_emin = ref 0 in
 	let double_mantissa = ref 0 in
+	let double_emin = ref 0 in
 	let long_double_mantissa = ref 0 in
+	let long_double_emin = ref 0 in
 	let predefined = Buffer.create 4096 in
 	let iquote_path = ref [] in
 	let isystem_path = ref [] in
@@ -140,10 +152,16 @@ let gcc_env
 						end
 					| "__FLT_MANT_DIG__" ->
 						float_mantissa := int_of_string value
+					| "__FLT_MIN_EXP__" ->
+						float_emin := int_of_stringp value
 					| "__DBL_MANT_DIG__" ->
 						double_mantissa := int_of_string value
+					| "__DBL_MIN_EXP__" ->
+						double_emin := int_of_stringp value
 					| "__LDBL_MANT_DIG__" ->
 						long_double_mantissa := int_of_string value
+					| "__LDBL_MIN_EXP__" ->
+						long_double_emin := int_of_stringp value
 					| "__GNUC_GNU_INLINE__" ->
 						gnu_inline := true
 					| _ ->
@@ -268,10 +286,10 @@ let gcc_env
 	assert (!float_mantissa > 0);
 	assert (!double_mantissa > 0);
 	assert (!long_double_mantissa > 0);
-	let precision =
-		!float_mantissa,
-		!double_mantissa,
-		!long_double_mantissa
+	let fp =
+		(`mantissa !float_mantissa, `emin !float_emin),
+		(`mantissa !double_mantissa, `emin !double_emin),
+		(`mantissa !long_double_mantissa, `emin !long_double_emin)
 	in
 	let builtin = [
 		"__builtin_alloca", [`size_t], `pointer `char;
@@ -312,7 +330,7 @@ let gcc_env
 		en_target = target;
 		en_sizeof = sizeof;
 		en_typedef = typedef;
-		en_precision = precision;
+		en_fp = fp;
 		en_predefined = Buffer.contents predefined;
 		en_builtin = builtin;
 		en_iquote = List.rev !iquote_path;
