@@ -59,9 +59,13 @@ assert (
 	| _ -> false);;
 
 assert (
-	match scan_c "0x1.fffffep+127f" with
-	| lazy (`cons (_, `numeric_literal ("0x1.fffffep+127f", `float_literal (`float, _)),
-		lazy (`nil _))) ->
+	match scan_c "0x1.fffffep+127f 09.0L" with
+	| lazy (`cons (_,
+		`numeric_literal ("0x1.fffffep+127f", `float_literal (`float, v1)),
+		lazy (`cons (_, `numeric_literal ("09.0L", `float_literal (`long_double, v2)),
+			lazy (`nil _)))))
+		when v1 = Literals.Real.of_float 0x1.fffffep+127
+			&& v2 = Literals.Real.of_float 9.0 ->
 		print_string "o";
 		true
 	| _ -> false);;

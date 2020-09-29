@@ -31,8 +31,10 @@ struct
 	
 	(* error messages *)
 	
-	let not_10_based_float_literal =
-		"floating-point literal should be 10-based.";;
+	let bad_8_based_int_literal =
+		"invalid digit in the octal int literal.";;
+	let exponent_is_required =
+		"exponent is required for the hexadecimal float literal.";;
 	let bad_fN_suffix =
 		"the suffix of sized float literal should be one of f32, f64, f128.";;
 	let bad_fNx_suffix =
@@ -122,6 +124,11 @@ struct
 		) in
 		(* body *)
 		Buffer.reset buf;
+		let integer_of_based ~(base: int) (start: int) (length: int) = (
+			if length = 0 then Integer.zero else
+			let image = Buffer.sub buf start length in
+			Integer.of_based_string ~base image
+		) in
 		let wrap (literal: LexicalElement.numeric_literal) (index: 'i) = (
 			`numeric_literal ((Buffer.contents buf), literal), index
 		) in
@@ -131,20 +138,38 @@ struct
 			let base, index = read_base_prefix buf index in
 			let start = Buffer.length buf in
 			let index = read_digits_to_buffer ~base buf index in
+			let i_end = Buffer.length buf in
 			begin match get source index with
-			| '.' | 'e' | 'E' | 'p' | 'P' as h -> (* real *)
+			| '8' | '9' | '.' | 'e' | 'E' | 'p' | 'P' as h -> (* real *)
+				let m_base, p3, h, index =
+					begin match h with
+					| '8' | '9' ->
+						let p3 = position source index in
+						let index = read_digits_to_buffer ~base:10 buf index in
+						let h = get source index in
+						10, p3, h, index
+					| _ ->
+						base, p1, h, index
+					end
+				in
+				if base = 8 && m_base = 10 && h <> '.' then (
+					let p4 = prev_position source index in
+					error (p3, p4) bad_8_based_int_literal;
+					let value = integer_of_based ~base start (i_end - start) in
+					wrap (`int_literal (`signed_int, value)) index
+				) else
 				let index =
 					if h = '.' then (
 						Buffer.add_char buf h;
 						let index = succ source index in
-						read_digits_to_buffer ~base buf index
+						read_digits_to_buffer ~base:m_base buf index
 					) else (
 						index
 					)
 				in
 				let mantissa =
 					let image = Buffer.sub buf start (Buffer.length buf - start) in
-					Real.of_based_string ~base image
+					Real.of_based_string ~base:m_base image
 				in
 				let e_base, exponent, index =
 					begin match get source index with
@@ -170,9 +195,9 @@ struct
 						let exponent, index = read_exponent buf index in
 						e_base, exponent, index
 					| _ ->
-						if base <> 10 then (
+						if m_base <> 10 then (
 							let p2 = prev_position source index in
-							error (p1, p2) not_10_based_float_literal
+							error (p1, p2) exponent_is_required
 						);
 						10, 0, index
 					end
@@ -298,12 +323,7 @@ struct
 					wrap (`float_literal (`double, value)) index
 				end
 			| _ as h -> (* integer *)
-				let value =
-					let length = Buffer.length buf - start in
-					if length = 0 then Integer.zero else
-					let image = Buffer.sub buf start length in
-					Integer.of_based_string ~base image
-				in
+				let value = integer_of_based ~base start (i_end - start) in
 				begin match h with
 				| 'U' | 'u' as h ->
 					Buffer.add_char buf h;

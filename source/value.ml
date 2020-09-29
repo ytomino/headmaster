@@ -31,6 +31,7 @@ end;;
 
 module type RealType = sig
 	include NumericType
+	val of_float: float -> t
 	val frexp: t -> t * int
 end;;
 

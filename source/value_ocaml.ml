@@ -117,6 +117,7 @@ module Real = struct
 	let mul = ( *. );;
 	let div = ( /. );;
 	let scale fraction ~base ~exponent = fraction *. (float_of_int base ** float_of_int exponent);;
+	let of_float x = x;;
 	let frexp = frexp;;
 end;;
 
