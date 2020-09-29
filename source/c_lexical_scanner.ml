@@ -93,15 +93,20 @@ struct
 			let exponent_start = Buffer.length buf in
 			let index = read_sign_to_buffer buf index in
 			let index = read_digits_to_buffer ~base:10 buf index in
-			let image =
-				(* int_of_string could not handle '+' *)
-				let exponent_start =
-					if Buffer.nth buf exponent_start = '+' then exponent_start + 1 else
+			let exponent_end = Buffer.length buf in
+			let exponent_start =
+				if exponent_start < exponent_end && Buffer.nth buf exponent_start = '+' then (
+					exponent_start + 1 (* int_of_string could not handle '+' *)
+				) else (
 					exponent_start
-				in
-				Buffer.sub buf exponent_start (Buffer.length buf - exponent_start)
+				)
 			in
-			let result = int_of_string image in
+			let length = exponent_end - exponent_start in
+			let result =
+				if length = 0 then 0 else
+				let image = Buffer.sub buf exponent_start length in
+				int_of_string image
+			in
 			result, index
 		) in
 		let read_base_prefix (buf: Buffer.t) (index: 'i): int * 'i = (
@@ -173,27 +178,16 @@ struct
 				in
 				let e_base, exponent, index =
 					begin match get source index with
-					| 'e' | 'E' | 'p' | 'P' as h ->
-						let index =
-							begin match h with
-							| 'e' | 'E' ->
-								Buffer.add_char buf h;
-								succ source index
-							| _ ->
-								index
-							end
-						in
-						let e_base, index =
-							begin match get source index with
-							| 'p' | 'P' as h ->
-								Buffer.add_char buf h;
-								2, succ source index
-							| _ ->
-								10, index
-							end
-						in
+					| 'e' | 'E' as h when m_base = 10 ->
+						Buffer.add_char buf h;
+						let index = succ source index in
 						let exponent, index = read_exponent buf index in
-						e_base, exponent, index
+						10, exponent, index
+					| 'p' | 'P' as h when m_base = 16 ->
+						Buffer.add_char buf h;
+						let index = succ source index in
+						let exponent, index = read_exponent buf index in
+						2, exponent, index
 					| _ ->
 						if m_base <> 10 then (
 							let p2 = prev_position source index in
