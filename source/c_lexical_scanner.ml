@@ -146,7 +146,7 @@ struct
 					let image = Buffer.sub buf start (Buffer.length buf - start) in
 					Real.of_based_string ~base image
 				in
-				let value, index =
+				let e_base, exponent, index =
 					begin match get source index with
 					| 'e' | 'E' | 'p' | 'P' as h ->
 						let index =
@@ -168,41 +168,44 @@ struct
 							end
 						in
 						let exponent, index = read_exponent buf index in
-						let value = Real.scale mantissa ~base:e_base ~exponent in
-						value, index
+						e_base, exponent, index
 					| _ ->
 						if base <> 10 then (
 							let p2 = prev_position source index in
 							error (p1, p2) not_10_based_float_literal
 						);
-						mantissa, index
+						10, 0, index
 					end
 				in
 				begin match get source index with
 				| 'd' | 'D' as h ->
 					Buffer.add_char buf h;
 					let index = succ source index in
-					begin match get source index with
-					| 'f' | 'F' as h ->
-						Buffer.add_char buf h;
-						let index = succ source index in
-						wrap (`float_literal (`_Decimal32, value)) index
-					| 'd' | 'D' as h ->
-						Buffer.add_char buf h;
-						let index = succ source index in
-						wrap (`float_literal (`_Decimal64, value)) index
-					| 'l' | 'L' as h ->
-						Buffer.add_char buf h;
-						let index = succ source index in
-						wrap (`float_literal (`_Decimal128, value)) index
-					| _ ->
-						let p2 = prev_position source index in
-						error (p1, p2) bad_decimal_suffix;
-						wrap (`float_literal (`_Decimal32, value)) index
-					end
+					let prec, index =
+						begin match get source index with
+						| 'f' | 'F' as h ->
+							Buffer.add_char buf h;
+							let index = succ source index in
+							`_Decimal32, index
+						| 'd' | 'D' as h ->
+							Buffer.add_char buf h;
+							let index = succ source index in
+							`_Decimal64, index
+						| 'l' | 'L' as h ->
+							Buffer.add_char buf h;
+							let index = succ source index in
+							`_Decimal128, index
+						| _ ->
+							let p2 = prev_position source index in
+							error (p1, p2) bad_decimal_suffix;
+							`_Decimal32, index
+						end
+					in
+					wrap (`decimal_literal prec) index
 				| 'f' | 'F' as h ->
 					Buffer.add_char buf h;
 					let index = succ source index in
+					let value = Real.scale mantissa ~base:e_base ~exponent in
 					begin match get source index with
 					| '0'..'9' -> (* fN, fNx *)
 						let index = read_digits_to_buffer ~base:10 buf index in
@@ -259,6 +262,7 @@ struct
 				| 'i' | 'I' as h -> (* imaginary literal is gcc's extended?? *)
 					Buffer.add_char buf h;
 					let index = succ source index in
+					let value = Real.scale mantissa ~base:e_base ~exponent in
 					begin match get source index with
 					| 'f' | 'F' as h ->
 						Buffer.add_char buf h;
@@ -278,6 +282,7 @@ struct
 				| 'l' | 'L' as h ->
 					Buffer.add_char buf h;
 					let index = succ source index in
+					let value = Real.scale mantissa ~base:e_base ~exponent in
 					begin match get source index with
 					| 'i' | 'I' as h ->
 						Buffer.add_char buf h;
@@ -288,6 +293,7 @@ struct
 					end
 				| _ ->
 					let `mantissa double_prec, _ = double_repr in
+					let value = Real.scale mantissa ~base:e_base ~exponent in
 					let value = round ~prec:double_prec value in
 					wrap (`float_literal (`double, value)) index
 				end

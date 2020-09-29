@@ -1046,6 +1046,8 @@ struct
 			derived_types, source, Some (v, find_predefined_type prec predefined_types)
 		| `imaginary_literal (prec, _) as v ->
 			derived_types, source, Some (v, find_predefined_type (`imaginary prec) predefined_types)
+		| `decimal_literal prec as v ->
+			derived_types, source, Some (v, find_predefined_type prec predefined_types)
 		| `char_literal _ as v ->
 			derived_types, source, Some (v, find_predefined_type `char predefined_types)
 		| `chars_literal s as v ->

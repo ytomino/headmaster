@@ -35,8 +35,9 @@ struct
 		| identifier
 		| `numeric_literal of string * [
 			| `int_literal of int_prec * Integer.t
-			| `float_literal of real_prec * Real.t
-			| `imaginary_literal of float_prec * Real.t] (* extended *)
+			| `float_literal of extended_float_prec * Real.t
+			| `imaginary_literal of float_prec * Real.t (* extended *)
+			| `decimal_literal of extended_decimal_prec]
 		| `char_literal of char
 		| `chars_literal of string
 		| `wchar_literal of WideString.elm

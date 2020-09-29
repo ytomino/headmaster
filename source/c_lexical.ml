@@ -467,8 +467,9 @@ module LexicalElement (Literals: LiteralsType) = struct
 	
 	type numeric_literal = [
 		| `int_literal of int_prec * Integer.t
-		| `float_literal of real_prec * Real.t
-		| `imaginary_literal of float_prec * Real.t];;
+		| `float_literal of extended_float_prec * Real.t
+		| `imaginary_literal of float_prec * Real.t
+		| `decimal_literal of extended_decimal_prec];; (* unsupported *)
 	
 	type t = [
 		| reserved_word

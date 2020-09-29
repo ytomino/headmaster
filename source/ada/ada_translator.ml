@@ -1729,6 +1729,9 @@ struct
 			let e16 = e / 4 in
 			let m = Real.scale value ~base:16 ~exponent:(- e16) in
 			fprintf ff "16#%s#e%+d" (Real.to_based_string ~base:16 m) e16
+		| `decimal_literal _, _ ->
+			fprintf ff "@ **** unimplemented. ****\n";
+			assert false
 		| `char_literal value, _ ->
 			pp_char_literal ff value
 		| `chars_literal value, _ ->
@@ -1958,7 +1961,7 @@ struct
 			let resolved_t1 = Semantics.resolve_typedef t1 in
 			let resolved_t2 = Semantics.resolve_typedef t2 in
 			begin match expr, resolved_t1, resolved_t2 with
-			| (`float_literal _, _), #real_prec, #real_prec ->
+			| (`float_literal _, _), #extended_float_prec, #extended_float_prec ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in
@@ -1966,7 +1969,7 @@ struct
 				end;
 				fprintf ff "'(%a)"
 					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
-			| _, #real_prec, `complex _ ->
+			| _, #extended_float_prec, `complex _ ->
 				fprintf ff "(Re => %a,@ Im => 0.0)"
 					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
 			| _, `imaginary _, `complex _ ->
@@ -1996,7 +1999,8 @@ struct
 				end;
 				fprintf ff "'(%a)"
 					(pp_expression ~mappings ~current ?hidden_packages:None ~outside:`lowest) expr
-			| _, (#int_prec | #real_prec | `const #int_prec), (#int_prec | #real_prec) ->
+			| _, (#int_prec | #extended_float_prec | `const #int_prec),
+				(#int_prec | #extended_float_prec) ->
 				begin
 					let opaque_mapping, name_mapping = mappings in
 					let mappings = opaque_mapping, name_mapping, [] in
@@ -2957,6 +2961,8 @@ struct
 				| `float_literal _, _ ->
 					pp_universal_constant_object ff name
 						(fun ff () -> pp_print_string ff source_name)
+				| `decimal_literal _, _ ->
+					fprintf ff "@ --  %s renames %s (decimal)" name source_name
 				| `cast (_, t1 as e1), t2 when List.length (Finding.find_all_cast_in_source_item [] (source_item :> Semantics.source_item)) = 1 ->
 					(* calling Unchecked_Conversion is not static expression, use trick *)
 					pp_print_space ff ();
@@ -3266,6 +3272,8 @@ struct
 					let mappings = opaque_mapping, name_mapping in
 					pp_universal_constant_object ff name
 						(fun ff () -> pp_expression ff ~mappings ~current ~outside:`lowest expr)
+				| `decimal_literal _, _ ->
+					fprintf ff "@ --  %s (decimal)" name
 				| `cast (_, t1 as e1), t2 when List.length (Finding.find_all_cast_in_source_item [] (item :> Semantics.source_item)) = 1 ->
 					(* calling Unchecked_Conversion is not static expression, use trick *)
 					pp_print_space ff ();

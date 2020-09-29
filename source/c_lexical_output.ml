@@ -67,9 +67,6 @@ struct
 				| `_Float128 -> "f128"
 				| `_Float32x -> "f32x"
 				| `_Float64x -> "f64x"
-				| `_Decimal32 -> "DF"
-				| `_Decimal64 -> "DD"
-				| `_Decimal128 -> "DL"
 				end
 			| `numeric_literal (_, `imaginary_literal (prec, value)) ->
 				let m, e = Real.frexp value in
@@ -82,6 +79,8 @@ struct
 				| `double -> "I"
 				| `long_double -> "LI"
 				end
+			| `numeric_literal (s, `decimal_literal _) ->
+				s
 			| `char_literal s ->
 				"\'" ^ Char.escaped s ^ "\'"
 			| `chars_literal s ->

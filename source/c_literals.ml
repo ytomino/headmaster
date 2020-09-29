@@ -39,8 +39,6 @@ type extended_decimal_prec = [ (* ISO/IEC WDTR24732 *)
 	| `_Decimal64
 	| `_Decimal128];;
 
-type real_prec = [extended_float_prec | extended_decimal_prec];;
-
 type fp_repr =
 	[`mantissa of int] *
 	[`emin of int];;

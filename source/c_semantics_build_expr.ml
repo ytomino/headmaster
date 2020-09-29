@@ -29,7 +29,6 @@ module type ExpressingType = sig
 	val int_prec: int_prec -> int_prec -> int_prec
 	val float_prec: float_prec -> float_prec -> float_prec
 	val extended_float_prec: extended_float_prec -> extended_float_prec -> extended_float_prec
-	val real_prec: real_prec -> real_prec -> real_prec
 	
 	val result_type_of:
 		[`add | `sub | `multiplicative | `bit | `conditional] ->
@@ -86,7 +85,8 @@ struct
 	(* for __real__, __imag__ *)
 	let rec real_type_of (t: all_type) (predefined_types: predefined_types): all_type option = (
 		begin match t with
-		| #int_prec | #real_prec | `char | `bool as t ->
+		| #int_prec | #extended_float_prec | #extended_decimal_prec | `char | `bool
+			as t ->
 			Some t
 		| `imaginary prec | `complex prec ->
 			Some (find_predefined_type prec predefined_types)
@@ -131,15 +131,6 @@ struct
 		end
 	);;
 	
-	let real_prec (prec1: real_prec) (prec2: real_prec): real_prec = (
-		begin match prec1, prec2 with
-		| `_Decimal128, _ | _, `_Decimal128 -> `_Decimal128
-		| `_Decimal64, _ | _, `_Decimal64 -> `_Decimal64
-		| `_Decimal32, _ | _, `_Decimal32 -> `_Decimal32
-		| (#extended_float_prec as prec1), (#extended_float_prec as prec2) -> extended_float_prec prec1 prec2
-		end
-	);;
-	
 	let rec result_type_of
 		(op: [`add | `sub | `multiplicative | `bit | `conditional])
 		(t1: all_type)
@@ -161,11 +152,12 @@ struct
 			| _ ->
 				Some (find_predefined_type (int_prec prec1 prec2) predefined_types), derived_types
 			end
-		| (#real_prec as real_t), #int_prec
-		| #int_prec, (#real_prec as real_t) ->
+		| (#extended_float_prec | #extended_decimal_prec as real_t), #int_prec
+		| #int_prec, (#extended_float_prec | #extended_decimal_prec as real_t) ->
 			Some real_t, derived_types
-		| (#real_prec as prec1), (#real_prec as prec2) ->
-			Some (find_predefined_type (real_prec prec1 prec2) predefined_types), derived_types
+		| (#extended_float_prec as prec1), (#extended_float_prec as prec2) ->
+			Some (find_predefined_type (extended_float_prec prec1 prec2) predefined_types),
+				derived_types
 		| (`imaginary prec1), (`imaginary prec2) when op <> `multiplicative ->
 			Some (find_predefined_type (`imaginary (extended_float_prec prec1 prec2)) predefined_types), derived_types
 		| (#float_prec as prec1), (`imaginary prec2 | `complex prec2)
@@ -326,7 +318,7 @@ struct
 				round ~prec:mantissa x
 			)
 		in
-		`float_literal ((t :> real_prec), x), (t :> all_type)
+		`float_literal (t, x), (t :> all_type)
 	);;
 	
 	let rec zero
@@ -336,10 +328,12 @@ struct
 		begin match t with
 		| #int_prec as prec ->
 			Some (`int_literal (prec, Integer.zero), t)
-		| #real_prec as prec ->
+		| #extended_float_prec as prec ->
 			Some (`float_literal (prec, Real.zero), t)
 		| `imaginary prec ->
 			Some (`imaginary_literal (prec, Real.zero), t)
+		| #extended_decimal_prec ->
+			None (* unsupported *)
 		| `char ->
 			Some (`char_literal '\x00', t)
 		| `wchar ->

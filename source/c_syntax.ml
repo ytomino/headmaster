@@ -114,8 +114,9 @@ module Syntax (Literals: LiteralsType) = struct
 		(* (6.5.1) primary-expression *)
 		| `ident of string
 		| `int_literal of int_prec * Integer.t
-		| `float_literal of real_prec * Real.t
+		| `float_literal of extended_float_prec * Real.t
 		| `imaginary_literal of extended_float_prec * Real.t (* extended *)
+		| `decimal_literal of extended_decimal_prec (* unsupported *)
 		| `char_literal of char
 		| `chars_literal of string
 		| `wchar_literal of WideString.elm
