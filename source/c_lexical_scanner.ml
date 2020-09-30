@@ -51,6 +51,26 @@ struct
 		|| (((c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')) && base = 16)
 	);;
 	
+	(* float handling *)
+	
+	let round (repr: fp_repr) (x: Real.t): Real.t = (
+		let `mantissa mantissa, `emin emin = repr in
+		let emin2 = emin - mantissa in
+		let m, e = Real.frexp x in
+		if e < emin2 then (
+			Real.zero (* underflow *)
+		) else if e = emin2 then (
+			let threshold = Real.scale ~base:2 ~exponent:~-1 Real.one in
+			if Real.compare m threshold <= 0 then (
+				Real.zero (* underflow, just 0.5 is to even *)
+			) else (
+				Real.scale ~base:2 ~exponent:e Real.one (* round up *)
+			)
+		) else (
+			round ~prec:mantissa x
+		)
+	);;
+	
 	(* scanner *)
 	
 	let scan_numeric_literal
@@ -230,47 +250,52 @@ struct
 						let n_start = Buffer.length buf in
 						let index = read_digits_to_buffer ~base:10 buf index in
 						let n = Buffer.sub buf n_start (Buffer.length buf - n_start) in
-						let prec, bit_size, index =
+						let prec, index =
 							begin match get source index with
 							| 'x' as h -> (* lowercase only? *)
 								Buffer.add_char buf h;
 								let index = succ source index in
 								begin match n with
 								| "32" ->
-									`_Float32x, 53, index
+									`_Float32x, index
 								| "64" ->
-									`_Float64x, 113, index
+									`_Float64x, index
 								| _ ->
 									let p2 = prev_position source index in
 									error (p1, p2) bad_fNx_suffix;
-									`_Float64x, 113, index (* fallback *)
+									`_Float64x, index (* fallback *)
 								end
 							| _ ->
 								begin match n with
 								| "32" ->
-									`_Float32, 24, index
+									`_Float32, index
 								| "64" ->
-									`_Float64, 53, index
+									`_Float64, index
 								| "128" ->
-									`_Float128, 113, index
+									`_Float128, index
 								| _ ->
 									let p2 = prev_position source index in
 									error (p1, p2) bad_fN_suffix;
-									`_Float128, 113, index (* fallback *)
+									`_Float128, index (* fallback *)
 								end
 							end
 						in
-						let value = round ~prec:bit_size value in
+						let repr =
+							begin match prec with
+							| `_Float32 -> `mantissa 24, `emin ~-125
+							| `_Float64 | `_Float32x -> `mantissa 53, `emin ~-1021
+							| `_Float128 | `_Float64x -> `mantissa 113, `emin ~-16381
+							end
+						in
+						let value = round repr value in
 						wrap (`float_literal (prec, value)) index
 					| 'i' | 'I' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						let `mantissa float_prec, _ = float_repr in
-						let value = round ~prec:float_prec value in
+						let value = round float_repr value in
 						wrap (`imaginary_literal (`float, value)) index
 					| _ ->
-						let `mantissa float_prec, _ = float_repr in
-						let value = round ~prec:float_prec value in
+						let value = round float_repr value in
 						wrap (`float_literal (`float, value)) index
 					end
 				| 'i' | 'I' as h -> (* imaginary literal is gcc's extended?? *)
@@ -281,16 +306,14 @@ struct
 					| 'f' | 'F' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
-						let `mantissa float_prec, _ = float_repr in
-						let value = round ~prec:float_prec value in
+						let value = round float_repr value in
 						wrap (`imaginary_literal (`float, value)) index
 					| 'l' | 'L' as h ->
 						Buffer.add_char buf h;
 						let index = succ source index in
 						wrap (`imaginary_literal (`long_double, value)) index
 					| _ ->
-						let `mantissa double_prec, _ = double_repr in
-						let value = round ~prec:double_prec value in
+						let value = round double_repr value in
 						wrap (`imaginary_literal (`double, value)) index
 					end
 				| 'l' | 'L' as h ->
@@ -306,9 +329,8 @@ struct
 						wrap (`float_literal (`long_double, value)) index
 					end
 				| _ ->
-					let `mantissa double_prec, _ = double_repr in
 					let value = Real.scale mantissa ~base:e_base ~exponent in
-					let value = round ~prec:double_prec value in
+					let value = round double_repr value in
 					wrap (`float_literal (`double, value)) index
 				end
 			| _ as h -> (* integer *)
