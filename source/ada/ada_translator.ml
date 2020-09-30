@@ -2957,6 +2957,8 @@ struct
 			let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 			if Semantics.is_static_expression expr then (
 				begin match expr with
+				| `float_literal (`_Float128, _), _ ->
+					fprintf ff "@ --  %s renames %s (_Float128)" name source_name
 				| `int_literal _, _
 				| `float_literal _, _ ->
 					pp_universal_constant_object ff name
@@ -3268,6 +3270,8 @@ struct
 				begin match expr with
 				| `ref_function (func: Semantics.function_item), _ ->
 					pp_alias ff ~mappings ~enum_of_element ~current ~hidden_packages name (func :> Semantics.named_item)
+				| `float_literal (`_Float128, _), _ ->
+					fprintf ff "@ --  %s (_Float128)" name
 				| `int_literal _, _ | `float_literal _, _ ->
 					let mappings = opaque_mapping, name_mapping in
 					pp_universal_constant_object ff name
