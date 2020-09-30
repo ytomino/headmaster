@@ -227,42 +227,37 @@ struct
 					let value = Real.scale mantissa ~base:e_base ~exponent in
 					begin match get source index with
 					| '0'..'9' -> (* fN, fNx *)
+						let n_start = Buffer.length buf in
 						let index = read_digits_to_buffer ~base:10 buf index in
-						let bit_size = 32 in
-						let prec, index =
+						let n = Buffer.sub buf n_start (Buffer.length buf - n_start) in
+						let prec, bit_size, index =
 							begin match get source index with
 							| 'x' as h -> (* lowercase only? *)
 								Buffer.add_char buf h;
 								let index = succ source index in
-								let prec =
-									begin match bit_size with
-									| 32 ->
-										`_Float32x
-									| 64 ->
-										`_Float64x
-									| _ ->
-										let p2 = prev_position source index in
-										error (p1, p2) bad_fNx_suffix;
-										`_Float64x (* fallback *)
-									end
-								in
-								prec, index
+								begin match n with
+								| "32" ->
+									`_Float32x, 53, index
+								| "64" ->
+									`_Float64x, 113, index
+								| _ ->
+									let p2 = prev_position source index in
+									error (p1, p2) bad_fNx_suffix;
+									`_Float64x, 113, index (* fallback *)
+								end
 							| _ ->
-								let prec =
-									begin match bit_size with
-									| 32 ->
-										`_Float32
-									| 64 ->
-										`_Float64
-									| 128 ->
-										`_Float128
-									| _ ->
-										let p2 = prev_position source index in
-										error (p1, p2) bad_fN_suffix;
-										`_Float128 (* fallback *)
-									end
-								in
-								prec, index
+								begin match n with
+								| "32" ->
+									`_Float32, 24, index
+								| "64" ->
+									`_Float64, 53, index
+								| "128" ->
+									`_Float128, 113, index
+								| _ ->
+									let p2 = prev_position source index in
+									error (p1, p2) bad_fN_suffix;
+									`_Float128, 113, index (* fallback *)
+								end
 							end
 						in
 						let value = round ~prec:bit_size value in
