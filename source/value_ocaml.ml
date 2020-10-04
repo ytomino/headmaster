@@ -11,9 +11,7 @@ let rev_string s = (
 );;
 
 module Integer = struct
-	type t = int;;
-	let zero = 0;;
-	let one = 1;;
+	include Int;;
 	let of_based_string ~base s = (
 		let rec loop base s i r = (
 			if i >= String.length s then (
@@ -39,24 +37,11 @@ module Integer = struct
 		) in
 		loop base (Buffer.create 32) x
 	);;
-	let compare: t -> t -> int = compare;;
 	let compare_int: t -> int -> int = compare;;
-	let neg = ( ~- );;
-	let add = ( + );;
-	let sub = ( - );;
-	let mul = ( * );;
-	let div = ( / );;
-	let rem = ( mod );;
 	let scale fraction ~base ~exponent = fraction * int_of_float (float_of_int base ** float_of_int exponent);;
 	let of_int x = x
 	let to_int x = x;;
 	let of_int32 = Int32.to_int;;
-	let logand = ( land );;
-	let logor = ( lor );;
-	let logxor = ( lxor );;
-	let lognot = lnot;;
-	let shift_left left right = left lsl right;;
-	let shift_right left right = left asr right;;
 	let test_bit x b = if x land (1 lsl b) <> 0 then 1 else 0;;
 end;;
 
@@ -93,14 +78,12 @@ module Integer64 = struct
 end;;
 
 module Real = struct
-	type t = float;;
-	let zero = 0.0;;
-	let one = 1.0;;
+	include Float;;
 	let of_based_string ~base s = (
 		if base = 10 then float_of_string s else (
 			let p = String.index s '.' in
 			let integer_part = String.sub s 0 p in
-			let decimal_part = String.sub s (succ p) (String.length s - p - 1) in
+			let decimal_part = String.sub s (Stdlib.succ p) (String.length s - p - 1) in
 			let n = Integer.of_based_string ~base (integer_part ^ decimal_part) in
 			let m = (float_of_int base) ** float_of_int (String.length decimal_part) in
 			float_of_int n /. m
@@ -110,15 +93,8 @@ module Real = struct
 		if base = 10 then string_of_float x else
 		assert false
 	);;
-	let compare: t -> t -> int = compare;;
-	let neg = ( ~-. );;
-	let add = ( +. );;
-	let sub = ( -. );;
-	let mul = ( *. );;
-	let div = ( /. );;
 	let scale fraction ~base ~exponent = fraction *. (float_of_int base ** float_of_int exponent);;
 	let of_float x = x;;
-	let frexp = frexp;;
 end;;
 
 module String16 = struct
