@@ -10,41 +10,6 @@ let rev_string s = (
 	Bytes.unsafe_to_string r
 );;
 
-module Integer = struct
-	include Int;;
-	let of_based_string ~base s = (
-		let rec loop base s i r = (
-			if i >= String.length s then (
-				r
-			) else (
-				let n = String.index Hexadecimal.uppercase s.[i] in
-				loop base s (succ i) (r * base + n)
-			)
-		) in
-		loop base (String.uppercase_ascii s) 0 0
-	);;
-	let to_based_string ~base x = (
-		let rec loop base buf x = (
-			let d = x mod base in
-			let u = x / base in
-			Buffer.add_char buf Hexadecimal.uppercase.[abs d];
-			if u = 0 then (
-				if d < 0 then Buffer.add_char buf '-';
-				rev_string (Buffer.contents buf)
-			) else (
-				loop base buf u
-			)
-		) in
-		loop base (Buffer.create 32) x
-	);;
-	let compare_int: t -> int -> int = compare;;
-	let scale fraction ~base ~exponent = fraction * int_of_float (float_of_int base ** float_of_int exponent);;
-	let of_int x = x
-	let to_int x = x;;
-	let of_int32 = Int32.to_int;;
-	let test_bit x b = if x land (1 lsl b) <> 0 then 1 else 0;;
-end;;
-
 module Integer64 = struct
 	include Int64;;
 	let of_based_string ~base s = (
@@ -84,9 +49,9 @@ module Real = struct
 			let p = String.index s '.' in
 			let integer_part = String.sub s 0 p in
 			let decimal_part = String.sub s (Stdlib.succ p) (String.length s - p - 1) in
-			let n = Integer.of_based_string ~base (integer_part ^ decimal_part) in
+			let n = Integer64.of_based_string ~base (integer_part ^ decimal_part) in
 			let m = (float_of_int base) ** float_of_int (String.length decimal_part) in
-			float_of_int n /. m
+			Int64.to_float n /. m
 		)
 	);;
 	let to_based_string ~base x = (

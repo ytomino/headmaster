@@ -40,11 +40,11 @@ let env =
 	{env with en_include = List.rev_append !include_dirs env.en_include};;
 
 module Literals = struct
-	module Integer = Integer;;
+	module Integer = Integer64;;
 	module Real = Real;;
 	module WideString = String32;;
-	let integer_of_real = int_of_float;;
-	let real_of_integer = float_of_int;;
+	let integer_of_real = Int64.of_float;;
+	let real_of_integer = Int64.to_float;;
 	let round ~prec x = (ignore prec; x);;
 	let float_repr = `mantissa 24, `emin ~-125;;
 	let double_repr = `mantissa 53, `emin ~-1021;;

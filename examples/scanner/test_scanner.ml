@@ -5,14 +5,11 @@ open Position;;
 open Value_ocaml;;
 
 let tab_width = 3;;
-let value_kind: [`ocaml | `ocaml64 | `gmp] ref = ref `ocaml;;
+let value_kind: [`ocaml64 | `gmp] ref = ref `ocaml64;;
 
 let rec parse_args i = (
 	if i < Array.length Sys.argv then (
 		begin match Sys.argv.(i) with
-		| "--ocaml" ->
-			value_kind := `ocaml;
-			parse_args (i + 1);
 		| "--ocaml64" ->
 			value_kind := `ocaml64;
 			parse_args (i + 1);
@@ -34,18 +31,6 @@ let error (ps: ranged_position) (m: string): unit = (
 	let ((f, _, l, c), _) = ps in
 	Printf.printf "%s:%d:%d: %s\n" f l c m
 );;
-
-module Literals_ocaml = struct
-	module Integer = Integer;;
-	module Real = Real;;
-	module WideString = String32;;
-	let integer_of_real = int_of_float;;
-	let real_of_integer = float_of_int;;
-	let round ~prec x = (ignore prec; x);;
-	let float_repr = `mantissa 24, `emin ~-125;;
-	let double_repr = `mantissa 53, `emin ~-1021;;
-	let long_double_repr = double_repr;;
-end;;
 
 module Literals_ocaml64 = struct
 	module Integer = Integer64;;
@@ -74,7 +59,6 @@ end;;
 module Literals =
 	(val
 		match !value_kind with
-		| `ocaml -> (module Literals_ocaml : LiteralsType)
 		| `ocaml64 -> (module Literals_ocaml64 : LiteralsType)
 		| `gmp -> (module Literals_gmp : LiteralsType));;
 

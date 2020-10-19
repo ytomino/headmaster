@@ -41,7 +41,6 @@ $(SOURCELN):
 	ln -s $(SOURCEDIR) $@
 
 test: $(LIBNAME)
-	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --ocaml
 	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --ocaml64
 	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --gmp
 
