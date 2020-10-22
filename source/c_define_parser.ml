@@ -213,7 +213,9 @@ struct
 					StringMap.empty
 					xs)
 				in
-				let (_: [`nil of ranged_position * Preprocessor.define_map]) = LazyList.find_nil xs in (* error check *)
+				let _: (ranged_position, Preprocessor.define_map) LazyList.nil_prim =
+					LazyList.find_nil xs (* error check *)
+				in
 				begin try
 					if !has_error then (
 						error ps (failed_to_preprocess macro_name);
