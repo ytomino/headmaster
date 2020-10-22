@@ -1079,7 +1079,7 @@ struct
 			result := expr_f !result expr;
 			false
 		) in
-		ignore (exists_in_expression stmt_f2 expr_f2 expr);
+		let _: bool = exists_in_expression stmt_f2 expr_f2 expr in
 		!result
 	);;
 	
@@ -1099,7 +1099,7 @@ struct
 			result := expr_f !result expr;
 			false
 		) in
-		ignore (exists_in_statement stmt_f2 expr_f2 stmt);
+		let _: bool = exists_in_statement stmt_f2 expr_f2 stmt in
 		!result
 	);;
 	

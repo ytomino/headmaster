@@ -275,4 +275,4 @@ let command =
 	) (prefix ^ "gnatmake -gnatc -gnatef -gnatwa -gnaty -D " ^ destdir) !ada_sources
 	^ " -cargs" ^ arguments;;
 
-ignore (Sys.command command);;
+let _: int = Sys.command command;;

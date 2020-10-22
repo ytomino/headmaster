@@ -985,8 +985,10 @@ struct
 				begin match t with
 				| `function_type prototype
 				| `named (_, _, `typedef (`function_type prototype), _) ->
-					ignore (pp_type ff name pp_access_definition `none
-						(pp_prototype ~mappings ~current ?hidden_packages:None ~name:None) prototype);
+					let _: name_mapping =
+						pp_type ff name pp_access_definition `none (pp_prototype ~mappings ~current
+							?hidden_packages:None ~name:None) prototype
+					in
 					let conv, _, _, _ = prototype in
 					pp_pragma_convention ff conv name
 				| `void
@@ -1291,7 +1293,9 @@ struct
 			pp_print_space ff ();
 			pp_open_box ff indent;
 			let mappings = Semantics.empty_opaque_mapping, name_mapping, anonymous_mapping in
-			ignore (pp_prototype ff ~mappings ~current ~name:(Some item_name) prototype);
+			let _: name_mapping =
+				pp_prototype ff ~mappings ~current ~name:(Some item_name) prototype
+			in
 			let same_repr_item_name =
 				let y =
 					List.find (fun y ->
@@ -2811,7 +2815,9 @@ struct
 				let _, opaque_mapping, name_mapping, anonymous_mapping = mappings in
 				let anonymous_mapping = add_arguments_to_anonymous_mapping ~name_mapping ~current args anonymous_mapping in
 				let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-				ignore (pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some name) prototype);
+				let _: name_mapping =
+					pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some name) prototype
+				in
 				fprintf ff "@ renames %s;" source_name;
 				pp_close_box ff ()
 			end
@@ -2824,7 +2830,9 @@ struct
 				List.iter (fun prototype ->
 					pp_print_space ff ();
 					pp_open_box ff indent;
-					ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
+					let _: name_mapping =
+						pp_prototype ff ~mappings ~current ~name:(Some name) prototype
+					in
 					fprintf ff "@ renames %s;" source_name;
 					pp_close_box ff ()
 				) overload
@@ -2998,7 +3006,9 @@ struct
 				pp_print_space ff ();
 				pp_open_box ff indent;
 				let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
-				ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
+				let _: name_mapping =
+					pp_prototype ff ~mappings ~current ~name:(Some name) prototype
+				in
 				fprintf ff " renames %s;" source_name;
 				pp_close_box ff ()
 			)
@@ -3054,7 +3064,10 @@ struct
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
 					pp_print_space ff ();
 					pp_open_box ff indent;
-					ignore (pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name) prototype);
+					let _: name_mapping =
+						pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name)
+							prototype
+					in
 					pp_print_string ff ";";
 					pp_close_box ff ();
 					begin match Listtbl.assqs item language_mapping.Semantics.lm_overload with
@@ -3062,7 +3075,9 @@ struct
 						List.iter (fun prototype ->
 							pp_print_space ff ();
 							pp_open_box ff indent;
-							ignore (pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype);
+							let _: name_mapping =
+								pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype
+							in
 							pp_print_string ff ";";
 							pp_close_box ff ()
 						) overload
@@ -3126,7 +3141,9 @@ struct
 				let ada_name = ada_name_of current ps name `namespace name_mapping in
 				pp_print_space ff ();
 				pp_open_box ff indent;
-				ignore (pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype);
+				let _: name_mapping =
+					pp_prototype ff ~mappings ~current ~name:(Some ada_name) prototype
+				in
 				pp_print_string ff ";";
 				pp_close_box ff ();
 				pp_pragma_import ff `intrinsic ada_name name
@@ -3140,7 +3157,10 @@ struct
 			let ada_name = ada_name_of current ps name `namespace name_mapping in
 			pp_print_space ff ();
 			pp_open_box ff indent;
-			ignore (pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name) prototype);
+			let _: name_mapping =
+				pp_prototype ff ~mappings ~current ~hidden_packages ~name:(Some ada_name)
+					prototype
+			in
 			pp_print_string ff ";";
 			pp_close_box ff ();
 			if body_required_for_single_item ~including_expression:false (item :> Semantics.source_item) then (
@@ -3324,7 +3344,9 @@ struct
 					pp_open_box ff indent;
 					let prototype = `cdecl, [], `none, snd expr in (* calling-convention be ignored *)
 					let mappings = opaque_mapping, name_mapping, anonymous_mapping in
-					ignore (pp_prototype ff ~mappings ~current ~name:(Some name) prototype);
+					let _: name_mapping =
+						pp_prototype ff ~mappings ~current ~name:(Some name) prototype
+					in
 					pp_print_string ff ";";
 					pp_close_box ff ();
 					pp_pragma_inline ff ~always:true name
@@ -3584,9 +3606,12 @@ struct
 					) (snd predefined_types);
 					(* derived types of predefined types *)
 					List.iter (fun (item, _) ->
-						ignore (pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, [])
-							~casts ~sized_arrays:all_sized_arrays
-							~current (item :> Semantics.all_type) derived_types [])
+						let _: Semantics.derived_type list =
+							pp_derived_types_for_the_type ff
+								~mappings:(language_mapping, opaque_mapping, name_mapping, []) ~casts
+								~sized_arrays:all_sized_arrays ~current (item :> Semantics.all_type)
+								derived_types []
+						in ()
 					) (fst predefined_types);
 					(* primitives for derived types of predefined type *)
 					pp_print_space ff ();
@@ -3598,9 +3623,12 @@ struct
 					List.iter (fun item ->
 						begin match item with
 						| `named (_, current, `typedef #Semantics.predefined_type, _) as item ->
-							ignore (pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, [])
-								~casts ~sized_arrays:all_sized_arrays
-								~current ~special:true (item :> Semantics.all_type) derived_types [])
+							let _: Semantics.derived_type list =
+								pp_derived_types_for_the_type ff
+									~mappings:(language_mapping, opaque_mapping, name_mapping, []) ~casts
+									~sized_arrays:all_sized_arrays ~current ~special:true
+									(item :> Semantics.all_type) derived_types []
+							in ()
 						| _ ->
 							assert false (* does not come here *)
 						end
@@ -3707,7 +3735,7 @@ struct
 						false
 					end
 				) in
-				ignore (
+				let _: anonymous_mapping * Semantics.derived_type list =
 					List.fold_left (fun (anonymous_mapping, done_list) item ->
 						(* source item *)
 						let anonymous_mapping =
@@ -3756,7 +3784,7 @@ struct
 						in
 						anonymous_mapping, done_list
 					) ([], []) items
-				)
+				in ()
 			)
 			~pp_private:(
 				if has_private_part then (
@@ -3803,7 +3831,7 @@ struct
 			~with_packages
 			~name:("C." ^ current)
 			~pp_contents:(fun ff () ->
-				ignore (
+				let _: anonymous_mapping =
 					List.fold_left (fun anonymous_mapping item ->
 						begin match item with
 						| #Semantics.anonymous_type as item ->
@@ -3816,7 +3844,7 @@ struct
 							anonymous_mapping
 						end
 					) [] items
-				)
+				in ()
 			)
 	);;
 	

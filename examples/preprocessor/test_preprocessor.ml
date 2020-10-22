@@ -149,6 +149,8 @@ let `nil (lib_defined, _) = LazyList.find_nil lib_tokens';;
 (* for interpreter *)
 let v (name: string): PP.define_item = (
 	let r = StringMap.find name stddef_defined in
-	ignore (LazyList.find_nil r.PP.df_contents);
+	let _: (ranged_position, unit) LazyList.nil_prim =
+		LazyList.find_nil r.PP.df_contents
+	in
 	r
 );;
