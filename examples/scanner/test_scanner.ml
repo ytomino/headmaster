@@ -69,7 +69,7 @@ module LE = LexicalElement (Literals);;
 module Sc = Scanner (Literals) (LE) (struct let lang = `c and gnu_inline = false end);;
 
 let scan_c (s: string): Sc.t = (
-	let xs = lazy (Sc.scan error ignore (read s) Sc.make_nil) in
+	let xs = lazy (Sc.scan error (read s) Sc.make_nil) in
 	(* force all elements for interactive *)
 	let (_: (ranged_position, unit) LazyList.nil_prim) = LazyList.find_nil xs in
 	xs
@@ -80,7 +80,7 @@ let scan_c (s: string): Sc.t = (
 module Sobjc = Scanner (Literals) (LE) (struct let lang = `objc and gnu_inline = false end);;
 
 let scan_objc (s: string): Sobjc.t = (
-	let xs = lazy (Sobjc.scan error ignore (read s) Sobjc.make_nil) in
+	let xs = lazy (Sobjc.scan error (read s) Sobjc.make_nil) in
 	let (_: (ranged_position, unit) LazyList.nil_prim) = LazyList.find_nil xs in
 	xs
 );;
@@ -90,7 +90,7 @@ let scan_objc (s: string): Sobjc.t = (
 module Scxx = Scanner (Literals) (LE) (struct let lang = `cxx and gnu_inline = false end);;
 
 let scan_cxx (s: string): Scxx.t = (
-	let xs = lazy (Scxx.scan error ignore (read s) Scxx.make_nil) in
+	let xs = lazy (Scxx.scan error (read s) Scxx.make_nil) in
 	let (_: (ranged_position, unit) LazyList.nil_prim) = LazyList.find_nil xs in
 	xs
 );;

@@ -21,7 +21,6 @@ module type ScannerType = sig
 	
 	val scan:
 		(ranged_position -> string -> unit) ->
-		(unit -> unit) ->
 		TextFile.t ->
 		(ranged_position -> prim) ->
 		prim
@@ -78,7 +77,6 @@ struct
 	
 	let scan
 		(error: ranged_position -> string -> unit)
-		(finalize: unit -> unit)
 		(source: TextFile.t)
 		(next: ranged_position -> prim): prim =
 	(
@@ -771,7 +769,6 @@ struct
 				end
 			| '\x1a' ->
 				let p = TextFile.position source index in
-				finalize ();
 				let ps = p, p in
 				if state = `pp then (
 					`cons (ps, `end_of_line, lazy (next ps))

@@ -199,7 +199,7 @@ let is_known_error = make_is_known_error env.en_target remove_include_dir;;
 
 let read_file (name: string): (ranged_position -> S.prim) -> S.prim = (
 	let file = TextFile.of_file ~random_access:false ~tab_width:options.tab_width name in
-	S.scan error ignore file
+	S.scan error file
 );;
 
 let read_include_file = make_include read_file env;;
@@ -207,7 +207,7 @@ let read_include_file = make_include read_file env;;
 let predefined =
 	let predefined_tokens: PP.in_t =
 		let file = TextFile.of_string ~random_access:false ~tab_width:options.tab_width predefined_name env.en_predefined in
-		lazy (S.scan error ignore file S.make_nil)
+		lazy (S.scan error file S.make_nil)
 	in
 	let predefined_tokens': PP.out_t =
 		lazy (PP.preprocess
