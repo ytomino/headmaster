@@ -193,7 +193,7 @@ struct
 				loop index
 			| _ ->
 				error (p1, p1) illegal_include_form;
-				TextFile.succ_until_line is_lineescape source index (* skip line *)
+				TextFile.succ_until_eol is_lineescape source index (* skip line *)
 			end
 		) in
 		(* shared buffer *)
@@ -219,11 +219,11 @@ struct
 				let making_token = state = `pp in
 				if making_token then (
 					let p1 = TextFile.position source index in
-					let index = TextFile.succ_line source index in
+					let index = TextFile.succ_eol source index in
 					let p2 = TextFile.prev_position source index in
 					`cons ((p1, p2), `end_of_line, lazy (process `first index))
 				) else (
-					let index = TextFile.succ_line source index in
+					let index = TextFile.succ_eol source index in
 					process `first index
 				)
 			| '\\' ->
@@ -239,7 +239,7 @@ struct
 						let index =
 							begin match e with
 							| '\n' | '\r' | '\x0c' ->
-								TextFile.succ_line source index
+								TextFile.succ_eol source index
 							| _ ->
 								let p = TextFile.prev_position source index in
 								error (p, p) (unexpected '\\');
@@ -434,7 +434,7 @@ struct
 				begin match TextFile.get source index with
 				| '/' ->
 					let index = TextFile.succ source index in
-					let index = TextFile.succ_until_line is_lineescape source index in
+					let index = TextFile.succ_until_eol is_lineescape source index in
 					process state index
 				| '*' ->
 					let index = TextFile.succ source index in
@@ -607,7 +607,7 @@ struct
 								| `sharp_WARNING | `sharp_ERROR ->
 									let p3 = TextFile.position source index in
 									Buffer.reset buf;
-									let index = TextFile.succ_until_line_to_buffer is_lineescape buf source index in
+									let index = TextFile.succ_until_eol_to_buffer is_lineescape buf source index in
 									let message = Buffer.contents buf in
 									let message = Triming.trim Triming.is_space message in
 									let p4 = TextFile.prev_position source index in
@@ -619,7 +619,8 @@ struct
 							| `none ->
 								let p2 = TextFile.prev_position source index in
 								error (p1, p2) (unknown_ppdirective d);
-								let index = TextFile.succ_until_line is_lineescape source index in (* skip line *)
+								let index = TextFile.succ_until_eol is_lineescape source index (* skip line *)
+								in
 								process state index
 							end
 						)

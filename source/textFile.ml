@@ -173,7 +173,7 @@ let succ (s: t) (index: int): int = (
 	internal_succ s index
 );;
 
-let succ_line (s: t) (index: int): int = (
+let succ_eol (s: t) (index: int): int = (
 	begin match get s index with
 	| '\n' | '\x0c' ->
 		succ s index
@@ -185,7 +185,7 @@ let succ_line (s: t) (index: int): int = (
 			index
 		)
 	| _ ->
-		failwith "TextFile.succ_line"
+		failwith "TextFile.succ_eol"
 	end
 );;
 
@@ -218,9 +218,9 @@ let succ_while_to_buffer (f: char -> bool) (buf: Buffer.t) (s: t) (index: int): 
 	internal_succ_while_to_buffer f buf s index
 );;
 
-let succ_until_line (is_escape: char -> bool) (s: t) (index: int): int = (
+let succ_until_eol (is_escape: char -> bool) (s: t) (index: int): int = (
 	if index <> s.tf_index then seek s index;
-	let rec internal_succ_until_line is_escape s index = (
+	let rec internal_succ_until_eol is_escape s index = (
 		begin match get s index with
 		| '\n' | '\r' | '\x0c' | '\x1a' ->
 			index
@@ -228,22 +228,24 @@ let succ_until_line (is_escape: char -> bool) (s: t) (index: int): int = (
 			let index = internal_succ s index in
 			begin match get s index with
 			| '\n' | '\r' | '\x0c' ->
-				let index = succ_line s index in
-				internal_succ_until_line is_escape s index
+				let index = succ_eol s index in
+				internal_succ_until_eol is_escape s index
 			| _ ->
-				internal_succ_until_line is_escape s index
+				internal_succ_until_eol is_escape s index
 			end
 		| _ ->
 			let index = internal_succ s index in
-			internal_succ_until_line is_escape s index
+			internal_succ_until_eol is_escape s index
 		end
 	) in
-	internal_succ_until_line is_escape s index
+	internal_succ_until_eol is_escape s index
 );;
 
-let succ_until_line_to_buffer (is_escape: char -> bool) (buf: Buffer.t) (s: t) (index: int): int = (
+let succ_until_eol_to_buffer (is_escape: char -> bool) (buf: Buffer.t) (s: t)
+	(index: int): int =
+(
 	if index <> s.tf_index then seek s index;
-	let rec internal_succ_until_line_to_buffer is_escape buf s index = (
+	let rec internal_succ_until_eol_to_buffer is_escape buf s index = (
 		begin match get s index with
 		| '\n' | '\r' | '\x0c' | '\x1a' ->
 			index
@@ -251,17 +253,17 @@ let succ_until_line_to_buffer (is_escape: char -> bool) (buf: Buffer.t) (s: t) (
 			let index = internal_succ s index in
 			begin match get s index with
 			| '\n' | '\r' | '\x0c' ->
-				let index = succ_line s index in
-				internal_succ_until_line_to_buffer is_escape buf s index
+				let index = succ_eol s index in
+				internal_succ_until_eol_to_buffer is_escape buf s index
 			| _ ->
 				Buffer.add_char buf c;
-				internal_succ_until_line_to_buffer is_escape buf s index
+				internal_succ_until_eol_to_buffer is_escape buf s index
 			end
 		| _ as c ->
 			Buffer.add_char buf c;
 			let index = internal_succ s index in
-			internal_succ_until_line_to_buffer is_escape buf s index
+			internal_succ_until_eol_to_buffer is_escape buf s index
 		end
 	) in
-	internal_succ_until_line_to_buffer is_escape buf s index
+	internal_succ_until_eol_to_buffer is_escape buf s index
 );;
