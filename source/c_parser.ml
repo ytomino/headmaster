@@ -9,8 +9,7 @@ module TypedefSet = struct
 	include Set.Make (String);;
 end;;
 
-open PositionOperators;;
-let ( & ) = PositionOperators.( & );;
+open! PositionOperators;;
 
 module Parser
 	(Literals: LiteralsType)
