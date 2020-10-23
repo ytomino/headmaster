@@ -10,11 +10,6 @@ let make_mapmap (list: (string * (string * string) list) list): string StringMap
 	) StringMap.empty list
 );;
 
-let set_of_fst (xs: (string * 'a) list): StringSet.t = (
-	List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase_ascii x) r)
-		StringSet.empty xs
-);;
-
 (* special mappings *)
 
 (* header filename (removed dir) -> package name *)

@@ -8,6 +8,11 @@ open C_semantics_finding;;
 open C_semantics_naming;;
 open Position;;
 
+let set_of_fst (xs: (string * 'a) list): StringSet.t = (
+	List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase_ascii x) r)
+		StringSet.empty xs
+);;
+
 let string_of_pp (pp: Format.formatter -> 'a -> unit) (v: 'a): string = (
 	let b = Buffer.create 256 in
 	let f = Format.formatter_of_buffer b in
