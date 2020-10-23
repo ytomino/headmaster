@@ -1,6 +1,5 @@
 open C_filename;;
 open C_literals;;
-open C_semantics;;
 open C_semantics_naming;;
 
 open struct

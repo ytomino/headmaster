@@ -2,15 +2,6 @@ open C_filename;;
 open C_literals;;
 open Position;;
 
-module StringMap = struct
-	include StringMap;;
-	
-	let modify (f: 'a -> 'a) ~(default: 'a) (key: string) (m: 'a t): 'a t = (
-		add key (f (Option.value ~default (find_opt key m))) m
-	);;
-	
-end;;
-
 module SemanticsThin (Literals: LiteralsType) = struct
 	open Literals;;
 	

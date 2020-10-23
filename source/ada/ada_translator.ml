@@ -307,7 +307,9 @@ struct
 		(m : with_option StringMap.t)
 		: with_option StringMap.t =
 	(
-		StringMap.modify (widely_with_option v) ~default:narrow_with_option k m
+		StringMap.update k (fun e ->
+			Some (widely_with_option v (Option.value ~default:narrow_with_option e))
+		) m
 	);;
 	
 	let referencing_packages_by_language_mapping
@@ -2602,10 +2604,15 @@ struct
 							(* should make mapping function in c_semantics_naming.ml... *)
 							let ada_name = ada_name_by_substitute ~prefix:"L_" ~postfix:"" name in
 							let (filename, _, _, _), _ = ps in
-							assert (StringMap.mem filename name_mapping);
-							let rel_filename, package_name, map = StringMap.find filename name_mapping in
-							let map = Naming.add `namespace name ada_name map in
-							StringMap.add filename (rel_filename, package_name, map) name_mapping
+							StringMap.update filename (fun e ->
+								begin match e with
+								| None ->
+									assert false
+								| Some (rel_filename, package_name, map) ->
+									let map = Naming.add `namespace name ada_name map in
+									Some (rel_filename, package_name, map)
+								end
+							) name_mapping
 						in
 						(* un-modified variable to constant *)
 						let item =
@@ -3434,9 +3441,15 @@ struct
 							(pp_type_name ~mappings ~current ~hidden_packages ?hiding:None ~where:`subtype) arg_t
 							ada_name;
 						let (filename, _, _, _), _ = ps in
-						let rel_filename, package_name, map = StringMap.find filename name_mapping in
-						let map = Naming.add `namespace arg_name mutable_name map in
-						StringMap.add filename (rel_filename, package_name, map) name_mapping
+						StringMap.update filename (fun e ->
+							begin match e with
+							| None ->
+								assert false
+							| Some (rel_filename, package_name, map) ->
+								let map = Naming.add `namespace arg_name mutable_name map in
+								Some (rel_filename, package_name, map)
+							end
+						) name_mapping
 					) name_mapping modified_arguments
 				in
 				(* end of local declarations *)

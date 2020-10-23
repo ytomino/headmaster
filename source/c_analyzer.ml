@@ -402,7 +402,8 @@ struct
 							error (fst directive) "attributes are ignored in pragma instance."
 						);
 						let mapping_options = {mapping_options with mo_instances =
-							StringMap.modify (fun rs ->
+							StringMap.update name (fun e ->
+								let rs = Option.value ~default:[] e in
 								let error =
 									List.exists (fun i ->
 										begin match t, i with
@@ -414,8 +415,8 @@ struct
 										end
 									) rs
 								in
-								if error then rs else t :: rs
-							) ~default:[] name mapping_options.mo_instances}
+								if error then e else Some (t :: rs)
+							) mapping_options.mo_instances}
 						in
 						derived_types, info, alignment_stack, mapping_options
 					| None ->
@@ -478,9 +479,10 @@ struct
 								error (fst typename) "new type-specifier was found in pragma."
 							);
 							let mapping_options = {mapping_options with mo_language_mappings =
-								StringMap.modify (fun x ->
-									{x with lm_type = (t, repr) :: x.lm_type}
-								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
+								StringMap.update lang (fun x ->
+									let x = Option.value ~default:no_language_mapping x in
+									Some {x with lm_type = (t, repr) :: x.lm_type}
+								) mapping_options.mo_language_mappings}
 							in
 							derived_types, info, alignment_stack, mapping_options
 						| _ ->
@@ -515,7 +517,8 @@ struct
 											begin match Typing.prototype_ABI_compatibility ~dest:prototype ~source:original_prototype with
 											| `compatible | `typedef ->
 												let mapping_options = {mapping_options with mo_language_mappings =
-													StringMap.modify (fun x ->
+													StringMap.update lang (fun x ->
+														let x = Option.value ~default:no_language_mapping x in
 														let overload =
 															begin match Listtbl.assqs func x.lm_overload with
 															| (_, es) :: _ ->
@@ -531,8 +534,8 @@ struct
 																(func, prototype :: []) :: x.lm_overload
 															end
 														in
-														{x with lm_overload = overload}
-													) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
+														Some {x with lm_overload = overload}
+													) mapping_options.mo_language_mappings}
 												in
 												derived_types, info, alignment_stack, mapping_options
 											| `error ->
@@ -564,11 +567,12 @@ struct
 						begin match file2 with
 						| `some (_, `chars_literal file2) ->
 							let mapping_options = {mapping_options with mo_language_mappings =
-								StringMap.modify (fun x ->
+								StringMap.update lang (fun e ->
+									let x = Option.value ~default:no_language_mapping e in
 									let pair = file1, file2 in
-									if List.mem pair x.lm_include then x else
-									{x with lm_include = pair :: x.lm_include}
-								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
+									if List.mem pair x.lm_include then e else
+									Some {x with lm_include = pair :: x.lm_include}
+								) mapping_options.mo_language_mappings}
 							in
 							derived_types, info, alignment_stack, mapping_options
 						| `error ->
@@ -578,11 +582,12 @@ struct
 						begin match file2 with
 						| `some (_, `chars_literal file2) ->
 							let mapping_options = {mapping_options with mo_language_mappings =
-								StringMap.modify (fun x ->
+								StringMap.update lang (fun e ->
+									let x = Option.value ~default:no_language_mapping e in
 									let pair = file1, file2 in
-									if List.mem pair x.lm_monolithic_include then x else
-									{x with lm_monolithic_include = pair :: x.lm_monolithic_include}
-								) ~default:no_language_mapping lang mapping_options.mo_language_mappings}
+									if List.mem pair x.lm_monolithic_include then e else
+									Some {x with lm_monolithic_include = pair :: x.lm_monolithic_include}
+								) mapping_options.mo_language_mappings}
 							in
 							derived_types, info, alignment_stack, mapping_options
 						| `error ->

@@ -917,23 +917,21 @@ struct
 								new_item, xs
 							end
 						in
-						let inserting =
-							if StringMap.mem name predefined then (
-								let old_item = StringMap.find name predefined in
-								if define_item_eq new_item old_item then false else (
-									if not (is_known_error ps name `redefine_macro) then (
-										error old_item.df_position (vanished_macro name);
-										error ps (redefined_macro name)
-									);
-									true
-								)
-							) else (
-								true
-							)
-						in
 						let predefined =
-							if inserting then StringMap.add new_item.df_name new_item predefined else
-							predefined
+							StringMap.update new_item.df_name (fun e ->
+								begin match e with
+								| None ->
+									Some new_item
+								| Some old_item ->
+									if define_item_eq new_item old_item then e else (
+										if not (is_known_error ps name `redefine_macro) then (
+											error old_item.df_position (vanished_macro name);
+											error ps (redefined_macro name)
+										);
+										Some new_item
+									)
+								end
+							) predefined
 						in
 						process state predefined StringMap.empty xs
 					in

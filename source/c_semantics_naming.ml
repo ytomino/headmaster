@@ -87,61 +87,61 @@ struct
 					with
 					| Some (h, _, module1), Some (source_h, _, module2) ->
 						let source_items: source_item list = StringMap.find module2 items_pp in
-						let dest_items: source_item list =
-							Option.value ~default:[] (StringMap.find_opt module1 items_pp)
-						in
-						let added_dest_items =
-							List.fold_right (fun item (added_dest_items: source_item list) ->
-								begin match item with
-								| `named (_, _, `defined_alias _, _)
-								| `anonymous_alias _ ->
-									added_dest_items (* does not chain *)
-								| `named (_, name, _, _) as item ->
-									if
-										List.exists (fun (i: source_item) ->
-											begin match i with
-											| `named (_, n2, `defined_alias i2, _) ->
-												n2 = name && i2 == item
-											| _ ->
-												false
-											end
-										) added_dest_items
-									then added_dest_items else (
-										let alias =
-											let p = h, 0, 0, 0 in
-											let ps = p, p in
-											`named (ps, name, `defined_alias item, no_attributes)
-										in
-										alias :: added_dest_items
-									)
-								| `function_type _ as item ->
-									if
-										List.exists (fun (i: source_item) ->
-											begin match i with
-											| `anonymous_alias (_, i2) ->
-												i2 == item
-											| _ ->
-												false
-											end
-										) added_dest_items
-									then added_dest_items else (
-										let alias =
-											let source_p = source_h, 0, 0, 0 in
-											let source_ps = source_p, source_p in
-											`anonymous_alias (source_ps, item)
-										in
-										alias :: added_dest_items
-									)
-								| #anonymous_type | `include_point _ ->
-									added_dest_items
-								end
-							) source_items dest_items
-						in
-						if added_dest_items != dest_items then (
-							StringMap.add module1 added_dest_items items_pp
-						) else (
-							items_pp (* already included *)
-						)
+						StringMap.update module1 (fun e ->
+							let dest_items: source_item list = Option.value ~default:[] e in
+							let added_dest_items =
+								List.fold_right (fun item (added_dest_items: source_item list) ->
+									begin match item with
+									| `named (_, _, `defined_alias _, _)
+									| `anonymous_alias _ ->
+										added_dest_items (* does not chain *)
+									| `named (_, name, _, _) as item ->
+										if
+											List.exists (fun (i: source_item) ->
+												begin match i with
+												| `named (_, n2, `defined_alias i2, _) ->
+													n2 = name && i2 == item
+												| _ ->
+													false
+												end
+											) added_dest_items
+										then added_dest_items else (
+											let alias =
+												let p = h, 0, 0, 0 in
+												let ps = p, p in
+												`named (ps, name, `defined_alias item, no_attributes)
+											in
+											alias :: added_dest_items
+										)
+									| `function_type _ as item ->
+										if
+											List.exists (fun (i: source_item) ->
+												begin match i with
+												| `anonymous_alias (_, i2) ->
+													i2 == item
+												| _ ->
+													false
+												end
+											) added_dest_items
+										then added_dest_items else (
+											let alias =
+												let source_p = source_h, 0, 0, 0 in
+												let source_ps = source_p, source_p in
+												`anonymous_alias (source_ps, item)
+											in
+											alias :: added_dest_items
+										)
+									| #anonymous_type | `include_point _ ->
+										added_dest_items
+									end
+								) source_items dest_items
+							in
+							if added_dest_items != dest_items then (
+								Some added_dest_items
+							) else (
+								e (* already included *)
+							)
+						) items_pp
 					| _, _ ->
 						items_pp (* destination/source header was not found *)
 					end
@@ -155,33 +155,35 @@ struct
 			StringMap.fold (fun k (items, _) r ->
 				if items = [] then r else
 				let rel_filename, module_name = StringMap.find k filename_mapping in
-				begin match StringMap.find_opt rel_filename r with
-				| Some (_, items2) ->
-					(* same filenames are possible by #pragma include_next *)
-					let rec insert_loop_1 xs ys = (
-						begin match xs with
-						| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = rel_filename ->
-							List.rev_append ys (x :: List.append items2 xr) (* items would include_next items2 *)
-						| x :: xr ->
-							insert_loop_1 xr (x :: ys)
-						| [] ->
-							List.append items items2 (* the order is not clear *)
-						end
-					) and insert_loop_2 xs ys = (
-						begin match xs with
-						| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = rel_filename ->
-							List.rev_append ys (x :: List.append items xr) (* items2 would include_next items *)
-						| x :: xr ->
-							insert_loop_2 xr (x :: ys)
-						| [] ->
-							insert_loop_1 items [] (* items may include_next items2 *)
-						end
-					) in
-					let xs = insert_loop_2 items2 [] in
-					StringMap.add rel_filename (module_name, xs) r
-				| None ->
-					StringMap.add rel_filename (module_name, items) r
-				end
+				StringMap.update rel_filename (fun e ->
+					begin match e with
+					| Some (_, items2) ->
+						(* same filenames are possible by #pragma include_next *)
+						let rec insert_loop_1 xs ys = (
+							begin match xs with
+							| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = rel_filename ->
+								List.rev_append ys (x :: List.append items2 xr) (* items would include_next items2 *)
+							| x :: xr ->
+								insert_loop_1 xr (x :: ys)
+							| [] ->
+								List.append items items2 (* the order is not clear *)
+							end
+						) and insert_loop_2 xs ys = (
+							begin match xs with
+							| (`include_point h_filename as x) :: xr when fst (StringMap.find h_filename filename_mapping) = rel_filename ->
+								List.rev_append ys (x :: List.append items xr) (* items2 would include_next items *)
+							| x :: xr ->
+								insert_loop_2 xr (x :: ys)
+							| [] ->
+								insert_loop_1 items [] (* items may include_next items2 *)
+							end
+						) in
+						let xs = insert_loop_2 items2 [] in
+						Some (module_name, xs)
+					| None ->
+						Some (module_name, items)
+					end
+				) r
 			) sources StringMap.empty
 		in
 		(* #pragma for-monolithic_include inserting items to `include_point _ *)
@@ -213,13 +215,15 @@ struct
 		let result_per_module =
 			StringMap.fold (fun _ (module_name, items) result_per_module ->
 				assert (items <> []);
-				begin match StringMap.find_opt module_name result_per_module with
-				| Some xs ->
-					let xs = List.append items xs in
-					StringMap.add module_name xs result_per_module
-				| None ->
-					StringMap.add module_name items result_per_module
-				end
+				StringMap.update module_name (fun e ->
+					begin match e with
+					| Some xs ->
+						let xs = List.append items xs in
+						Some xs
+					| None ->
+						Some items
+					end
+				) result_per_module
 			) result_per_filename StringMap.empty
 		in
 		(* #pragma for-include making aliases *)
@@ -499,9 +503,17 @@ struct
 				) else (
 					let a_name = short_f name in
 					let (filename, _, _, _), _ = ps in
-					let rel_filename, mn, nmpm = StringMap.find filename name_mapping in
-					let nmpm = add `namespace name a_name nmpm in
-					let name_mapping = StringMap.add filename (rel_filename, mn, nmpm) name_mapping in
+					let name_mapping =
+						StringMap.update filename (fun e ->
+							begin match e with
+							| None ->
+								assert false
+							| Some (rel_filename, mn, nmpm) ->
+								let nmpm = add `namespace name a_name nmpm in
+								Some (rel_filename, mn, nmpm)
+							end
+						) name_mapping
+					in
 					loop (index + 1) xr name_mapping ((a_name, x) :: rs)
 				)
 			end
