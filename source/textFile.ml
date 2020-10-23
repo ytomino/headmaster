@@ -90,7 +90,7 @@ let length (s: t): int = (
 );;
 
 let get (s: t) (index: int): char = (
-	assert (index >= 0);
+	if index < 0 then invalid_arg "TextFile.get" else
 	if index >= s.tf_length then '\x1a' else
 	Bigarray.Array1.unsafe_get s.tf_contents index
 );;
@@ -131,21 +131,24 @@ open struct
 	);;
 
 	let seek (s: t) (to_index: int): unit = (
-		assert (to_index >= 0);
-		assert (to_index = s.tf_index || s.tf_random_access);
-		if to_index < max s.tf_index (List.hd s.tf_lines).li_index then (
-			let rec find (xs: line_info list) (to_index: int): line_info = (
-				let x = List.hd xs in
-				if to_index >= x.li_index then x else
-				find (List.tl xs) to_index
-			) in
-			let line = find s.tf_lines to_index in
-			s.tf_index <- line.li_index;
-			s.tf_line <- line.li_line;
-			s.tf_column <- 1;
-			s.tf_prev_index <- line.li_index - 1;
-			s.tf_prev_line <- line.li_line - 1;
-			s.tf_prev_column <- line.li_prev_column
+		if to_index < 0 then invalid_arg "TextFile.succ" else
+		if s.tf_random_access then (
+			if to_index < max s.tf_index (List.hd s.tf_lines).li_index then (
+				let rec find (xs: line_info list) (to_index: int): line_info = (
+					let x = List.hd xs in
+					if to_index >= x.li_index then x else
+					find (List.tl xs) to_index
+				) in
+				let line = find s.tf_lines to_index in
+				s.tf_index <- line.li_index;
+				s.tf_line <- line.li_line;
+				s.tf_column <- 1;
+				s.tf_prev_index <- line.li_index - 1;
+				s.tf_prev_line <- line.li_line - 1;
+				s.tf_prev_column <- line.li_prev_column
+			)
+		) else if to_index <> s.tf_index then (
+			failwith "TextFile.succ"
 		);
 		(* seek within the line or unscanned area *)
 		let rec loop (s: t) (to_index: int): unit = (
