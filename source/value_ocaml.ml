@@ -1,14 +1,16 @@
 (* open Value;; *)
 
-let rev_string s = (
-	let length = String.length s in
-	let r = Bytes.create length in
-	let h = length - 1 in
-	for i = 0 to h do
-		Bytes.set r i s.[h - i]
-	done;
-	Bytes.unsafe_to_string r
-);;
+open struct
+	let rev_string s = (
+		let length = String.length s in
+		let r = Bytes.create length in
+		let h = length - 1 in
+		for i = 0 to h do
+			Bytes.set r i s.[h - i]
+		done;
+		Bytes.unsafe_to_string r
+	);;
+end;;
 
 module Integer64 = struct
 	include Int64;;

@@ -3,9 +3,11 @@ open C_semantics;;
 open C_semantics_build_type;;
 open C_version;;
 
-let rec list_make n e =
-	if n = 0 then [] else
-	e :: list_make (n - 1) e
+open struct
+	let rec list_make n e =
+		if n = 0 then [] else
+		e :: list_make (n - 1) e
+end;;
 
 module type ExpressingType = sig
 	module Literals: LiteralsType

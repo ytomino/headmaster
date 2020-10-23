@@ -11,12 +11,14 @@ let big_string_of_string (s: string): big_string = (
 	result
 );;
 
-let line_compaction_width = 3;;
+open struct
+	let line_compaction_width = 3;;
 
-type line_info = {
-	li_index: int;
-	li_line: int;
-	li_prev_column: int};;
+	type line_info = {
+		li_index: int;
+		li_line: int;
+		li_prev_column: int};;
+end;;
 
 type t = {
 	tf_filename: string;
@@ -93,66 +95,68 @@ let get (s: t) (index: int): char = (
 	Bigarray.Array1.unsafe_get s.tf_contents index
 );;
 
-let internal_succ (s: t) (index: int): int = (
-	assert (index = s.tf_index);
-	let set_succ_line (s: t): unit = (
-		let next_line = s.tf_line + 1 in
-		if s.tf_random_access && (List.hd s.tf_lines).li_index + line_compaction_width < s.tf_index then (
-			s.tf_lines <- {li_index = s.tf_index; li_line = next_line; li_prev_column = s.tf_column} :: s.tf_lines
-		);
-		s.tf_line <- next_line;
-		s.tf_column <- 1
-	) in
-	(* save previous position *)
-	s.tf_prev_index <- s.tf_index;
-	s.tf_prev_line <- s.tf_line;
-	s.tf_prev_column <- s.tf_column;
-	(* next position *)
-	let next_index = index + 1 in
-	s.tf_index <- next_index;
-	begin match get s index with
-	| '\n' | '\x0c' ->
-		set_succ_line s
-	| '\r' ->
-		if get s next_index = '\n' then (
-			s.tf_column <- s.tf_column + 1
-		) else (
-			set_succ_line s
-		)
-	| '\t' ->
-		s.tf_column <- s.tf_column + (s.tf_tab_width - (s.tf_column - 1) mod s.tf_tab_width)
-	| _ ->
-		s.tf_column <- s.tf_column + 1
-	end;
-	next_index
-);;
-
-let seek (s: t) (to_index: int): unit = (
-	assert (to_index >= 0);
-	assert (to_index = s.tf_index || s.tf_random_access);
-	if to_index < max s.tf_index (List.hd s.tf_lines).li_index then (
-		let rec find (xs: line_info list) (to_index: int): line_info = (
-			let x = List.hd xs in
-			if to_index >= x.li_index then x else
-			find (List.tl xs) to_index
+open struct
+	let internal_succ (s: t) (index: int): int = (
+		assert (index = s.tf_index);
+		let set_succ_line (s: t): unit = (
+			let next_line = s.tf_line + 1 in
+			if s.tf_random_access && (List.hd s.tf_lines).li_index + line_compaction_width < s.tf_index then (
+				s.tf_lines <- {li_index = s.tf_index; li_line = next_line; li_prev_column = s.tf_column} :: s.tf_lines
+			);
+			s.tf_line <- next_line;
+			s.tf_column <- 1
 		) in
-		let line = find s.tf_lines to_index in
-		s.tf_index <- line.li_index;
-		s.tf_line <- line.li_line;
-		s.tf_column <- 1;
-		s.tf_prev_index <- line.li_index - 1;
-		s.tf_prev_line <- line.li_line - 1;
-		s.tf_prev_column <- line.li_prev_column
-	);
-	(* seek within the line or unscanned area *)
-	let rec loop (s: t) (to_index: int): unit = (
-		if to_index > s.tf_index then (
-			let (_: int) = internal_succ s s.tf_index in
-			loop s to_index
-		)
-	) in
-	loop s to_index
-);;
+		(* save previous position *)
+		s.tf_prev_index <- s.tf_index;
+		s.tf_prev_line <- s.tf_line;
+		s.tf_prev_column <- s.tf_column;
+		(* next position *)
+		let next_index = index + 1 in
+		s.tf_index <- next_index;
+		begin match get s index with
+		| '\n' | '\x0c' ->
+			set_succ_line s
+		| '\r' ->
+			if get s next_index = '\n' then (
+				s.tf_column <- s.tf_column + 1
+			) else (
+				set_succ_line s
+			)
+		| '\t' ->
+			s.tf_column <- s.tf_column + (s.tf_tab_width - (s.tf_column - 1) mod s.tf_tab_width)
+		| _ ->
+			s.tf_column <- s.tf_column + 1
+		end;
+		next_index
+	);;
+
+	let seek (s: t) (to_index: int): unit = (
+		assert (to_index >= 0);
+		assert (to_index = s.tf_index || s.tf_random_access);
+		if to_index < max s.tf_index (List.hd s.tf_lines).li_index then (
+			let rec find (xs: line_info list) (to_index: int): line_info = (
+				let x = List.hd xs in
+				if to_index >= x.li_index then x else
+				find (List.tl xs) to_index
+			) in
+			let line = find s.tf_lines to_index in
+			s.tf_index <- line.li_index;
+			s.tf_line <- line.li_line;
+			s.tf_column <- 1;
+			s.tf_prev_index <- line.li_index - 1;
+			s.tf_prev_line <- line.li_line - 1;
+			s.tf_prev_column <- line.li_prev_column
+		);
+		(* seek within the line or unscanned area *)
+		let rec loop (s: t) (to_index: int): unit = (
+			if to_index > s.tf_index then (
+				let (_: int) = internal_succ s s.tf_index in
+				loop s to_index
+			)
+		) in
+		loop s to_index
+	);;
+end;;
 
 let position (s: t) (index: int): position = (
 	if index <> s.tf_index then seek s index;

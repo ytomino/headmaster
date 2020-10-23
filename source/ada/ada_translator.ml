@@ -8,23 +8,25 @@ open C_semantics_finding;;
 open C_semantics_naming;;
 open Position;;
 
-let set_of_fst (xs: (string * 'a) list): StringSet.t = (
-	List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase_ascii x) r)
-		StringSet.empty xs
-);;
-
-let string_of_pp (pp: Format.formatter -> 'a -> unit) (v: 'a): string = (
-	let b = Buffer.create 256 in
-	let f = Format.formatter_of_buffer b in
-	pp f v;
-	Format.pp_print_flush f ();
-	Buffer.contents b
-);;
-
-let omit_long_word max_length s = (
-	if String.length s <= max_length then s else
-	String.sub s 0 (max_length - 3) ^ "..."
-);;
+open struct
+	let set_of_fst (xs: (string * 'a) list): StringSet.t = (
+		List.fold_left (fun r (x, _) -> StringSet.add (String.uppercase_ascii x) r)
+			StringSet.empty xs
+	);;
+	
+	let string_of_pp (pp: Format.formatter -> 'a -> unit) (v: 'a): string = (
+		let b = Buffer.create 256 in
+		let f = Format.formatter_of_buffer b in
+		pp f v;
+		Format.pp_print_flush f ();
+		Buffer.contents b
+	);;
+	
+	let omit_long_word max_length s = (
+		if String.length s <= max_length then s else
+		String.sub s 0 (max_length - 3) ^ "..."
+	);;
+end;;
 
 module AdaTranslator
 	(Literals: LiteralsType)

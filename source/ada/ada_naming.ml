@@ -3,12 +3,14 @@ open C_literals;;
 open C_semantics;;
 open C_semantics_naming;;
 
-let make_mapmap (list: (string * (string * string) list) list): string StringMap.t StringMap.t = (
-	List.fold_left (fun map (filename, xs) ->
-		let set = List.fold_left (fun rs (k, v)-> StringMap.add k v rs) StringMap.empty xs in
-		StringMap.add filename set map
-	) StringMap.empty list
-);;
+open struct
+	let make_mapmap (list: (string * (string * string) list) list): string StringMap.t StringMap.t = (
+		List.fold_left (fun map (filename, xs) ->
+			let set = List.fold_left (fun rs (k, v)-> StringMap.add k v rs) StringMap.empty xs in
+			StringMap.add filename set map
+		) StringMap.empty list
+	);;
+end;;
 
 (* special mappings *)
 

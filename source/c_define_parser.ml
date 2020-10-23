@@ -6,23 +6,25 @@ open C_syntax;;
 open C_version;;
 open Position;;
 
-let list_combination
-	(f: ('b -> 'b) -> ('a * bool) list -> 'b -> 'b)
-	(xs: 'a list)
-	(last: 'b -> 'b)
-	(start: 'b)
-	: 'b =
-(
-	let rec loop xs (cont: 'b -> 'b) ys r = (
-		begin match xs with
-		| [] ->
-			f cont (List.rev ys) r
-		| x :: xr ->
-			loop xr (loop xr cont ((x, true) :: ys)) ((x, false) :: ys) r
-		end
-	) in
-	loop xs last [] start
-);;
+open struct
+	let list_combination
+		(f: ('b -> 'b) -> ('a * bool) list -> 'b -> 'b)
+		(xs: 'a list)
+		(last: 'b -> 'b)
+		(start: 'b)
+		: 'b =
+	(
+		let rec loop xs (cont: 'b -> 'b) ys r = (
+			begin match xs with
+			| [] ->
+				f cont (List.rev ys) r
+			| x :: xr ->
+				loop xr (loop xr cont ((x, true) :: ys)) ((x, false) :: ys) r
+			end
+		) in
+		loop xs last [] start
+	);;
+end;;
 
 type known_errors_of_define_parser = [known_errors_of_preprocessor
 	| `unparsible_macro];;

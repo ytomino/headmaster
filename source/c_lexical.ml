@@ -1,17 +1,19 @@
 open C_literals;;
 open C_version;;
 
-let snd_of_fst_table list = (
-	let table = Hashtbl.create (List.length list) in
-	List.iter (fun (s, w) -> Hashtbl.add table s w) list;
-	table
-);;
-
-let fst_of_snd_table list = (
-	let table = Hashtbl.create (List.length list) in
-	List.iter (fun (s, w) -> Hashtbl.add table w s) list;
-	table
-);;
+open struct
+	let snd_of_fst_table list = (
+		let table = Hashtbl.create (List.length list) in
+		List.iter (fun (s, w) -> Hashtbl.add table s w) list;
+		table
+	);;
+	
+	let fst_of_snd_table list = (
+		let table = Hashtbl.create (List.length list) in
+		List.iter (fun (s, w) -> Hashtbl.add table w s) list;
+		table
+	);;
+end;;
 
 (* c *)
 

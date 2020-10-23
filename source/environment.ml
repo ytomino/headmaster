@@ -42,112 +42,114 @@ type environment = {
 	en_isystem: string list;
 	en_gnu_inline: bool};;
 
-let is_dir_sep c = c = '/' || c = '\\';;
+open struct
+	let is_dir_sep c = c = '/' || c = '\\';;
 
-let last_dir_sep_index (filename: string): int = (
-	let rec last_dir_sep i = (
-		if i < 0 || is_dir_sep filename.[i] then i else last_dir_sep (i - 1)
-	) in
-	last_dir_sep (String.length filename - 1)
-);;
+	let last_dir_sep_index (filename: string): int = (
+		let rec last_dir_sep i = (
+			if i < 0 || is_dir_sep filename.[i] then i else last_dir_sep (i - 1)
+		) in
+		last_dir_sep (String.length filename - 1)
+	);;
 
-let include_dir_sep_index (env: environment) (filename: string): int = (
-	let fn_length = String.length filename in
-	let rec loop (r: int) (xs: string list): int = (
-		begin match xs with
-		| x :: xr ->
-			let x_length = String.length x in
-			let sep_index =
-				if is_dir_sep x.[x_length - 1] then x_length - 1 else x_length
-			in
-			if sep_index < fn_length then (
-				if String.sub filename 0 x_length = x && is_dir_sep filename.[sep_index] then (
-					loop (max r sep_index) xr
+	let include_dir_sep_index (env: environment) (filename: string): int = (
+		let fn_length = String.length filename in
+		let rec loop (r: int) (xs: string list): int = (
+			begin match xs with
+			| x :: xr ->
+				let x_length = String.length x in
+				let sep_index =
+					if is_dir_sep x.[x_length - 1] then x_length - 1 else x_length
+				in
+				if sep_index < fn_length then (
+					if String.sub filename 0 x_length = x && is_dir_sep filename.[sep_index] then (
+						loop (max r sep_index) xr
+					) else (
+						loop r xr
+					)
 				) else (
 					loop r xr
 				)
-			) else (
-				loop r xr
-			)
-		| [] ->
-			r
-		end
-	) in
-	let r = loop (-1) env.en_iquote in
-	let r = loop r env.en_include in
-	let r = loop r env.en_isystem in
-	if r < 0 then (
-		(* specified in command line *)
-		last_dir_sep_index filename
-	) else (
-		r
-	)
-);;
-
-let find_include
-	(env: environment)
-	~(quote: bool)
-	~(current: string)
-	?(next: bool = false)
-	(name: string)
-	: string option =
-(
-	let rec find_loop (xs: string list): string option = (
-		begin match xs with
-		| x :: xr ->
-			let p = Filename.concat x name in
-			if Sys.file_exists p then Some p else
-			find_loop xr
-		| [] ->
-			None
-		end
-	) in
-	let current_dir =
-		let sep_index = include_dir_sep_index env current in
-		if sep_index < 0 then "." else String.sub current 0 sep_index
-	in
-	let next_filter (xs: string list): string list = (
-		if next then (
-			let rec loop xs = (
-				begin match xs with
-				| x :: xr ->
-					if x = current_dir then xr else
-					loop xr
-				| [] ->
-					[]
-				end
-			) in
-			loop xs
-		) else (
-			xs
-		)
-	) in
-	begin match
-		if quote then (
-			begin match find_loop (next_filter env.en_iquote) with
-			| Some _ as result ->
-				result
-			| None ->
-				if next then None else
-				let current_dir =
-					let sep_index = last_dir_sep_index current in
-					if sep_index < 0 then current_dir else String.sub current 0 sep_index
-				in
-				find_loop (current_dir :: [])
+			| [] ->
+				r
 			end
-		) else None
-	with
-	| Some _ as result ->
-		result
-	| None ->
-		begin match find_loop (next_filter env.en_include) with
+		) in
+		let r = loop (-1) env.en_iquote in
+		let r = loop r env.en_include in
+		let r = loop r env.en_isystem in
+		if r < 0 then (
+			(* specified in command line *)
+			last_dir_sep_index filename
+		) else (
+			r
+		)
+	);;
+
+	let find_include
+		(env: environment)
+		~(quote: bool)
+		~(current: string)
+		?(next: bool = false)
+		(name: string)
+		: string option =
+	(
+		let rec find_loop (xs: string list): string option = (
+			begin match xs with
+			| x :: xr ->
+				let p = Filename.concat x name in
+				if Sys.file_exists p then Some p else
+				find_loop xr
+			| [] ->
+				None
+			end
+		) in
+		let current_dir =
+			let sep_index = include_dir_sep_index env current in
+			if sep_index < 0 then "." else String.sub current 0 sep_index
+		in
+		let next_filter (xs: string list): string list = (
+			if next then (
+				let rec loop xs = (
+					begin match xs with
+					| x :: xr ->
+						if x = current_dir then xr else
+						loop xr
+					| [] ->
+						[]
+					end
+				) in
+				loop xs
+			) else (
+				xs
+			)
+		) in
+		begin match
+			if quote then (
+				begin match find_loop (next_filter env.en_iquote) with
+				| Some _ as result ->
+					result
+				| None ->
+					if next then None else
+					let current_dir =
+						let sep_index = last_dir_sep_index current in
+						if sep_index < 0 then current_dir else String.sub current 0 sep_index
+					in
+					find_loop (current_dir :: [])
+				end
+			) else None
+		with
 		| Some _ as result ->
 			result
 		| None ->
-			find_loop (next_filter env.en_isystem)
+			begin match find_loop (next_filter env.en_include) with
+			| Some _ as result ->
+				result
+			| None ->
+				find_loop (next_filter env.en_isystem)
+			end
 		end
-	end
-);;
+	);;
+end;;
 
 let make_include
 	(f: string -> 'a -> 'b)
