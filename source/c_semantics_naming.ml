@@ -391,8 +391,9 @@ struct
 						prefix_for_esu s kind
 					in
 					let u = foldcase s_name in
-					if StringMap.mem u rev then (
-						begin match StringMap.find u rev with
+					begin match StringMap.find_opt u rev with
+					| Some e ->
+						begin match e with
 						| `origin | `duplicated ->
 							pair
 						| `short (before_name, before_kind) ->
@@ -416,13 +417,15 @@ struct
 								result, rev
 							)
 						end
-					) else if is_hidden_per_module item result then (
-						pair (* to use long name for macro *)
-					) else (
-						let result = add kind name s_name result in
-						let rev = StringMap.add u (`short (name, kind)) rev in
-						result, rev
-					)
+					| None ->
+						if is_hidden_per_module item result then (
+							pair (* to use long name for macro *)
+						) else (
+							let result = add kind name s_name result in
+							let rev = StringMap.add u (`short (name, kind)) rev in
+							result, rev
+						)
+					end
 				end
 			) pair items
 		in

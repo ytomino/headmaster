@@ -171,13 +171,15 @@ struct
 	(* define op *)
 	
 	let is_inline_version (namespace: namespace) (name: string) (define: define p): bool = (
-		StringMap.mem name namespace.ns_namespace && (
-			let _, def_e = define in
-			begin match def_e with
-			| `function_expr (m_args, m_varargs, _)
-			| `function_stmt (m_args, m_varargs, _)
-				when List.for_all (fun (_, k) -> k = `value) m_args ->
-				let existed = StringMap.find name namespace.ns_namespace in
+		let _, def_e = define in
+		begin match def_e with
+		| `function_expr (m_args, m_varargs, _)
+		| `function_stmt (m_args, m_varargs, _)
+			when List.for_all (fun (_, k) -> k = `value) m_args ->
+			begin match StringMap.find_opt name namespace.ns_namespace with
+			| None ->
+				false
+			| Some existed ->
 				begin match existed with
 				| `named (_, _, `function_forward (_, t), _)
 				| `named (_, _, `function_definition (_, t, _), _)
@@ -187,11 +189,11 @@ struct
 				| _ ->
 					false
 				end
-			| `any _ (* if a duplicated item is `any _, it will be ignored. *)
-			| _ ->
-				false
 			end
-		)
+		| `any _ (* if a duplicated item is `any _, it will be ignored. *)
+		| _ ->
+			false
+		end
 	);;
 	
 	(* define analyzer *)

@@ -785,11 +785,15 @@ struct
 					let ys = lazy (process (expanding_level state) removed StringMap.empty item.df_contents) in
 					begin match ys with
 					| lazy (`cons (_, `ident replaced, lazy (`nil _)))
-						when StringMap.mem replaced removed
-							&& (StringMap.find replaced removed).df_has_arguments && (
-								match xs with
-								| lazy (`cons (_, `l_paren, _)) -> true
-								| _ -> false) ->
+						when (
+							match StringMap.find_opt replaced removed with
+							| None ->
+								false
+							| Some e ->
+								e.df_has_arguments && (
+									match xs with
+									| lazy (`cons (_, `l_paren, _)) -> true
+									| _ -> false)) ->
 						(* re-expanding function-macro with following arguments *)
 						(* replace position-info to current *)
 						let ys = lazy (LazyList.map_a (fun _ -> ps) ys) in
@@ -1302,8 +1306,10 @@ struct
 							| lazy (`cons (_, (`ident replaced), lazy (`nil _))) ->
 								begin match xs with
 								| lazy (`cons (_, `l_paren, _))
-									when StringMap.mem replaced predefined
-										&& (StringMap.find replaced predefined).df_has_arguments ->
+									when (
+										match StringMap.find_opt replaced predefined with
+										| None -> false
+										| Some e -> e.df_has_arguments) ->
 									true
 								| _ ->
 									false
