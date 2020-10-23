@@ -1128,6 +1128,16 @@ struct
 					let r_paren, xs = parse_r_paren_or_error error xs in
 					let `some (ps, ()) = (`some left) & (`some l_paren) &^ args &^ r_paren in
 					let item =
+						let builtin_compare (fn: ranged_position * builtin_comparator) = (
+							begin match args with
+							| `some (_, `cons ((left_p, `nil left_e), comma, right)) ->
+								let left = `some (left_p, left_e) in
+								`__builtin_compare (fn, `some l_paren, left, `some comma, right, r_paren)
+							| _ ->
+								error (LazyList.hd_a xs) "arguments mismatch for builtin comparator.";
+								`__builtin_compare (fn, `error, `error, `error, `error, `error)
+							end
+						) in
 						begin match left with
 						| fn_p, `ident "__builtin_constant_p" ->
 							let fn = fn_p, `__builtin_constant_p in
@@ -1159,32 +1169,18 @@ struct
 								error (LazyList.hd_a xs) "arguments mismatch for __builtin_object_size.";
 								`__builtin_object_size (fn, `error, `error, `error, `error, `error)
 							end
-						| fn_p, `ident (
-							"__builtin_isgreater"
-							| "__builtin_isgreaterequal"
-							| "__builtin_isless"
-							| "__builtin_islessequal"
-							| "__builtin_islessgreater"
-							| "__builtin_isunordered" as funcname) ->
-							let builtin: builtin_comparator =
-								match funcname with
-								| "__builtin_isgreater" -> `__builtin_isgreater
-								| "__builtin_isgreaterequal" -> `__builtin_isgreaterequal
-								| "__builtin_isless" -> `__builtin_isless
-								| "__builtin_islessequal" -> `__builtin_islessequal
-								| "__builtin_islessgreater" -> `__builtin_islessgreater
-								| "__builtin_isunordered" -> `__builtin_isunordered
-								| _ -> assert false
-							in
-							let fn = fn_p, builtin in
-							begin match args with
-							| `some (_, `cons ((left_p, `nil left_e), comma, right)) ->
-								let left = `some (left_p, left_e) in
-								`__builtin_compare (fn, `some l_paren, left, `some comma, right, r_paren)
-							| _ ->
-								error (LazyList.hd_a xs) "arguments mismatch for builtin comparator.";
-								`__builtin_compare (fn, `error, `error, `error, `error, `error)
-							end
+						| fn_p, `ident "__builtin_isgreater" ->
+							builtin_compare (fn_p, `__builtin_isgreater)
+						| fn_p, `ident "__builtin_isgreaterequal" ->
+							builtin_compare (fn_p, `__builtin_isgreaterequal)
+						| fn_p, `ident "__builtin_isless" ->
+							builtin_compare (fn_p, `__builtin_isless)
+						| fn_p, `ident "__builtin_islessequal" ->
+							builtin_compare (fn_p, `__builtin_islessequal)
+						| fn_p, `ident "__builtin_islessgreater" ->
+							builtin_compare (fn_p, `__builtin_islessgreater)
+						| fn_p, `ident "__builtin_isunordered" ->
+							builtin_compare (fn_p, `__builtin_isunordered)
 						| _ ->
 							`function_call (left, l_paren, args, r_paren)
 						end
