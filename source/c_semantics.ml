@@ -5,14 +5,8 @@ open Position;;
 module StringMap = struct
 	include StringMap;;
 	
-	let find_or ~(default: 'a) (key: string) (m: 'a t): 'a = (
-		match find_opt key m with
-		| Some value -> value
-		| None -> default
-	);;
-	
 	let modify (f: 'a -> 'a) ~(default: 'a) (key: string) (m: 'a t): 'a t = (
-		add key (f (find_or ~default key m)) m
+		add key (f (Option.value ~default (find_opt key m))) m
 	);;
 	
 end;;
@@ -1124,7 +1118,8 @@ struct
 		mo_language_mappings = StringMap.empty};;
 	
 	let find_langauge_mapping (lang: string) (x: mapping_options): language_mapping = (
-		StringMap.find_or ~default:no_language_mapping lang x.mo_language_mappings
+		Option.value ~default:no_language_mapping
+			(StringMap.find_opt lang x.mo_language_mappings)
 	);;
 	
 	let finds_mapped_type

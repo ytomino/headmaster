@@ -260,11 +260,7 @@ flush stdout;;
 
 let prefix, arguments =
 	let length = String.length !gcc_command in
-	let index =
-		match String.index_opt !gcc_command ' ' with
-		| Some index -> index
-		| None -> length
-	in
+	let index = Option.value ~default:length (String.index_opt !gcc_command ' ') in
 	let prefix = String.sub !gcc_command 0 (index - 3) in
 	let arguments = String.sub !gcc_command index (length - index) in
 	prefix, arguments

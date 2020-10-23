@@ -430,7 +430,9 @@ struct
 						end
 					| _ ->
 						let required_type =
-							begin match StringMap.find_or ~default:[] name mapping_options.mo_instances with
+							begin match Option.value ~default:[]
+								(StringMap.find_opt name mapping_options.mo_instances)
+							with
 							| t :: [] ->
 								(t :> [all_type | `uninterpretable])
 							| _ as ts -> (* ts = [] when not found *)
@@ -574,7 +576,8 @@ struct
 		StringMap.fold (fun name define (derived_types, sources) ->
 			let (((current_filename, _, _, _), _), _) = define in
 			let current_source, current_info =
-				StringMap.find_or ~default:empty_source current_filename sources
+				Option.value ~default:empty_source
+					(StringMap.find_opt current_filename sources)
 			in
 			let derived_types, current_source = handle_define
 				error

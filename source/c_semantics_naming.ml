@@ -88,7 +88,7 @@ struct
 					| Some (h, _, module1), Some (source_h, _, module2) ->
 						let source_items: source_item list = StringMap.find module2 items_pp in
 						let dest_items: source_item list =
-							StringMap.find_or ~default:[] module1 items_pp
+							Option.value ~default:[] (StringMap.find_opt module1 items_pp)
 						in
 						let added_dest_items =
 							List.fold_right (fun item (added_dest_items: source_item list) ->
@@ -462,9 +462,8 @@ struct
 		let name_mapping_per_module =
 			StringMap.mapi (fun module_name items ->
 				let special_map =
-					match StringMap.find_opt module_name special_name_mapping with
-					| Some sn_item -> sn_item
-					| None -> StringMap.empty
+					Option.value ~default:StringMap.empty
+						(StringMap.find_opt module_name special_name_mapping)
 				in
 				name_mapping_per_module ~long_f ~short_f ~foldcase special_map opaque_mapping items
 			) items_per_module
@@ -472,9 +471,8 @@ struct
 		StringMap.mapi (fun k _ ->
 			let rel_filename, module_name = StringMap.find k filename_mapping in
 			let name_mapping_per_module =
-				match StringMap.find_opt module_name name_mapping_per_module with
-				| Some nm_item -> nm_item
-				| None -> empty_name_mapping_per_module
+				Option.value ~default:empty_name_mapping_per_module
+					(StringMap.find_opt module_name name_mapping_per_module)
 			in
 			rel_filename, module_name, name_mapping_per_module
 		) filename_mapping

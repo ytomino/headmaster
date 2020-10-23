@@ -3247,7 +3247,10 @@ struct
 		: derived_types * namespace * (source_item list * extra_info) StringMap.t * alignment list * mapping_options =
 	(
 		let in_f (included: string list) (current_filename: string) (derived_types, namespace, sources, alignment_stack, mapping_options) = (
-			let current_source, current_info = StringMap.find_or ~default:empty_source current_filename sources in
+			let current_source, current_info =
+				Option.value ~default:empty_source
+					(StringMap.find_opt current_filename sources)
+			in
 			let current_source =
 				List.fold_left (fun current_source h -> `include_point h :: current_source) current_source included
 			in
