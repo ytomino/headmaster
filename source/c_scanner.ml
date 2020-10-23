@@ -586,7 +586,7 @@ struct
 					if first_of_line then (
 						let index = TextFile.succ_while Triming.is_space source index in
 						Buffer.reset buf;
-						let index = TextFile.succ_while_to_buffer is_tailing buf source index in
+						let index = TextFile.succ_while_to_buffer buf is_tailing source index in
 						let d = Buffer.contents buf in
 						if d = "" then (
 							`cons ((p1, p1), `sharp, lazy (process state index))
@@ -607,7 +607,7 @@ struct
 								| `sharp_WARNING | `sharp_ERROR ->
 									let p3 = TextFile.position source index in
 									Buffer.reset buf;
-									let index = TextFile.succ_until_eol_to_buffer is_lineescape buf source index in
+									let index = TextFile.succ_until_eol_to_buffer buf is_lineescape source index in
 									let message = Buffer.contents buf in
 									let message = Triming.trim Triming.is_space message in
 									let p4 = TextFile.prev_position source index in
@@ -683,7 +683,7 @@ struct
 				let state = nx state in
 				let p1 = TextFile.position source index in
 				Buffer.reset buf;
-				let index = TextFile.succ_while_to_buffer is_tailing buf source index in
+				let index = TextFile.succ_while_to_buffer buf is_tailing source index in
 				let s = Buffer.contents buf in
 				let is_L = s = "L" in
 				if is_L && TextFile.get source index = '\'' then (
@@ -754,7 +754,7 @@ struct
 					`cons ((p1, p2), `objc_string_literal s, lazy (process state index))
 				| 'A'..'Z' | 'a'..'z' | '_' ->
 					Buffer.reset buf;
-					let index = TextFile.succ_while_to_buffer is_tailing buf source index in
+					let index = TextFile.succ_while_to_buffer buf is_tailing source index in
 					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
 					begin match objcdirective_of_string s with
