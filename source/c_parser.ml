@@ -2115,10 +2115,9 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let (ps, spec), xs = parse_enum_specifier error typedefs xs in
 			(ps, `enum_specifier spec), xs
-		| lazy (`cons (td_p, (`ident n as td_e), xs)) when TypedefSet.mem n typedefs ->
+		| lazy (`cons (td_p, (`ident n as td_e), xs)) ->
+			if not (TypedefSet.mem n typedefs) then failwith "parse_type_specifier" else
 			(td_p, `typedef_name td_e), xs
-		| lazy (`cons (_, `ident _, _)) ->
-			failwith "parse_type_specifier"
 		end
 	) and parse_struct_or_union_specifier
 		(error: ranged_position -> string -> unit)
@@ -2284,16 +2283,16 @@ struct
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
-			let xs = lazy (`cons (a, it, xr)) in
-			handle_type_specifier xs
 		| lazy (`cons (q_p, (#FirstSet.type_qualifier as q_e), xs)) ->
 			let q = q_p, q_e in
 			let next, xs = parse_specifier_qualifier_list_option ~has_type error typedefs xs in
 			let `some (ps, ()) = (`some q) &^ next in
 			(ps, `type_qualifier (q, next)), xs
-		| lazy (`cons (_, `ident _, _)) ->
-			failwith "parse_specifier_qualifier_list"
+		| lazy (`cons (a, (`ident name as it), xr)) ->
+			if has_type || not (TypedefSet.mem name typedefs)
+			then failwith "parse_specifier_qualifier_list" else
+			let xs = lazy (`cons (a, it, xr)) in
+			handle_type_specifier xs
 		end
 	) and parse_specifier_qualifier_list_option
 		?(has_type: bool = false)
@@ -2525,7 +2524,7 @@ struct
 			let `some (ps, ()) = (`some dd) &^ attrs in
 			(ps, (`none, `some dd, attrs)), xs
 		| lazy (`cons (a, (`chars_literal _ as it), xr)) ->
-			assert use_string;
+			if not use_string then failwith "parse_declarator" else
 			let xs = lazy (`cons (a, it, xr)) in
 			let dd, xs = parse_direct_declarator ~use_string error typedefs xs in
 			let attrs, xs = parse_attribute_list_option error typedefs xs in
@@ -2616,9 +2615,6 @@ struct
 		begin match xs with
 		| lazy (`cons (id_p, (#FirstSet.identifier as id_e), xs)) ->
 			loop (id_p, id_e) xs
-		| lazy (`cons (id_p, (`chars_literal ident), xs)) ->
-			assert use_string;
-			loop (id_p, `ident ident) xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
 			let l_paren = lp_p, lp_e in
 			let attrs, xs = parse_attribute_list_option error typedefs xs in
@@ -2626,6 +2622,9 @@ struct
 			let r_paren, xs = parse_r_paren_or_error error xs in
 			let `some (ps, ()) = (`some l_paren) &^ attrs &^ d &^ r_paren in
 			loop (ps, `paren (l_paren, attrs, d, r_paren)) xs
+		| lazy (`cons (id_p, (`chars_literal ident), xs)) ->
+			if not use_string then failwith "parse_direct_declarator" else
+			loop (id_p, `ident ident) xs
 		end
 	) and parse_direct_declarator_or_error
 		?(use_string = false)
