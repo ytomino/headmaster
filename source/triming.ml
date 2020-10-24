@@ -3,8 +3,8 @@ let rec trim_left
 	(f: char -> bool)
 	(s: string) (start: int) (next: int): 'a =
 (
-	if start < next && f s.[start] then trim_left sub f s (start + 1) next else
-	sub s start (next - start)
+	if start >= next || not (f s.[start]) then sub s start (next - start) else
+	trim_left sub f s (start + 1) next
 );;
 
 let rec trim_right
@@ -13,8 +13,8 @@ let rec trim_right
 	(s: string) (start: int) (next: int): 'a =
 (
 	let p_next = next - 1 in
-	if start < next && f s.[p_next] then trim_right sub f s start p_next else
-	sub s start (next - start)
+	if start >= next || not (f s.[p_next]) then sub s start (next - start) else
+	trim_right sub f s start p_next
 );;
 
 let trim

@@ -202,12 +202,10 @@ let make_succ_while (type a) (add: a -> char -> unit) (a: a) (f: char -> bool)
 	if index <> s.tf_index then seek s index;
 	let rec internal_succ_while add a f s index = (
 		let c = get s index in
-		if f c then (
+		if not (f c) then index else (
 			add a c;
 			let index = internal_succ s index in
 			internal_succ_while add a f s index
-		) else (
-			index
 		)
 	) in
 	internal_succ_while add a f s index

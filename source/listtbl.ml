@@ -40,14 +40,14 @@ let unionq (xs: 'a list) (ys: 'a list): 'a list = (
 let removeq (a: 'a) (xs: 'a list): 'a list = (
 	let rec loop a ys xs orig_xs = (
 		begin match xs with
+		| [] ->
+			orig_xs
 		| x :: xr ->
 			if x == a then (
 				List.rev_append ys xr
 			) else (
 				loop a (x :: ys) xr orig_xs
 			)
-		| [] ->
-			orig_xs
 		end
 	) in
 	loop a [] xs xs

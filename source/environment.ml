@@ -56,6 +56,8 @@ open struct
 		let fn_length = String.length filename in
 		let rec loop (r: int) (xs: string list): int = (
 			begin match xs with
+			| [] ->
+				r
 			| x :: xr ->
 				let x_length = String.length x in
 				let sep_index =
@@ -70,8 +72,6 @@ open struct
 				) else (
 					loop r xr
 				)
-			| [] ->
-				r
 			end
 		) in
 		let r = loop (-1) env.en_iquote in
@@ -95,12 +95,12 @@ open struct
 	(
 		let rec find_loop (xs: string list): string option = (
 			begin match xs with
+			| [] ->
+				None
 			| x :: xr ->
 				let p = Filename.concat x name in
 				if Sys.file_exists p then Some p else
 				find_loop xr
-			| [] ->
-				None
 			end
 		) in
 		let current_dir =
@@ -111,11 +111,11 @@ open struct
 			if next then (
 				let rec loop xs = (
 					begin match xs with
+					| [] ->
+						[]
 					| x :: xr ->
 						if x = current_dir then xr else
 						loop xr
-					| [] ->
-						[]
 					end
 				) in
 				loop xs
