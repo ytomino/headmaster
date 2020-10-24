@@ -192,40 +192,35 @@ let succ_eol (s: t) (index: int): int = (
 	end
 );;
 
-let succ_while (f: char -> bool) (s: t) (index: int): int = (
-	if index <> s.tf_index then seek s index;
-	let rec internal_succ_while f s index = (
-		let c = get s index in
-		if f c then (
-			let index = internal_succ s index in
-			internal_succ_while f s index
-		) else (
-			index
-		)
-	) in
-	internal_succ_while f s index
-);;
+open struct
+	let add_nothing _ (_: char) = ();;
+end;;
 
-let succ_while_to_buffer (buf: Buffer.t) (f: char -> bool) (s: t) (index: int)
-	: int =
+let make_succ_while (type a) (add: a -> char -> unit) (a: a) (f: char -> bool)
+	(s: t) (index: int): int =
 (
 	if index <> s.tf_index then seek s index;
-	let rec internal_succ_while_to_buffer buf f s index = (
+	let rec internal_succ_while add a f s index = (
 		let c = get s index in
 		if f c then (
-			Buffer.add_char buf c;
+			add a c;
 			let index = internal_succ s index in
-			internal_succ_while_to_buffer buf f s index
+			internal_succ_while add a f s index
 		) else (
 			index
 		)
 	) in
-	internal_succ_while_to_buffer buf f s index
+	internal_succ_while add a f s index
 );;
 
-let succ_until_eol (is_escape: char -> bool) (s: t) (index: int): int = (
+let succ_while = make_succ_while add_nothing ();;
+let succ_while_to_buffer = make_succ_while Buffer.add_char;;
+
+let make_succ_until_eol (type a) (add: a -> char -> unit) (a: a)
+	(is_escape: char -> bool) (s: t) (index: int): int =
+(
 	if index <> s.tf_index then seek s index;
-	let rec internal_succ_until_eol is_escape s index = (
+	let rec internal_succ_until_eol add a is_escape s index = (
 		begin match get s index with
 		| '\n' | '\r' | '\x0c' | '\x1a' ->
 			index
@@ -234,41 +229,19 @@ let succ_until_eol (is_escape: char -> bool) (s: t) (index: int): int = (
 			begin match get s index with
 			| '\n' | '\r' | '\x0c' ->
 				let index = succ_eol s index in
-				internal_succ_until_eol is_escape s index
+				internal_succ_until_eol add a is_escape s index
 			| _ ->
-				internal_succ_until_eol is_escape s index
-			end
-		| _ ->
-			let index = internal_succ s index in
-			internal_succ_until_eol is_escape s index
-		end
-	) in
-	internal_succ_until_eol is_escape s index
-);;
-
-let succ_until_eol_to_buffer (buf: Buffer.t) (is_escape: char -> bool) (s: t)
-	(index: int): int =
-(
-	if index <> s.tf_index then seek s index;
-	let rec internal_succ_until_eol_to_buffer buf is_escape s index = (
-		begin match get s index with
-		| '\n' | '\r' | '\x0c' | '\x1a' ->
-			index
-		| _ as c when is_escape c ->
-			let index = internal_succ s index in
-			begin match get s index with
-			| '\n' | '\r' | '\x0c' ->
-				let index = succ_eol s index in
-				internal_succ_until_eol_to_buffer buf is_escape s index
-			| _ ->
-				Buffer.add_char buf c;
-				internal_succ_until_eol_to_buffer buf is_escape s index
+				add a c;
+				internal_succ_until_eol add a is_escape s index
 			end
 		| _ as c ->
-			Buffer.add_char buf c;
+			add a c;
 			let index = internal_succ s index in
-			internal_succ_until_eol_to_buffer buf is_escape s index
+			internal_succ_until_eol add a is_escape s index
 		end
 	) in
-	internal_succ_until_eol_to_buffer buf is_escape s index
+	internal_succ_until_eol add a is_escape s index
 );;
+
+let succ_until_eol = make_succ_until_eol add_nothing ();;
+let succ_until_eol_to_buffer = make_succ_until_eol Buffer.add_char;;
