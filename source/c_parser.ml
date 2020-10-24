@@ -3404,10 +3404,9 @@ struct
 				handle_external_declaration xs
 			| lazy (`cons (_, `semicolon, xs)) ->
 				loop rs typedefs xs (* ignore repeated ";" *)
-			| _ ->
+			| lazy (`cons (_, _, xr)) ->
 				error (LazyList.hd_a xs) "syntax error.";
-				let xs = LazyList.tl xs in (* skip current token *)
-				let _, xs = skip_until_semicolon xs in (* skip to ";" *)
+				let _, xs = skip_until_semicolon xr in (* skip to ";" *)
 				loop rs typedefs xs
 			end
 		) in
