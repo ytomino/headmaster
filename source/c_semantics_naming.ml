@@ -4,10 +4,65 @@ open Position;;
 
 module StringSet = Set.Make (String);;
 
+module type NamingType = sig
+	module Literals: LiteralsType
+	module Semantics: SemanticsType
+		with module Literals := Literals
+	
+	val filename_mapping: (string -> string) -> (string -> string) ->
+		Semantics.language_mapping ->
+		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
+		(string * string) StringMap.t
+	
+	val items_per_module: Semantics.language_mapping ->
+		(string * string) StringMap.t ->
+		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
+		Semantics.source_item list StringMap.t
+	
+	type name_mapping_per_module =
+		(string * bool) StringMap.t * string StringMap.t * string StringMap.t *
+			string StringMap.t
+	
+	val add:
+		[> Semantics.opaque_type_var | Semantics.non_opaque_type_var
+			| `defined_expression of Semantics.expression] ->
+		string -> string -> name_mapping_per_module -> name_mapping_per_module
+	
+	val mem: [> Semantics.opaque_type_var] -> string -> name_mapping_per_module ->
+		bool
+	
+	val find: [> Semantics.opaque_type_var] -> string -> name_mapping_per_module ->
+		string
+	
+	type name_mapping = (string * string * name_mapping_per_module) StringMap.t
+	
+	val module_of: ranged_position -> name_mapping -> string
+	
+	val is_hidden: ranged_position -> Semantics.named_item -> name_mapping -> bool
+	
+	val name_mapping: long_f:(string -> string) -> short_f:(string -> string) ->
+		foldcase:(string -> string) -> string StringMap.t StringMap.t ->
+		(string * string) StringMap.t -> Semantics.opaque_mapping ->
+		Semantics.source_item list StringMap.t -> name_mapping
+	
+	val add_name_mapping_for_arguments: long_f:(string -> string) ->
+		short_f:(string -> string) -> anonymous_f:(int -> string) ->
+		Semantics.variable list -> name_mapping ->
+		name_mapping * (string * Semantics.variable) list
+	
+	val name_mapping_for_struct_items: long_f:(string -> string) ->
+		short_f:(string -> string) -> anonymous_f:(int -> string) ->
+		Semantics.struct_item list ->
+		string StringMap.t * (string * Semantics.struct_item) list
+end;;
+
 module Naming
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	: NamingType
+		with module Literals := Literals
+		with module Semantics := Semantics =
 struct
 	open Semantics;;
 	

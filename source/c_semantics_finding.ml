@@ -1,10 +1,68 @@
 open C_literals;;
 open C_semantics;;
 
+module type FindingType = sig
+	module Literals: LiteralsType
+	module Semantics: SemanticsType
+		with module Literals := Literals
+	
+	val find_all_anonymous_enum:
+		Semantics.enum_type_var Semantics.anonymous list ->
+		Semantics.source_item list -> Semantics.enum_type_var Semantics.anonymous list
+	
+	val find_all_sized_array_in_source_item: Semantics.all_type list ->
+		Semantics.source_item -> Semantics.all_type list
+	
+	val find_all_sized_array_in_derived_type: Semantics.all_type list ->
+		Semantics.derived_type -> Semantics.all_type list
+	
+	val compare_types_by_structure: Semantics.all_type -> Semantics.all_type ->
+		bool
+	
+	val expand_typedef: (Semantics.typedef_type -> bool) ->
+		Semantics.all_type -> Semantics.all_type
+	
+	val recursive_fold_derived_types: including_typedef:bool ->
+		('a -> Semantics.derived_type -> 'a) -> 'a -> Semantics.all_type ->
+		Semantics.derived_type list -> 'a
+	
+	val lvalue_referenced_in_statement: Semantics.variable ->
+		Semantics.statement -> bool
+	
+	val find_all_pointer_arithmetic_in_source_item: Semantics.all_type ->
+		(Semantics.all_type * Semantics.all_type) list -> Semantics.source_item ->
+		(Semantics.all_type * Semantics.all_type) list
+	
+	val find_all_cast_in_source_item:
+		(Semantics.all_type * Semantics.all_type) list -> Semantics.source_item ->
+		(Semantics.all_type * Semantics.all_type) list
+	
+	val find_all_chars_literal_as_pointer_in_expression:
+		(Semantics.literal_value * Semantics.all_type) list ->
+		Semantics.expression -> (Semantics.literal_value * Semantics.all_type) list
+	
+	val find_all_assignment_in_expression:
+		Semantics.any_assignment_expression list -> Semantics.expression ->
+		Semantics.any_assignment_expression list
+		
+	val find_all_conditional_in_expression:
+		Semantics.conditional_expression list -> Semantics.expression ->
+		Semantics.conditional_expression list
+	
+	val find_all_extension_statement_expression_in_expression:
+		Semantics.statement_expression list -> Semantics.expression ->
+		Semantics.statement_expression list
+	
+	val asm_exists_in_source_item: Semantics.source_item -> bool
+end;;
+
 module Finding
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	: FindingType
+		with module Literals := Literals
+		with module Semantics := Semantics =
 struct
 	open Literals;;
 	open Semantics;;

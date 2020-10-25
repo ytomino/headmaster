@@ -1,10 +1,29 @@
 open C_literals;;
 open C_semantics;;
 
+module type DependencyType = sig
+	module Literals: LiteralsType
+	module Semantics: SemanticsType
+		with module Literals := Literals
+	
+	val of_item: Semantics.all_item -> Semantics.named_item list
+	
+	val of_prototype:
+		of_argument:(Semantics.all_type -> Semantics.named_item list) ->
+		Semantics.prototype -> Semantics.named_item list
+	
+	val dependents: of_alias:(Semantics.named_item -> Semantics.named_item list) ->
+		of_argument:(Semantics.all_type -> Semantics.named_item list) ->
+		Semantics.all_item -> Semantics.named_item list
+end;;
+
 module Dependency
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	: DependencyType
+		with module Literals := Literals
+		with module Semantics := Semantics =
 struct
 	open Semantics;;
 	
