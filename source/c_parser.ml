@@ -27,9 +27,6 @@ module type ParserType = sig
 	val parse_expression_or_error: (ranged_position -> string -> unit) ->
 		typedef_set -> 'a in_t -> Syntax.expression Syntax.e * 'a in_t
 	
-	val parse_declaration_specifiers_option: ?has_type:bool ->
-		(ranged_position -> string -> unit) -> typedef_set -> 'a in_t ->
-		Syntax.declaration_specifiers Syntax.opt * 'a in_t
 	val parse_declaration_specifiers_or_error: ?has_type:bool ->
 		(ranged_position -> string -> unit) -> typedef_set -> 'a in_t ->
 		Syntax.declaration_specifiers Syntax.e * 'a in_t

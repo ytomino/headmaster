@@ -282,11 +282,11 @@ struct
 								| None -> assert false
 								end
 							) else
-							let spec, xr = has_error := false; Parser.parse_declaration_specifiers_option dummy_error typedefs xs in
-							if not !has_error && LazyList.is_empty xr && spec <> `none then (
+							let spec, xr = has_error := false; Parser.parse_declaration_specifiers_or_error dummy_error typedefs xs in
+							if not !has_error && LazyList.is_empty xr && spec <> `error then (
 								begin match spec with
 								| `some spec -> ps, `declaration_specifiers (snd spec)
-								| `none -> assert false
+								| `error -> assert false
 								end
 							) else
 							let expr, xr = has_error := false; Parser.parse_initializer_or_error dummy_error typedefs xs in
