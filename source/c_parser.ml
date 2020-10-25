@@ -4,11 +4,6 @@ open C_literals;;
 open C_syntax;;
 open C_version;;
 open Position;;
-
-module TypedefSet = struct
-	include Set.Make (String);;
-end;;
-
 open! PositionOperators;;
 
 module type ParserType = sig
@@ -22,7 +17,7 @@ module type ParserType = sig
 	type 'a in_t = (ranged_position, LexicalElement.t, 'a) LazyList.t
 	type 'a nil = (ranged_position, 'a) LazyList.nil
 	
-	type typedef_set = TypedefSet.t
+	type typedef_set = StringSet.t
 	
 	val parse_expression_or_error: (ranged_position -> string -> unit) ->
 		typedef_set -> 'a in_t -> Syntax.expression Syntax.e * 'a in_t
@@ -61,7 +56,8 @@ struct
 	
 	type 'a in_t = (ranged_position, LexicalElement.t, 'a) LazyList.t;;
 	type 'a nil = (ranged_position, 'a) LazyList.nil;;
-	type typedef_set = TypedefSet.t;;
+	
+	type typedef_set = StringSet.t
 	
 	let add_declarators_to_typedef_set (xs: init_declarator_list opt) (set: typedef_set): typedef_set = (
 		let add (x: init_declarator) (set: typedef_set): typedef_set = (
@@ -98,7 +94,7 @@ struct
 			in
 			begin match name with
 			| Some name ->
-				TypedefSet.add name set
+				StringSet.add name set
 			| None ->
 				set
 			end
@@ -1128,7 +1124,7 @@ struct
 			handle_initializer (lp_p, lp_e) xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
 			lazy (`cons (a, (`ident name as it), xr))))
-			when TypedefSet.mem name typedefs ->
+			when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_initializer (lp_p, lp_e) xs
 		| lazy (`cons (b_p, (`__builtin_va_arg as b_e), xs)) ->
@@ -1333,7 +1329,7 @@ struct
 				handle_sizeof_type sizeof (lp_p, lp_e) xs
 			| lazy (`cons (lp_p, (`l_paren as lp_e),
 				lazy (`cons (a, (`ident name as it), xr))))
-				when TypedefSet.mem name typedefs ->
+				when StringSet.mem name typedefs ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_sizeof_type sizeof (lp_p, lp_e) xs
 			| _ ->
@@ -1399,7 +1395,7 @@ struct
 			handle_cast (lp_p, lp_e) xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e),
 			lazy (`cons (a, (`ident name as it), xr))))
-			when TypedefSet.mem name typedefs ->
+			when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_cast (lp_p, lp_e) xs
 		| lazy (`cons (ex_p, (`__extension__ as ex_e), xs)) ->
@@ -2007,7 +2003,8 @@ struct
 		| lazy (`cons (a, (#FirstSet.firstset_of_type_specifier' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr))
+			when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
 		| lazy (`cons (q_p, (#FirstSet.type_qualifier as q_e), xs)) ->
@@ -2049,7 +2046,8 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr))
+			when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
 			`some r, xs
@@ -2068,7 +2066,8 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr))
+			when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
 			`some r, xs
@@ -2153,7 +2152,7 @@ struct
 			let (ps, spec), xs = parse_enum_specifier error typedefs xs in
 			(ps, `enum_specifier spec), xs
 		| lazy (`cons (td_p, (`ident n as td_e), xs)) ->
-			if not (TypedefSet.mem n typedefs) then failwith "parse_type_specifier" else
+			if not (StringSet.mem n typedefs) then failwith "parse_type_specifier" else
 			(td_p, `typedef_name td_e), xs
 		end
 	) and parse_struct_or_union_specifier
@@ -2211,7 +2210,7 @@ struct
 			| lazy (`cons (a, (#FirstSet.firstset_of_struct_declaration' as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_cons xs
-			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+			| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_cons xs
 			| _ ->
@@ -2231,7 +2230,7 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_struct_declaration_list error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_struct_declaration_list error typedefs xs in
 			`some r, xs
@@ -2326,7 +2325,7 @@ struct
 			let `some (ps, ()) = (`some q) &^ next in
 			(ps, `type_qualifier (q, next)), xs
 		| lazy (`cons (a, (`ident name as it), xr)) ->
-			if has_type || not (TypedefSet.mem name typedefs)
+			if has_type || not (StringSet.mem name typedefs)
 			then failwith "parse_specifier_qualifier_list" else
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_type_specifier xs
@@ -2343,7 +2342,8 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_specifier_qualifier_list ~has_type error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when not has_type && TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr))
+			when not has_type && StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_specifier_qualifier_list ~has_type error typedefs xs in
 			`some r, xs
@@ -2361,7 +2361,7 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_specifier_qualifier_list error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_specifier_qualifier_list error typedefs xs in
 			`some r, xs
@@ -2616,7 +2616,7 @@ struct
 				| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 					let xs = lazy (`cons (a, it, xr)) in
 					handle_function_type xs
-				| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+				| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 					let xs = lazy (`cons (a, it, xr)) in
 					handle_function_type xs
 				| _ ->
@@ -2781,7 +2781,7 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_parameter_declaration error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_parameter_declaration error typedefs xs in
 			`some r, xs
@@ -2850,7 +2850,7 @@ struct
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_type_name error typedefs xs in
 			`some r, xs
-		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			let r, xs = parse_type_name error typedefs xs in
 			`some r, xs
@@ -2945,7 +2945,7 @@ struct
 					| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 						let xs = lazy (`cons (a, it, xr)) in
 						handle_function_type xs
-					| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+					| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 						let xs = lazy (`cons (a, it, xr)) in
 						handle_function_type xs
 					| _ ->
@@ -2977,7 +2977,8 @@ struct
 		begin match xs with
 		| lazy (`cons (_, `l_paren, lazy (`cons (_, #FirstSet.firstset_of_type_specifier', _)))) ->
 			loop `none xs
-		| lazy (`cons (_, `l_paren, lazy (`cons (_, `ident s, _)))) when TypedefSet.mem s typedefs ->
+		| lazy (`cons (_, `l_paren, lazy (`cons (_, `ident s, _))))
+			when StringSet.mem s typedefs ->
 			loop `none xs
 		| lazy (`cons (lp_p, (`l_paren as lp_e), xs)) ->
 			let l_paren = lp_p, lp_e in
@@ -3274,7 +3275,7 @@ struct
 			| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_with_declaration for_t l_paren xs
-			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+			| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_with_declaration for_t l_paren xs
 			| _ ->
@@ -3395,7 +3396,7 @@ struct
 		| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' as it), xr)) ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_declaration xs
-		| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+		| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 			let xs = lazy (`cons (a, it, xr)) in
 			handle_declaration xs
 		| lazy (`cons (a, (#FirstSet.firstset_of_statement as it), xr)) ->
@@ -3422,7 +3423,7 @@ struct
 			| lazy (`cons (a, (#FirstSet.firstset_of_declaration_specifiers' | `sharp_PRAGMA as it), xr)) ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_external_declaration xs
-			| lazy (`cons (a, (`ident name as it), xr)) when TypedefSet.mem name typedefs ->
+			| lazy (`cons (a, (`ident name as it), xr)) when StringSet.mem name typedefs ->
 				let xs = lazy (`cons (a, it, xr)) in
 				handle_external_declaration xs
 			| lazy (`cons (_, `semicolon, xs)) ->
@@ -3433,7 +3434,7 @@ struct
 				loop rs typedefs xs
 			end
 		) in
-		let typedefs = TypedefSet.empty in
+		let typedefs = StringSet.empty in
 		loop `nil typedefs xs
 	) and parse_external_declaration
 		(error: ranged_position -> string -> unit)

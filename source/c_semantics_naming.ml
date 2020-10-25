@@ -2,8 +2,6 @@ open C_literals;;
 open C_semantics;;
 open Position;;
 
-module StringSet = Set.Make (String);;
-
 module type NamingType = sig
 	module Literals: LiteralsType
 	module Semantics: SemanticsType

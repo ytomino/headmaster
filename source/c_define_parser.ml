@@ -39,6 +39,11 @@ module type DefineParserType = sig
 	module Syntax: SyntaxType
 		with module Literals := Literals
 	module Language: LanguageType
+	module Parser: ParserType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement
+		with module Syntax := Syntax
+		with module Language := Language
 	
 	type define = [
 		| `operator of iso646_operator
@@ -49,21 +54,14 @@ module type DefineParserType = sig
 		| `function_stmt of (string Syntax.p * [`typedef | `value]) list * [`varargs | `none] * Syntax.statement
 		| `any of string]
 	
-	val parse_define:
-		(ranged_position -> string -> unit) ->
+	val parse_define: (ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
-		TypedefSet.t ->
-		Preprocessor.define_map ->
-		Preprocessor.define_item ->
+		Parser.typedef_set -> Preprocessor.define_map -> Preprocessor.define_item ->
 		define Syntax.p
 	
-	val map:
-		(ranged_position -> string -> unit) ->
+	val map: (ranged_position -> string -> unit) ->
 		(ranged_position -> string -> [> known_errors_of_define_parser] -> bool) ->
-		TypedefSet.t ->
-		Preprocessor.define_map ->
-		define Syntax.p StringMap.t
-	
+		Parser.typedef_set -> Preprocessor.define_map -> define Syntax.p StringMap.t
 end;;
 
 module DefineParser
@@ -86,7 +84,8 @@ module DefineParser
 		with module LexicalElement := LexicalElement
 		with module Preprocessor := Preprocessor
 		with module Syntax := Syntax
-		with module Language := Language =
+		with module Language := Language
+		with module Parser := Parser =
 struct
 	
 	(* error messages *)
@@ -175,7 +174,7 @@ struct
 	let parse_define
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
-		(typedefs: TypedefSet.t)
+		(typedefs: Parser.typedef_set)
 		(macros: Preprocessor.define_map)
 		(macro: Preprocessor.define_item)
 		: define p =
@@ -238,7 +237,7 @@ struct
 							in
 							let typedefs =
 								List.fold_right (fun ((_, k), is_type) v ->
-									if is_type = `typedef then TypedefSet.add k v else v
+									if is_type = `typedef then StringSet.add k v else v
 								) args typedefs
 							in
 							let expr, xr = has_error := false; Parser.parse_expression_or_error dummy_error typedefs xs in
@@ -317,7 +316,7 @@ struct
 	let map
 		(error: ranged_position -> string -> unit)
 		(is_known_error: ranged_position -> string -> [> known_errors_of_define_parser] -> bool)
-		(typedefs: TypedefSet.t)
+		(typedefs: Parser.typedef_set)
 		(items: Preprocessor.define_map)
 		: define p StringMap.t =
 	(
