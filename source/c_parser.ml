@@ -687,9 +687,9 @@ struct
 		begin match parse_attribute_item_or_error error typedefs xs with
 		| `some (first_p, first_e), xs ->
 			loop (first_p, `nil first_e) xs
-		| `error, xs ->
+		| `error, _ as result ->
 			(* an error has been already reported by parse_initializer_or_error *)
-			`error, xs
+			result
 		end
 	) and parse_attribute_item_or_error
 		(error: ranged_position -> string -> unit)
@@ -3054,13 +3054,12 @@ struct
 			let `some (ps, ()) = (`some d_body) &^ init in
 			loop (ps, `nil (designation, init)) xs
 		| `none ->
-			let init, xs = parse_initializer_or_error error typedefs xs in
-			begin match init with
-			| `some i_body ->
+			begin match parse_initializer_or_error error typedefs xs with
+			| `some i_body as init, xs ->
 				loop (fst i_body, `nil (`none, init)) xs
-			| `error ->
+			| `error, _ as result ->
 				(* an error has been already reported by parse_initializer_or_error *)
-				`error, xs
+				result
 			end
 		end
 	) and parse_designator
