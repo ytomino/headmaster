@@ -2073,6 +2073,7 @@ struct
 			let r, xs = parse_declaration_specifiers ~has_type error typedefs xs in
 			`some r, xs
 		| _ ->
+			error (LazyList.hd_a xs) "declaration-specifiers was expected.";
 			`error, xs
 		end
 	) and parse_init_declarator_list_option
@@ -2854,6 +2855,7 @@ struct
 			let r, xs = parse_type_name error typedefs xs in
 			`some r, xs
 		| _ ->
+			error (LazyList.hd_a xs) "type-name was expected.";
 			`error, xs
 		end
 	) and parse_abstract_declarator
