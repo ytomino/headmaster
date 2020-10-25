@@ -54,12 +54,8 @@ let hd (xs: ('a, 'b, 'c) t): 'b = (
 );;
 
 let hd_a (xs: ('a, 'b, 'c) t): 'a = (
-	begin match xs with
-	| lazy (`cons (a, _, _)) ->
-		a
-	| lazy (`nil (a, _)) ->
-		a
-	end
+	let lazy (`nil (a, _) | `cons (a, _, _)) = xs in
+	a
 );;
 
 let tl (xs: ('a, 'b, 'c) t): ('a, 'b, 'c) t = (
