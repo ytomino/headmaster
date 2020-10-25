@@ -28,10 +28,73 @@ open struct
 	);;
 end;;
 
+module type AdaTranslatorType = sig
+	module Literals: LiteralsType
+	module Semantics: SemanticsType
+		with module Literals := Literals
+	
+	val spec_filename: string -> string
+	val body_filename: string -> string
+	
+	val filename_mapping: (string -> string) -> Semantics.language_mapping ->
+		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
+		(string * string) StringMap.t
+	
+	val dir_packages: (string * string) StringMap.t -> string list
+	
+	val items_per_package: Semantics.language_mapping ->
+		(string * string) StringMap.t ->
+		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
+		Semantics.source_item list StringMap.t
+	
+	type name_mapping =
+		(string * string *
+			((string * bool) StringMap.t * string StringMap.t * string StringMap.t *
+				string StringMap.t)
+		) StringMap.t
+	
+	val name_mapping: (string * string) StringMap.t -> Semantics.opaque_mapping ->
+		Semantics.source_item list StringMap.t -> name_mapping
+	
+	val body_required: Semantics.source_item list -> bool
+	
+	val pp_notification: Format.formatter -> string -> unit
+	
+	val pp_dir_package_spec: Format.formatter -> name:string -> unit
+	
+	type context_clauses =
+		with_clause list * StringSet.t *
+			Semantics.enum_type_var Semantics.anonymous list *
+			(Semantics.all_type * Semantics.all_type) list
+	
+	val context_clauses: language_mapping:Semantics.language_mapping ->
+		predefined_types:
+			(Semantics.predefined_type * int) list * Semantics.typedef_type list ->
+		derived_types:Semantics.derived_type list ->
+		opaque_mapping:Semantics.opaque_mapping -> name_mapping:name_mapping ->
+		name:string -> Semantics.source_item list -> context_clauses
+	
+	val pp_translated_package_spec: Format.formatter ->
+		language_mapping:Semantics.language_mapping ->
+		predefined_types:
+			(Semantics.predefined_type * int) list * Semantics.typedef_type list ->
+		derived_types:Semantics.derived_type list ->
+		enum_of_element:Semantics.full_enum_type StringMap.t ->
+		opaque_mapping:Semantics.opaque_mapping -> name_mapping:name_mapping ->
+		name:string -> Semantics.source_item list -> context_clauses -> unit
+	
+	val pp_translated_package_body: Format.formatter ->
+		opaque_mapping:Semantics.opaque_mapping -> name_mapping:name_mapping ->
+		name:string -> Semantics.source_item list -> context_clauses -> unit
+end;;
+
 module AdaTranslator
 	(Literals: LiteralsType)
 	(Semantics: SemanticsType
-		with module Literals := Literals) =
+		with module Literals := Literals)
+	: AdaTranslatorType
+		with module Literals := Literals
+		with module Semantics := Semantics =
 struct
 	module Dependency = Dependency (Literals) (Semantics);;
 	module Finding = Finding (Literals) (Semantics);;

@@ -11,13 +11,52 @@ end;;
 
 open! PositionOperators;;
 
+module type ParserType = sig
+	module Literals: LiteralsType
+	module LexicalElement: LexicalElementType
+		with module Literals := Literals
+	module Syntax: SyntaxType
+		with module Literals := Literals
+	module Language: LanguageType
+	
+	type 'a in_t = (ranged_position, LexicalElement.t, 'a) LazyList.t
+	type 'a nil = (ranged_position, 'a) LazyList.nil
+	
+	type typedef_set = TypedefSet.t
+	
+	val parse_expression_or_error: (ranged_position -> string -> unit) ->
+		typedef_set -> 'a in_t -> Syntax.expression Syntax.e * 'a in_t
+	
+	val parse_declaration_specifiers_option: ?has_type:bool ->
+		(ranged_position -> string -> unit) -> typedef_set -> 'a in_t ->
+		Syntax.declaration_specifiers Syntax.opt * 'a in_t
+	val parse_declaration_specifiers_or_error: ?has_type:bool ->
+		(ranged_position -> string -> unit) -> typedef_set -> 'a in_t ->
+		Syntax.declaration_specifiers Syntax.e * 'a in_t
+	
+	val parse_initializer_or_error: (ranged_position -> string -> unit) ->
+		typedef_set -> 'a in_t -> Syntax.initializer_t Syntax.e * 'a in_t
+	
+	val parse_statement_or_error: ?semicolon_need:bool ->
+		(ranged_position -> string -> unit) -> typedef_set -> 'a in_t ->
+		Syntax.statement Syntax.e * 'a in_t
+	
+	val parse_translation_unit: (ranged_position -> string -> unit) -> 'a in_t ->
+		Syntax.translation_unit * typedef_set * 'a nil
+end;;
+
 module Parser
 	(Literals: LiteralsType)
 	(LexicalElement: LexicalElementType
 		with module Literals := Literals)
 	(Syntax: SyntaxType
 		with module Literals := Literals)
-	(Language: LanguageType) =
+	(Language: LanguageType)
+	: ParserType
+		with module Literals := Literals
+		with module LexicalElement := LexicalElement
+		with module Syntax := Syntax
+		with module Language := Language =
 struct
 	module FirstSet = FirstSet (Literals);;
 	open Literals;;
@@ -2531,20 +2570,6 @@ struct
 			let `some (ps, ()) = (`some dd) &^ attrs in
 			(ps, (`none, `some dd, attrs)), xs
 		end
-	) and parse_declarator_option
-		(error: ranged_position -> string -> unit)
-		(typedefs: typedef_set)
-		(xs: 'a in_t)
-		: declarator opt * 'a in_t =
-	(
-		begin match xs with
-		| lazy (`cons (a, (#FirstSet.firstset_of_declarator as it), xr)) ->
-			let xs = lazy (`cons (a, it, xr)) in
-			let r, xs = parse_declarator error typedefs xs in
-			`some r, xs
-		| _ ->
-			`none, xs
-		end
 	) and parse_declarator_or_error
 		?(use_string = false)
 		(error: ranged_position -> string -> unit)
@@ -3550,14 +3575,4 @@ struct
 		end
 	);;
 	
-end;;
-
-module type ParserType = sig
-	module Literals: LiteralsType
-	module LexicalElement: LexicalElementType
-		with module Literals := Literals
-	module Syntax: SyntaxType
-		with module Literals := Literals
-	module Language: LanguageType
-	include module type of Parser (Literals) (LexicalElement) (Syntax) (Language)
 end;;

@@ -9,13 +9,138 @@ open C_syntax_traversing;;
 open C_version;;
 open Position;;
 
+module type AnalyzerType = sig
+	module Literals: LiteralsType
+	module Syntax: SyntaxType
+		with module Literals := Literals
+	module Semantics: SemanticsType
+		with module Literals := Literals
+	module Language: LanguageType
+	
+	val is_undeclared: string -> string
+	val is_not_a_struct_or_union: string -> string
+	
+	val opaque_mapping: Semantics.namespace -> Semantics.opaque_mapping
+	
+	type type_specifier_set = {
+		ts_void: int;
+		ts_char: int;
+		ts_short: int;
+		ts_int: int;
+		ts_long: int;
+		ts_float: int;
+		ts_double: int;
+		ts_signed: int;
+		ts_unsigned: int;
+		ts_bool: int;
+		ts_imaginary: int;
+		ts_complex: int;
+		ts_float32: int;
+		ts_float32x: int;
+		ts_float64: int;
+		ts_float64x: int;
+		ts_float128: int;
+		ts_int128_t: int;
+		ts_uint128_t: int;
+		ts_builtin_va_list: int}
+	
+	val no_type_specifier_set: type_specifier_set
+	
+	type type_qualifier_set = {
+		tq_const: bool;
+		tq_restrict: bool;
+		tq_volatile: bool}
+	
+	val no_type_qualifier_set: type_qualifier_set
+	
+	type gnu_inline = [`gnu_inline | `gnu_extern_inline]
+	
+	val fixup_gnu_inline: Semantics.attributes ->
+		[Semantics.storage_class | Semantics.function_definition_specifier | gnu_inline
+			| `none] ->
+		[Semantics.storage_class | Semantics.function_definition_specifier | `none]
+	
+	val handle_attribute: (ranged_position -> string -> unit) ->
+		Semantics.attributes -> Syntax.attribute Syntax.p -> Semantics.attributes
+	
+	val handle_expression: (ranged_position -> string -> unit) ->
+		Semantics.predefined_types -> Semantics.derived_types -> Semantics.namespace ->
+		Semantics.source_item list -> [`lvalue | `rvalue] ->
+		Syntax.expression Syntax.p ->
+		Semantics.derived_types * Semantics.source_item list *
+			Semantics.expression option
+	
+	val handle_declaration_specifiers: (ranged_position -> string -> unit) ->
+		Semantics.predefined_types -> Semantics.derived_types -> Semantics.namespace ->
+		Semantics.source_item list -> Semantics.alignment ->
+		Syntax.declaration_specifiers Syntax.p ->
+		Semantics.derived_types * Semantics.namespace * Semantics.source_item list *
+			([Semantics.storage_class | Semantics.function_definition_specifier | `none] *
+				Semantics.all_type * Semantics.attributes)
+	
+	val handle_storage_class: (ranged_position -> string -> unit) ->
+		[Semantics.storage_class | Semantics.function_definition_specifier | gnu_inline
+			| `none] ->
+		Syntax.storage_class_specifier Syntax.p ->
+		[Semantics.storage_class | Semantics.function_definition_specifier | gnu_inline
+			| `none]
+	
+	val handle_type_qualifier: (ranged_position -> string -> unit) ->
+		type_qualifier_set -> Syntax.type_qualifier Syntax.p -> type_qualifier_set
+	
+	val handle_function_specifier: (ranged_position -> string -> unit) ->
+		[Semantics.storage_class | Semantics.function_definition_specifier | gnu_inline
+			| `none] ->
+		Syntax.function_specifier Syntax.p ->
+		[Semantics.storage_class | Semantics.function_definition_specifier | gnu_inline
+			| `none]
+	
+	val handle_initializer: (ranged_position -> string -> unit) ->
+		Semantics.predefined_types -> Semantics.derived_types -> Semantics.namespace ->
+		Semantics.source_item list -> Semantics.all_type ->
+		Syntax.initializer_t Syntax.p ->
+		Semantics.derived_types * Semantics.source_item list *
+			Semantics.expression option
+	
+	val handle_statement: ?control:[`loop | `switch | `none] ->
+		?return_type:Semantics.all_type -> (ranged_position -> string -> unit) ->
+		Semantics.predefined_types -> Semantics.derived_types -> Semantics.namespace ->
+		Semantics.source_item list -> Semantics.alignment ->
+		Syntax.statement Syntax.p ->
+		Semantics.derived_types * Semantics.source_item list *
+			Semantics.statement option
+	
+	val analyze: (ranged_position -> string -> unit) -> sizeof ->
+		language_typedef ->
+		(string *
+			[< Semantics.predefined_type | `pointer of [< Semantics.predefined_type
+				| `const of [< Semantics.predefined_type]] | `size_t] list *
+			[< Semantics.predefined_type | `pointer of [< Semantics.predefined_type
+				| `const of [< Semantics.predefined_type]] | `size_t]
+		) list ->
+		Syntax.translation_unit ->
+		Semantics.predefined_types * Semantics.derived_types * Semantics.namespace *
+			(Semantics.source_item list * Semantics.extra_info) StringMap.t *
+			Semantics.mapping_options
+	
+	val rev: Semantics.derived_types ->
+		(Semantics.source_item list * Semantics.extra_info) StringMap.t ->
+		Semantics.derived_types *
+			(Semantics.source_item list * Semantics.extra_info) StringMap.t
+end;;
+
 module Analyzer
 	(Literals: LiteralsType)
 	(Syntax: SyntaxType
 		with module Literals := Literals)
 	(Semantics: SemanticsType
 		with module Literals := Literals)
-	(Language: LanguageType) =
+	(Language: LanguageType)
+	: AnalyzerType
+		with module Literals := Literals
+		with module Syntax := Syntax
+		with module Semantics := Semantics
+		with module Language := Language =
 struct
 	module Traversing = Traversing (Literals) (Syntax);;
 	module Typing = Typing (Literals) (Semantics) (Language);;
@@ -1854,7 +1979,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(storage_class: [storage_class | function_definition_specifier | gnu_inline | `none])
 		(x: Syntax.storage_class_specifier p)
-		: [> storage_class | function_definition_specifier | gnu_inline] =
+		: [storage_class | function_definition_specifier | gnu_inline | `none] =
 	(
 		begin match storage_class with
 		| `none ->
@@ -2363,7 +2488,7 @@ struct
 		(error: ranged_position -> string -> unit)
 		(storage_class: [storage_class | function_definition_specifier | gnu_inline | `none])
 		(x: Syntax.function_specifier p)
-		: [> storage_class | function_definition_specifier | gnu_inline] =
+		: [storage_class | function_definition_specifier | gnu_inline | `none] =
 	(
 		begin match snd x with
 		| `inline _ ->
@@ -3414,14 +3539,4 @@ struct
 		derived_types, sources
 	);;
 	
-end;;
-
-module type AnalyzerType = sig
-	module Literals: LiteralsType
-	module Syntax: SyntaxType
-		with module Literals := Literals
-	module Semantics: SemanticsType
-		with module Literals := Literals
-	module Language: LanguageType
-	include module type of Analyzer (Literals) (Syntax) (Semantics) (Language)
 end;;

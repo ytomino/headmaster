@@ -76,6 +76,10 @@ struct
 	let no_struct_or_union_having (s: string): string =
 		"no struct or union having " ^ s ^ ".";;
 	
+	(* open Syntax *)
+	
+	type 'a p = 'a Syntax.p;;
+	
 	(* type inference *)
 	
 	let inference_by_field
