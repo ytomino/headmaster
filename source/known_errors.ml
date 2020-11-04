@@ -454,6 +454,32 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 		"stdlib.h", [
 			`undefined_macro, [
 				"__cplusplus"]]; (* freebsd9 *)
+		"sys/_bitset.h", [
+			`unparsible_macro, [
+				"BITSET_DEFINE"; (* freebsd9.3 *)
+				"BITSET_FSET"; (* freebsd9.3 *)
+				"BITSET_T_INITIALIZER"]]; (* freebsd9.3 *)
+		"sys/bitset.h", [
+			`uninterpretable_macro, [
+				"BIT_AND"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_CLR"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_CLR_ATOMIC"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_CMP"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_COPY_STORE_REL"; (* freebsd9.3 / atomic_store_rel_long is undefined *)
+				"BIT_EMPTY"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_FFS"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_FILL"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_ISFULLSET"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_ISSET"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_NAND"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_OR"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_OR_ATOMIC"; (* freebsd9.3 / atomic_set_long is undefined *)
+				"BIT_OVERLAP"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_SET"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_SETOF"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_SET_ATOMIC"; (* atomic_set_long is undefined *)
+				"BIT_SUBSET"; (* freebsd9.3 / accessing element of untyped parameter *)
+				"BIT_ZERO"]]; (* freebsd9.3 / accessing element of untyped parameter *)
 		"sys/cdefs.h", [
 			`undefined_macro, [
 				"__FreeBSD_cc_version"]; (* freebsd7 *)
@@ -486,6 +512,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"CPU_CMP"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_COPY_STORE_REL"; (* freebsd9 / atomic_store_rel_long is undefined *)
 				"CPU_EMPTY"; (* freebsd9 / accessing element of untyped parameter *)
+				"CPU_FFS"; (* freebsd9.3 / accessing element of untyped parameter *)
 				"CPU_FILL"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_ISFULLSET"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_ISSET"; (* freebsd9 / accessing element of untyped parameter *)
@@ -498,6 +525,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"CPU_SETOF"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_SUBSET"; (* freebsd9 / accessing element of untyped parameter *)
 				"CPU_ZERO"]]; (* freebsd9 / accessing element of untyped parameter *)
+		"sys/_cpuset.h", [
+			`unparsible_macro, [
+				"CPUSET_FSET"]]; (* freebsd9.3 *)
 		"sys/dirent.h", [
 			`uninterpretable_macro, [
 				"_GENERIC_DIRSIZ"]]; (* freebsd7 / accessing element of untyped parameter *)
@@ -636,7 +666,11 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"TIMESPEC_TO_TIMEVAL"]]; (* freebsd7 / accessing element of untyped parameter *)
 		"sys/ucred.h", [
 			`unparsible_macro, [
-				"cr_gid"]]]; (* freebsd7 / alias of element and dereferencing *)
+				"cr_gid"]]; (* freebsd7 / alias of element and dereferencing *)
+		"x86/_stdint.h", [
+			`uninterpretable_macro, [
+				"INTMAX_C"; (* freebsd9.3 / ## *)
+				"UINTMAX_C"]]]; (* freebsd9.3 / ## *)
 	"*-linux-gnu*", [
 		"asm-generic/ioctls.h", [
 			`unparsible_macro, [
