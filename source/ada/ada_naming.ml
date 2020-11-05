@@ -106,6 +106,7 @@ let special_name_mapping = make_mapmap [
 		"zlib_version", "get_zlib_version"]; (* zlib / conflicted with ZLIB_VERSION *)
 	"", [ (* predefined *)
 		"i386", "defined_i386"; (* darwin9 / conflicted with include dir <i386/...> *)
+		"__i386", "defined_qqi386"; (* darwin9 / conflicted with include dir <i386/...> *)
 		"linux", "defined_linux"; (* linux / conflicted with include dir <linux/...> *)
 		"__linux", "defined_qqlinux"; (* linux / conflicted with include dir <linux/...> *)
 		"__PIE__", "defined_qqPIEqq_U"; (* linux / confilicted with __pie__, presence is depending on environment *)
