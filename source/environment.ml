@@ -1,4 +1,5 @@
 open C_literals;;
+open! Nonpolymorphic;;
 
 type sizeof =
 	[`sizeof_bool of int] *

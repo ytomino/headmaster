@@ -3,6 +3,7 @@ open C_literals;;
 open C_semantics;;
 open C_version;;
 open Position;;
+open! Nonpolymorphic;;
 
 let builtin_position: ranged_position =
 	let p = builtin_name, 0, 0, 0 in

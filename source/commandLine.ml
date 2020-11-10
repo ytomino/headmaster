@@ -1,3 +1,5 @@
+open! Nonpolymorphic;;
+
 exception Unknown of string;;
 exception ArgumentRequired of string;;
 exception ArgumentNotRequired of string;;
