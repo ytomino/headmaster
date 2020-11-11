@@ -603,7 +603,9 @@ struct
 	(* predefined types *)
 	
 	let find_predefined_type_with_size (e: [< predefined_type]) (predefined_types: predefined_types): [> predefined_type] * int = (
-		begin match Listtbl.assocs (e :> predefined_type) (fst predefined_types) with
+		let equal: predefined_type -> predefined_type -> bool = ( = ) in
+		begin match Listtbl.assocs equal (e :> predefined_type) (fst predefined_types)
+		with
 		| (#predefined_type, _) as result :: _ ->
 			result
 		| [] -> (* not found *)

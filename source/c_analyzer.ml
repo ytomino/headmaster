@@ -594,6 +594,9 @@ struct
 			| `language_mapping (_, lang, mapping) ->
 				begin match lang, mapping with
 				| `some lang, `some mapping ->
+					let equal_pair (x1, x2: string * string) (y1, y2) = (
+						String.equal x1 y1 && String.equal x2 y2
+					) in
 					let lang = String.uppercase_ascii (snd lang) in
 					begin match snd mapping with
 					| `type_mapping (_, typename, _, repr) ->
@@ -695,7 +698,7 @@ struct
 								StringMap.update lang (fun e ->
 									let x = Option.value ~default:no_language_mapping e in
 									let pair = file1, file2 in
-									if List.mem pair x.lm_include then e else
+									if Listtbl.mem equal_pair pair x.lm_include then e else
 									Some {x with lm_include = pair :: x.lm_include}
 								) mapping_options.mo_language_mappings}
 							in
@@ -710,7 +713,7 @@ struct
 								StringMap.update lang (fun e ->
 									let x = Option.value ~default:no_language_mapping e in
 									let pair = file1, file2 in
-									if List.mem pair x.lm_monolithic_include then e else
+									if Listtbl.mem equal_pair pair x.lm_monolithic_include then e else
 									Some {x with lm_monolithic_include = pair :: x.lm_monolithic_include}
 								) mapping_options.mo_language_mappings}
 							in

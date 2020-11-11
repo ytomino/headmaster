@@ -13,8 +13,18 @@ let rec finds (p: 'a -> bool) (xs: 'a list): 'a list = (
 	end
 );;
 
-let add (a: 'a) (xs: 'a list): 'a list = (
-	if List.mem a xs then xs else
+let rec mem (equal: 'a -> 'a -> bool) (a: 'a) (xs: 'a list): bool = (
+	begin match xs with
+	| [] ->
+		false
+	| x :: xr ->
+		if equal x a then true else
+		mem equal a xr
+	end
+);;
+
+let add (equal: 'a -> 'a -> bool) (a: 'a) (xs: 'a list): 'a list = (
+	if mem equal a xs then xs else
 	a :: xs
 );;
 
@@ -55,15 +65,15 @@ let removeq (a: 'a) (xs: 'a list): 'a list = (
 
 (* map *)
 
-let rec assocs key xs = (
+let rec assocs (equal: 'a -> 'a -> bool) (key: 'a) xs = (
 	begin match xs with
 	| [] ->
 		[]
 	| (a, _) :: xr ->
-		if a = key then xs else
-		assocs key xr
+		if equal a key then xs else
+		assocs equal key xr
 	end
-)
+);;
 
 let rec assqs key xs = (
 	begin match xs with

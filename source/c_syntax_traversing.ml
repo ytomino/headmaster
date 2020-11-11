@@ -405,7 +405,7 @@ struct
 				| y :: yr ->
 					let ((previous_filename, _, _, _), _), _ = y in
 					if previous_filename = filename then result else
-					let result = Listtbl.add previous_filename result in
+					let result = Listtbl.add String.equal previous_filename result in
 					loop yr result
 				| [] ->
 					[]

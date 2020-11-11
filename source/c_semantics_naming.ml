@@ -597,7 +597,7 @@ struct
 				) else (
 					let sn = short_f name in
 					let map, rs =
-						begin match Listtbl.finds (fun (item_name, _) -> item_name = sn) rs with
+						begin match Listtbl.assocs String.equal sn rs with
 						| (_, (prev_name, _, _, _)) :: _ ->
 							let prev_ln = long_f prev_name in
 							let ln = long_f name in

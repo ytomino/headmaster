@@ -202,7 +202,7 @@ struct
 	(
 		begin match xs with
 		| lazy (`cons (id_p, (`ident s), xs)) ->
-			begin match Listtbl.assocs s vs with
+			begin match Listtbl.assocs String.equal s vs with
 			| (_, value) :: _ ->
 				`some (id_p, value), xs
 			| [] ->

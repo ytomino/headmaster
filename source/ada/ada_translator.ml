@@ -133,7 +133,7 @@ struct
 			begin match String.rindex_opt package '.' with
 			| Some rindex ->
 				let dir = String.sub package 0 rindex in
-				Listtbl.add dir rs
+				Listtbl.add String.equal dir rs
 			| None ->
 				rs
 			end
@@ -1281,7 +1281,11 @@ struct
 		let items, is_anonymous =
 			begin match t with
 			| `anonymous (_, `enum items) as t ->
-				items, List.mem t anonymous_enums
+				let equal: Semantics.enum_type_var Semantics.anonymous ->
+						Semantics.enum_type_var Semantics.anonymous -> bool =
+					( = )
+				in
+				items, Listtbl.mem equal t anonymous_enums
 			| `named (_, _, `enum items, _) ->
 				items, false
 			end

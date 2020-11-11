@@ -348,8 +348,11 @@ struct
 					(`wchar, sizeof_wchar) :: [])
 		in
 		let language_typedefs: typedef_type list =
-			let find_f t (x, _) = x = (t :> predefined_type) in
-			let find t = (fst (List.find (find_f t) predefined_types) :> all_type) in
+			let equal: predefined_type -> predefined_type -> bool = ( = ) in
+			let find t = (
+				(fst (List.hd (Listtbl.assocs equal (t :> predefined_type) predefined_types))
+					:> all_type)
+			) in
 			(`named (builtin_position, "ptrdiff_t", `typedef (find typedef_ptrdiff_t), no_attributes)) ::
 			(`named (builtin_position, "size_t", `typedef (find typedef_size_t), no_attributes)) ::
 			(match Language.lang with
