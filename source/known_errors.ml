@@ -836,7 +836,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__malloc_ptr_t"]]; (* declaration specifier and pointer *)
 		"math.h", [
 			`unparsible_macro, [
+				"__MATHCALL_VEC"; (* parameterized declaration *)
 				"__MATHCALLX"; (* parameterized declaration *)
+				"__MATHDECL_VEC"; (* parameterized declaration *)
 				"__MATHDECLX"]]; (* parameterized declaration *)
 		"netdb.h", [
 			`unparsible_macro, [
@@ -1366,7 +1368,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"fabs"; (* magic macro *)
 				"fdim"; (* magic macro *)
 				"floor"; (* magic macro *)
-				"__floating_type"; (* linux / magic macro *)
+				"__floating_type"; (* glibc / magic macro *)
 				"fma"; (* magic macro *)
 				"fmax"; (* magic macro *)
 				"fmin"; (* magic macro *)
@@ -1393,7 +1395,7 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"remquo"; (* magic macro *)
 				"rint"; (* magic macro *)
 				"round"; (* magic macro *)
-				"scalb"; (* linux / magic macro *)
+				"scalb"; (* glibc / magic macro *)
 				"scalbln"; (* magic macro *)
 				"scalbn"; (* magic macro *)
 				"sin"; (* magic macro *)
@@ -1407,8 +1409,9 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 				"__tg_cplx"; (* magic macro *)
 				"__tg_dbl"; (* magic macro *)
 				"__tg_ldbl"; (* magic macro *)
-				"__tgmath_real_type"; (* linux / magic macro *)
-				"__tgmath_real_type_sub"; (* linux / magic macro *)
+				"__TGMATH_RCFUNCS"; (* glibc / parameterized declaration *)
+				"__tgmath_real_type"; (* glibc / magic macro *)
+				"__tgmath_real_type_sub"; (* glibc / magic macro *)
 				"tgamma"; (* magic macro *)
 				"trunc"]]; (* magic macro *)
 		(* cairo *)
