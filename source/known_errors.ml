@@ -1006,6 +1006,14 @@ let known_error_table: (string * (string * (known_error * string list) list) lis
 			`uninterpretable_macro, [
 				"_mm_free"; (* _aligned_free is undefined unless __DO_ALIGN_DEFINES *)
 				"_mm_malloc"]]; (* _aligned_malloc is undefined unless __DO_ALIGN_DEFINES *)
+		"math.h", [
+			`unparsible_macro, [
+				"fpclassify"; (* magic macro *)
+				"isfinite"; (* magic macro *)
+				"isinf"; (* magic macro *)
+				"isnan"; (* magic macro *)
+				"isnormal"; (* magic macro *)
+				"signbit"]]; (* magic macro *)
 		"_mingw.h", [
 			`undefined_macro, [
 				"__clang_major__";
