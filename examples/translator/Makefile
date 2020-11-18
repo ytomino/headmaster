@@ -29,6 +29,8 @@ export OCAMLRUNPARAM=b
 TEST=test_translator
 EXENAME=$(BUILDDIR)/$(TEST).byte$(EXEEXT)
 
+IMPORTDIR=import.noindex
+
 GCC=gcc
 H=../c-lib.h
 HFLAGS=
@@ -50,9 +52,9 @@ $(BINLN):
 $(SOURCELN):
 	ln -s $(SOURCEDIR) $@
 
-test: $(EXENAME) | import
-	-rm import/*
-	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
+test: $(EXENAME) | $(IMPORTDIR)
+	-rm $(IMPORTDIR)/*
+	$(EXENAME) --destdir "$(IMPORTDIR)" --gcc "$(GCC)" $(HFLAGS) $(H)
 
 interactive:
 ifneq ($(OCAMLMAKE),)
@@ -70,9 +72,9 @@ $(BUILDDIR)/unicode.cma:
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR))
 
-import:
-	mkdir import
+$(IMPORTDIR):
+	mkdir $(IMPORTDIR)
 
 clean:
-	-rm -r $(BUILDDIR) import
+	-rm -r $(BUILDDIR) $(IMPORTDIR)
 	-rm $(BINLN) $(SOURCELN)

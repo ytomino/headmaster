@@ -17,7 +17,7 @@ open Position;;
 let source_filename = ref "../c-lib.h";;
 let gcc_command = ref "gcc";;
 let tab_width = 3;;
-let destdir = "import";;
+let destdir = ref "import.noindex";;
 let include_dirs = ref [];;
 
 let rec parse_args i = (
@@ -25,6 +25,9 @@ let rec parse_args i = (
 		begin match Sys.argv.(i) with
 		| "--gcc" ->
 			gcc_command := Sys.argv.(i + 1);
+			parse_args (i + 2)
+		| "--destdir" ->
+			destdir := Sys.argv.(i + 1);
 			parse_args (i + 2)
 		| arg when String.length arg > 2 && arg.[0] = '-' && arg.[1] = 'I' ->
 			include_dirs := (String.sub arg 2 (String.length arg - 2)) :: !include_dirs;
@@ -164,7 +167,7 @@ let ada_sources = ref [];;
 let dirs = T.dir_packages filename_mapping;;
 
 List.iter (fun x ->
-	let filename = Filename.concat destdir (T.spec_filename x) in
+	let filename = Filename.concat !destdir (T.spec_filename x) in
 	print_string filename;
 	flush stdout;
 	let f = open_out filename in
@@ -182,7 +185,7 @@ let items_per_package = T.items_per_package ada_mapping filename_mapping sources
 let name_mapping = T.name_mapping filename_mapping opaque_mapping items_per_package;;
 
 StringMap.iter (fun package items ->
-	let ads_filename = Filename.concat destdir (T.spec_filename package) in
+	let ads_filename = Filename.concat !destdir (T.spec_filename package) in
 	print_string ads_filename;
 	flush stdout;
 	let context_clauses =
@@ -224,7 +227,7 @@ StringMap.iter (fun package items ->
 	end;
 	close_out f;
 	if T.body_required items then (
-		let adb_filename = Filename.concat destdir (T.body_filename package) in
+		let adb_filename = Filename.concat !destdir (T.body_filename package) in
 		print_string adb_filename;
 		flush stdout;
 		let f = open_out adb_filename in
@@ -263,12 +266,21 @@ let prefix, arguments =
 	let index = Option.value ~default:length (String.index_opt !gcc_command ' ') in
 	let prefix = String.sub !gcc_command 0 (index - 3) in
 	let arguments = String.sub !gcc_command index (length - index) in
-	prefix, arguments
+	prefix, arguments;;
+
+assert (String.length arguments = 0 || arguments.[0] = ' ');;
 
 let command =
-	List.fold_left (fun command filename ->
-		command ^ " " ^ filename
-	) (prefix ^ "gnatmake -gnatc -gnatef -gnatwa -gnaty -D " ^ destdir) !ada_sources
-	^ " -cargs" ^ arguments;;
+	let command = Buffer.create 256 in
+	Buffer.add_string command prefix;
+	Buffer.add_string command "gnatmake -gnatc -gnatef -gnatwa -gnaty -D ";
+	Buffer.add_string command !destdir;
+	List.iter (fun filename ->
+		Buffer.add_char command ' ';
+		Buffer.add_string command filename
+	) !ada_sources;
+	Buffer.add_string command " -cargs";
+	Buffer.add_string command arguments;
+	Buffer.contents command;;
 
 let _: int = Sys.command command;;
