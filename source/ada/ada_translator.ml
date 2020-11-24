@@ -2706,9 +2706,9 @@ struct
 			pp_statement_list ff ~mappings ~current
 				~in_expression ~null_statement:true stmts;
 			pp_end ff ()
-		| `compound _ ->
-			fprintf ff "@ **** unimplemented. ****\n";
-			assert false
+		| `compound stmts ->
+			pp_statement_list ff ~mappings ~current ~in_expression ~null_statement:true
+				stmts
 		| `expression expr ->
 			if in_expression then (
 				pp_return ff (Some (fun ff () ->
