@@ -1,5 +1,6 @@
 open C_filename;;
 open C_literals;;
+open !Nonpolymorphic;;
 
 open struct
 	let make_mapmap (list: (string * (string * string) list) list): string StringMap.t StringMap.t = (
@@ -214,7 +215,7 @@ let ada_name_by_short (s: string): string = (
 			end
 		)
 	) in
-	loop s s_length 0 b `first
+	loop s (min 74 s_length) 0 b `first
 );;
 
 let ada_name_by_substitute (s: string): string = (
