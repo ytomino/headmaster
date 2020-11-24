@@ -308,10 +308,10 @@ let extended_word_table = [
 	"__asm", `__asm;
 	"__asm__", `__asm__;
 	"__attribute__", `__attribute__;
-	"__builtin_va_list", `__builtin_va_list;
 	"__builtin_va_arg", `__builtin_va_arg;
 	"__builtin_va_copy", `__builtin_va_copy;
 	"__builtin_va_end", `__builtin_va_end;
+	"__builtin_va_list", `__builtin_va_list;
 	"__builtin_va_start", `__builtin_va_start;
 	"__const", `__const;
 	"__extension__", `__extension__;
