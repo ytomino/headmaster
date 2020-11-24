@@ -22,51 +22,43 @@ let output_position (f: out_channel) (filename_f: string -> string) (p: position
 
 module PositionOperators = struct
 	
-	let ( & ) (a: [`some of ranged_position * 'a]) (b: [`some of ranged_position * 'b]): [`some of ranged_position * unit] = (
-		let first =
-			let `some a = a in
-			let ((first, _), _) = a in first
-		in
-		let last =
-			let `some b = b in
-			let ((_, last), _) = b in last
-		in
-		`some ((first, last), ())
+	let ( & ) (a: ranged_position * 'a) (b: ranged_position * 'b)
+		: ranged_position * unit =
+	(
+		let (first, _), _ = a in
+		let (_, last), _ = b in
+		(first, last), ()
 	);;
 	
-	let ( &^ ) (a: [`some of ranged_position * 'a]) (b: [> `some of ranged_position * 'b]): [`some of ranged_position * unit] = (
-		let first =
-			let `some a = a in
-			let ((first, _), _) = a in first
-		in
+	let ( &^ ) (a: ranged_position * 'a) (b: [> `some of ranged_position * 'b])
+		: ranged_position * unit =
+	(
+		let (first, _), _ = a in
 		let last =
 			begin match b with
 			| `some b ->
 				let ((_, last), _) = b in last
 			| _ ->
-				let `some a = a in
 				let ((_, last), _) = a in last
 			end
 		in
-		`some ((first, last), ())
+		(first, last), ()
 	);;
 	
 	(* right to left *)
-	let ( ^& ) (a: [> `some of ranged_position * 'a]) (b: [`some of ranged_position * 'b]): [`some of ranged_position * unit] = (
+	let ( ^& ) (a: [> `some of ranged_position * 'a]) (b: ranged_position * 'b)
+		: ranged_position * unit =
+	(
 		let first =
 			begin match a with
 			| `some a ->
 				let ((first, _), _) = a in first
 			| _ ->
-				let `some b = b in
 				let ((first, _), _) = b in first
 			end
 		in
-		let last =
-			let `some b = b in
-			let ((_, last), _) = b in last
-		in
-		`some ((first, last), ())
+		let (_, last), _ = b in
+		(first, last), ()
 	);;
 	
 end;;
