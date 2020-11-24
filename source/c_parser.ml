@@ -158,17 +158,6 @@ struct
 		end
 	);;
 	
-	let rec skip_until_r_paren (xs: 'a in_t): [`r_paren] e * 'a in_t = (
-		begin match xs with
-		| lazy (`cons (_, `semicolon, _)) | lazy (`nil _) ->
-			`error, xs
-		| lazy (`cons (rp_p, (`r_paren as rp_e), xs)) ->
-			`some (rp_p, rp_e), xs
-		| lazy (`cons (_, _, xs)) ->
-			skip_until_r_paren xs
-		end
-	);;
-	
 	let rec skip_until_semicolon (xs: 'a in_t): [`semicolon] e * 'a in_t = (
 		begin match xs with
 		| lazy (`nil _) ->
@@ -238,8 +227,19 @@ struct
 		| lazy (`cons (rp_p, (`r_paren as rp_e), xs)) ->
 			`some (rp_p, rp_e), xs
 		| _ ->
-			error (LazyList.hd_a xs) "\")\" was expected.";
-			`error, xs
+			let rec skip_until_r_paren (xs: 'a in_t): [`r_paren] e * 'a in_t = (
+				begin match xs with
+				| lazy (`cons (rp_p, (`r_paren as rp_e), xs)) ->
+					error (LazyList.hd_a xs) "the extra token(s) were skipped before \")\".";
+					`some (rp_p, rp_e), xs
+				| lazy (`cons (_, `semicolon, _)) | lazy (`nil _) ->
+					error (LazyList.hd_a xs) "\")\" was expected.";
+					`error, xs
+				| lazy (`cons (_, _, xs)) ->
+					skip_until_r_paren xs
+				end
+			) in
+			skip_until_r_paren xs (* error recovery *)
 		end
 	);;
 	
@@ -2622,12 +2622,7 @@ struct
 				| _ ->
 					(* old style function *)
 					let params, xs = parse_identifier_list_option error typedefs xs in
-					let r_paren, xs =
-						begin match parse_r_paren_or_error error xs with
-						| `some _, _ as r -> r
-						| `error, xs -> skip_until_r_paren xs (* error recovery *)
-						end
-					in
+					let r_paren, xs = parse_r_paren_or_error error xs in
 					let `some (ps, ()) = (`some item) & (`some l_paren) &^ params &^ r_paren in
 					loop (ps, `old_function_type (item, l_paren, params, r_paren)) xs
 				end
@@ -2953,12 +2948,9 @@ struct
 							begin match xs with
 							| lazy (`cons (id_p, `ident _, xs)) ->
 								error id_p "old style function type could not be used in direct-abstract-declarator.";
-								skip_until_r_paren xs
+								parse_r_paren_or_error error xs
 							| _ ->
-								begin match parse_r_paren_or_error error xs with
-								| `some _, _ as r -> r
-								| `error, xs -> skip_until_r_paren xs (* error recovery *)
-								end
+								parse_r_paren_or_error error xs
 							end
 						in
 						let `some (ps, ()) = item ^& (`some l_paren) &^ r_paren in
