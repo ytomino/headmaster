@@ -165,6 +165,7 @@ struct
 		~anonymous_f:ada_name_of_anonymous_argument;;
 	
 	let name_mapping_for_struct_items = Naming.name_mapping_for_struct_items
+		~fold:String.uppercase_ascii ~conflicted_postfix:"_U"
 		~long_f:(ada_name_by_substitute ~prefix:"F_" ~postfix:"")
 		~short_f:(ada_name_by_short ~prefix:"F_" ~postfix:"")
 		~anonymous_f:ada_name_of_anonymous_component;;

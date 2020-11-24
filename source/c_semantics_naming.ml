@@ -48,9 +48,10 @@ module type NamingType = sig
 		Semantics.variable list -> name_mapping ->
 		name_mapping * (string * Semantics.variable) list
 	
-	val name_mapping_for_struct_items: long_f:(string -> string) ->
-		short_f:(string -> string) -> anonymous_f:(int -> string) ->
-		Semantics.struct_item list ->
+	val name_mapping_for_struct_items: fold:(string -> string) ->
+		conflicted_postfix:string ->
+		long_f:(string -> string) -> short_f:(string -> string) ->
+		anonymous_f:(int -> string) -> Semantics.struct_item list ->
 		string StringMap.t * (string * Semantics.struct_item) list
 end;;
 
@@ -578,6 +579,8 @@ struct
 	);;
 	
 	let name_mapping_for_struct_items
+		~(fold: string -> string)
+		~(conflicted_postfix: string)
 		~(long_f: string -> string)
 		~(short_f: string -> string)
 		~(anonymous_f: int -> string)
@@ -597,15 +600,23 @@ struct
 				) else (
 					let sn = short_f name in
 					let map, rs =
-						begin match Listtbl.assocs String.equal sn rs with
-						| (_, (prev_name, _, _, _)) :: _ ->
-							let prev_ln = long_f prev_name in
-							let ln = long_f name in
+						let folded_sn = fold sn in
+						begin match Listtbl.finds (fun (n, _) -> String.equal (fold n) folded_sn) rs
+						with
+						| (prev_sn, (prev_name, _, _, _)) :: _ ->
+							let prev_ln, ln =
+								let prev_ln = long_f prev_name in
+								let ln = long_f name in
+								if not (String.equal (fold prev_ln) (fold ln)) then prev_ln, ln else
+								(* the long names are conflicted too *)
+								if prev_ln < ln then prev_ln ^ conflicted_postfix, ln else
+								prev_ln, ln ^ conflicted_postfix
+							in
 							let map = StringMap.add prev_name prev_ln map in
 							let map = StringMap.add name ln map in
 							let rs =
 								List.map (fun (item_name, item as z) ->
-									if item_name <> sn then z else
+									if not (String.equal item_name prev_sn) then z else
 									prev_ln, item
 								) rs
 							in
