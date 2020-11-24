@@ -3009,9 +3009,15 @@ struct
 		| `named (_, _, `defined_type_specifier _, _) ->
 			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
 			assert false
-		| `named (_, _, `defined_type_qualifier _, _) ->
-			fprintf ff "@ **** %s renames %s / unimplemented. ****\n" name source_name;
-			assert false
+		| `named (_, _, `defined_type_qualifier source_item, _) ->
+			begin match source_item with
+			| `const ->
+				fprintf ff "@ --  %s renames const (macro)" name
+			| `restrict ->
+				fprintf ff "@ --  %s renames restrict (macro)" name
+			| `volatile ->
+				fprintf ff "@ --  %s renames volatile (macro)" name
+			end
 		| `named (_, _, `defined_typedef source_item, _) ->
 			begin match Semantics.resolve_typedef source_item with
 			| `void ->
