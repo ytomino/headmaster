@@ -26,12 +26,12 @@ let rec append_f (xs: ('a, 'b, 'c1) t) (make_ys: 'a * 'c1 -> ('a, 'b, 'c2) prim)
 
 let rec concat (xs: ('a, 'b, 'c) t list): ('a, 'b, 'c) prim = (
 	begin match xs with
-	| [] ->
-		failwith "LazyList.concat"
 	| x :: [] ->
 		Lazy.force x
 	| x :: xr ->
 		append x (lazy (concat xr))
+	| [] ->
+		failwith "LazyList.concat"
 	end
 );;
 
