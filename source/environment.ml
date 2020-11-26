@@ -64,15 +64,14 @@ open struct
 				let sep_index =
 					if is_dir_sep x.[x_length - 1] then x_length - 1 else x_length
 				in
-				if sep_index < fn_length then (
-					if String.sub filename 0 x_length = x && is_dir_sep filename.[sep_index] then (
-						loop (max r sep_index) xr
-					) else (
-						loop r xr
-					)
-				) else (
-					loop r xr
-				)
+				let r =
+					if sep_index < fn_length
+						&& String.sub filename 0 x_length = x
+						&& is_dir_sep filename.[sep_index]
+					then max r sep_index else
+					r
+				in
+				loop r xr
 			end
 		) in
 		let r = loop (-1) env.en_iquote in

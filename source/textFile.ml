@@ -223,19 +223,21 @@ let make_succ_until_eol (type a) (add: a -> char -> unit) (a: a)
 		begin match get s index with
 		| '\n' | '\r' | '\x0c' | '\x1a' ->
 			index
-		| _ as c when is_escape c ->
-			let index = internal_succ s index in
-			begin match get s index with
-			| '\n' | '\r' | '\x0c' ->
-				let index = succ_eol s index in
-				internal_succ_until_eol add a is_escape s index
-			| _ ->
-				add a c;
-				internal_succ_until_eol add a is_escape s index
-			end
 		| _ as c ->
-			add a c;
-			let index = internal_succ s index in
+			let index =
+				let index = internal_succ s index in
+				if is_escape c
+					&& (
+						match get s index with
+						| '\n' | '\r' | '\x0c' -> true
+						| _ -> false)
+				then (
+					succ_eol s index (* skip pair of escape and escaped *)
+				) else (
+					add a c;
+					index
+				)
+			in
 			internal_succ_until_eol add a is_escape s index
 		end
 	) in

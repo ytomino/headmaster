@@ -87,12 +87,10 @@ struct
 		(* reading functions *)
 		let rec read_digits_to_buffer ~(base: int) (buf: Buffer.t) (index: 'i): 'i = (
 			let h = get source index in
-			if is_digit base h then (
+			if not (is_digit base h) then index else (
 				Buffer.add_char buf h;
 				let index = succ source index in
 				read_digits_to_buffer ~base buf index
-			) else (
-				index
 			)
 		) in
 		let read_sign_to_buffer (buf: Buffer.t) (index: 'i): 'i = (
