@@ -3838,20 +3838,19 @@ struct
 								pp_anonymous_type ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~anonymous_enums
 									~current ~hidden_packages item;
 								anonymous_mapping, done_functions
-							| `named (_, _, `function_definition (`inline, _, _), _) as item
-								when extern_exists_before item done_functions ->
+							| `named (_, _, (`extern ((`function_type _), _) | `function_forward _ | `function_definition _), _) as item ->
+								let done_functions =
+									if extern_exists_before item done_functions then done_functions else (
+										pp_named ff
+											~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping)
+											~enum_of_element ~current ~hidden_packages item;
+										item :: done_functions
+									)
+								in
 								anonymous_mapping, done_functions
 							| `named _ as item ->
 								pp_named ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping) ~enum_of_element
 									~current ~hidden_packages item;
-								let done_functions =
-									begin match item with
-									| `named (_, _, `extern ((`function_type _), _), _) as item ->
-										item :: done_functions
-									| _ ->
-										done_functions
-									end
-								in
 								anonymous_mapping, done_functions
 							| `anonymous_alias (source_ps, item) ->
 								let hash = hash_name item in
