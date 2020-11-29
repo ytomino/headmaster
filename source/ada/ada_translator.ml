@@ -3813,52 +3813,59 @@ struct
 				);
 				(* items *)
 				let rec extern_exists_before
-					(item: Semantics.function_definition_item)
-					(xs: Semantics.source_item list)
+					(item: Semantics.function_item)
+					(done_functions: Semantics.function_item list)
 					: bool =
 				(
 					let `named (_, current, _, _) = item in
-					begin match xs with
-					| `named (_, xname, `extern ((`function_type _), _), _) :: _ when xname = current ->
-						true
-					| x :: _ when x == (item :> Semantics.source_item) ->
-						false
-					| _ :: xr ->
-						extern_exists_before item xr
+					begin match done_functions with
 					| [] ->
 						false
+					| `named (_, xname, _, _) :: _ when xname = current ->
+						true
+					| _ :: xr ->
+						extern_exists_before item xr
 					end
 				) in
-				let _: anonymous_mapping * Semantics.derived_type list =
-					List.fold_left (fun (anonymous_mapping, done_list) item ->
+				let _: anonymous_mapping * Semantics.derived_type list * Semantics.function_item list =
+					List.fold_left (fun (anonymous_mapping, done_derived_types, done_functions) item ->
 						(* source item *)
-						let anonymous_mapping =
+						let anonymous_mapping, done_functions =
 							begin match item with
 							| #Semantics.anonymous_type as item ->
 								let hash = hash_name item in
 								let anonymous_mapping = (item, (current, hash)) :: anonymous_mapping in
 								pp_anonymous_type ff ~mappings:(opaque_mapping, name_mapping, anonymous_mapping) ~anonymous_enums
 									~current ~hidden_packages item;
-								anonymous_mapping
-							| `named (_, _, `function_definition (`inline, _, _), _) as item when extern_exists_before item items ->
-								anonymous_mapping
+								anonymous_mapping, done_functions
+							| `named (_, _, `function_definition (`inline, _, _), _) as item
+								when extern_exists_before item done_functions ->
+								anonymous_mapping, done_functions
 							| `named _ as item ->
 								pp_named ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping) ~enum_of_element
 									~current ~hidden_packages item;
-								anonymous_mapping
+								let done_functions =
+									begin match item with
+									| `named (_, _, `extern ((`function_type _), _), _) as item ->
+										item :: done_functions
+									| _ ->
+										done_functions
+									end
+								in
+								anonymous_mapping, done_functions
 							| `anonymous_alias (source_ps, item) ->
 								let hash = hash_name item in
 								let (filename, _, _, _), _ = source_ps in
 								let _, package_name, _ = StringMap.find filename name_mapping in
 								let anonymous_mapping = ((item :> Semantics.anonymous_type), (package_name, hash)) :: anonymous_mapping in
-								anonymous_mapping
+								anonymous_mapping, done_functions
 							| `include_point included ->
 								pp_include_point ff name_mapping included;
-								anonymous_mapping
+								anonymous_mapping, done_functions
 							end
 						in
 						(* casts and derived types *)
-						let done_list =
+						let done_derived_types =
 							begin match item with
 							| #Semantics.anonymous_type
 							| `named (_, _, #Semantics.named_type_var, _) as t ->
@@ -3869,15 +3876,16 @@ struct
 									)
 								) casts;
 								(* output derived types *)
-								pp_derived_types_for_the_type ff ~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping)
-									~casts ~sized_arrays:all_sized_arrays
-									~current ~hidden_packages (t :> Semantics.all_type) derived_types done_list
+								pp_derived_types_for_the_type ff
+									~mappings:(language_mapping, opaque_mapping, name_mapping, anonymous_mapping)
+									~casts ~sized_arrays:all_sized_arrays ~current ~hidden_packages
+									(t :> Semantics.all_type) derived_types done_derived_types
 							| _ ->
-								done_list
+								done_derived_types
 							end
 						in
-						anonymous_mapping, done_list
-					) ([], []) items
+						anonymous_mapping, done_derived_types, done_functions
+					) ([], [], []) items
 				in ()
 			)
 			~pp_private:(
