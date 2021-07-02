@@ -842,6 +842,8 @@ struct
 				let r_paren, xs = parse_r_paren_or_error error xs in
 				let ps, () = n &^ l_paren &^ arg &^ r_paren in
 				`some (ps, `regparm (n, l_paren, arg, r_paren)), xs
+			| "__returns_nonnull__" ->
+				`some (p4, `returns_nonnull), xs
 			| "__returns_twice__" ->
 				`some (p4, `returns_twice), xs
 			| "section" | "__section__" ->

@@ -81,6 +81,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `packed of string
 		| `pure
 		| `regparm of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
+		| `returns_nonnull
 		| `returns_twice
 		| `section of string p * [`l_paren] e * assignment_expression e * [`r_paren] e
 		| `selectany

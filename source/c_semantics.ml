@@ -39,6 +39,7 @@ module SemanticsThin (Literals: LiteralsType) = struct
 		at_optimize: string option;
 		at_pure: bool;
 		at_regparm: int option;
+		at_returns_nonnull: bool;
 		at_returns_twice: bool;
 		at_section: string option;
 		at_sentinel: bool;
@@ -552,6 +553,7 @@ struct
 		at_optimize = None;
 		at_pure = false;
 		at_regparm = None;
+		at_returns_nonnull = false;
 		at_returns_twice = false;
 		at_section = None;
 		at_sentinel = false;

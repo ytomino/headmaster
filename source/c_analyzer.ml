@@ -921,6 +921,8 @@ struct
 			| `error ->
 				attributes
 			end
+		| `returns_nonnull ->
+			{attributes with at_returns_nonnull = true}
 		| `returns_twice ->
 			{attributes with at_returns_twice = true}
 		| `section ((_, attr_name), _, arg, _) ->
