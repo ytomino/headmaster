@@ -853,7 +853,7 @@ struct
 				`some (ps, `section (n, l_paren, arg, r_paren)), xs
 			| "selectany" ->
 				`some (p4, `selectany), xs
-			| "sentinel" ->
+			| "sentinel" | "__sentinel__" ->
 				`some (p4, `sentinel), xs
 			| "__stdcall__" ->
 				`some (p4, `stdcall), xs
