@@ -35,6 +35,7 @@ let error (ps: ranged_position) (m: string): unit = (
 module Literals_ocaml64 = struct
 	module Integer = Integer64;;
 	module Real = Real;;
+	module WideChar = Int32;;
 	module WideString = String32;;
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;
@@ -47,6 +48,7 @@ end;;
 module Literals_gmp = struct
 	module Integer = Gmp.Z;;
 	module Real = Gmp.F (struct let prec = 64 end);;
+	module WideChar = Unicode.Uint32;;
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Gmp.z_of_truncated_f;;
 	let real_of_integer = Real.of_z;;

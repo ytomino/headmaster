@@ -368,7 +368,7 @@ struct
 				in
 				Integer.of_int x, xs
 			| lazy (`cons (_, `wchar_literal value, xs)) ->
-				Integer.of_int32 value, xs
+				Integer.of_int (WideChar.to_int value), xs
 			| lazy (`cons (ps, `ident name, xs)) ->
 				if not shortcircuit && not (is_known_error ps name `undefined_macro) then (
 					error ps (undefined_macro name)
@@ -831,7 +831,9 @@ struct
 							process state predefined macro_arguments rs))
 					| None, lazy (`cons (ps2, `chars_literal s, ys)) ->
 						if name1 = "L" then (
-							let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
+							let s =
+								Array.init (String.length s) (fun i -> WideChar.of_int (int_of_char s.[i]))
+							in
 							let merged_ps = merge_positions ps1 ps2 in
 							let merged_token = `wchars_literal (WideString.of_array s) in
 							let rs = lazy (LazyList.append ys xs) in

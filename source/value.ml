@@ -35,11 +35,17 @@ module type RealType = sig
 	val frexp: t -> t * int
 end;;
 
+module type CharType = sig
+	type t
+	val of_int: int -> t
+	val to_int: t -> int
+end;;
+
 module type StringType = sig
-	type elm
+	type elt
 	type t
 	val length: t -> int
 	val empty: t
-	val of_array: elm array -> t
-	val get: t -> int -> elm
+	val of_array: elt array -> t
+	val get: t -> int -> elt
 end;;

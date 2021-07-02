@@ -339,7 +339,7 @@ struct
 		| `char ->
 			Some (`char_literal '\x00', t)
 		| `wchar ->
-			Some (`wchar_literal 0l, t)
+			Some (`wchar_literal (WideChar.of_int 0), t)
 		| `bool | `complex _ | `anonymous (_, `enum _) | `named (_, _, `enum _, _)
 		| `pointer (_: all_type) | `__builtin_va_list | `block_pointer _ ->
 			Some (`implicit_conv (`int_literal (`signed_int, Integer.zero), `signed_int), t)

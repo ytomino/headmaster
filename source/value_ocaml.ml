@@ -65,7 +65,7 @@ module Real = struct
 end;;
 
 module String16 = struct
-	type elm = int;;
+	type elt = int;;
 	type t = int array;;
 	let length = Array.length;;
 	let empty = [| |];;
@@ -74,7 +74,7 @@ module String16 = struct
 end;;
 
 module String32 = struct
-	type elm = Int32.t;;
+	type elt = Int32.t;;
 	type t = Int32.t array;;
 	let length = Array.length;;
 	let empty = [| |];;

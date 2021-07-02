@@ -86,14 +86,15 @@ struct
 			| `chars_literal s ->
 				"\"" ^ String.escaped s ^ "\""
 			| `wchar_literal s ->
-				"L\'\\x" ^ Hexadecimal.x4u s ^ "\'"
+				"L\'\\x" ^ Hexadecimal.x4u (Int32.of_int (WideChar.to_int s)) ^ "\'"
 			| `wchars_literal s ->
 				let length = WideString.length s in
 				let buf = Buffer.create (length * 6 + 3) in
 				Buffer.add_string buf "L\"";
 				for i = 0 to length do
 					Buffer.add_string buf "\\x";
-					Buffer.add_string buf (Hexadecimal.x4u (WideString.get s i))
+					Buffer.add_string buf
+						(Hexadecimal.x4u (Int32.of_int (WideChar.to_int (WideString.get s i))))
 				done;
 				Buffer.add_char buf '\"';
 				Buffer.contents buf

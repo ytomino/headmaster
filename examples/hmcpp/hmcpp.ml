@@ -127,6 +127,7 @@ module Literals = struct
 		struct
 			let prec = let `mantissa prec, _ = long_double_repr in prec;;
 		end);;
+	module WideChar = Unicode.Uint32;;
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Gmp.z_of_truncated_f;;
 	let real_of_integer = Real.of_z;;

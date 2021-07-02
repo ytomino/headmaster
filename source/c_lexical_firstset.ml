@@ -40,7 +40,7 @@ struct
 			| `decimal_literal of extended_decimal_prec]
 		| `char_literal of char
 		| `chars_literal of string
-		| `wchar_literal of WideString.elm
+		| `wchar_literal of WideString.elt
 		| `wchars_literal of WideString.t
 		| `objc_string_literal of string (* @"..." *)
 		| `__FILE__

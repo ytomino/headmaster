@@ -173,6 +173,7 @@ module Literals = struct
 			let prec = let `mantissa prec, _ = long_double_repr in prec;;
 		end);;
 	module Real = FR_long_double.F (struct let rounding_mode = `N end);;
+	module WideChar = Unicode.Uint32;;
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Mpfr.z_of_truncated_fr;;
 	let real_of_integer = Real.of_z;;

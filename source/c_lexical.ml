@@ -485,7 +485,7 @@ module LexicalElement (Literals: LiteralsType) = struct
 		| `numeric_literal of string * numeric_literal
 		| `char_literal of char
 		| `chars_literal of string
-		| `wchar_literal of WideString.elm
+		| `wchar_literal of WideString.elt
 		| `wchars_literal of WideString.t
 		| `objc_string_literal of string (* @"..." *)
 		| `l_paren

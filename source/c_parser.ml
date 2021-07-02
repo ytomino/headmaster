@@ -392,7 +392,7 @@ struct
 				let _, `wchars_literal str1 = result in
 				let length1 = WideString.length str1 in
 				let length2 = WideString.length str2 in
-				let m = Array.make (length1 + length2) 0l in
+				let m = Array.make (length1 + length2) (WideChar.of_int 0) in
 				for i = 0 to length1 - 1 do
 					m.(i) <- WideString.get str1 i
 				done;
@@ -405,12 +405,12 @@ struct
 				let _, `wchars_literal str1 = result in
 				let length1 = WideString.length str1 in
 				let length2 = String.length str2 in
-				let m = Array.make (length1 + length2) 0l in
+				let m = Array.make (length1 + length2) (WideChar.of_int 0) in
 				for i = 0 to length1 - 1 do
 					m.(i) <- WideString.get str1 i
 				done;
 				for i = 0 to length2 - 1 do
-					m.(length1 + i) <- Int32.of_int (int_of_char str2.[i])
+					m.(length1 + i) <- WideChar.of_int (int_of_char str2.[i])
 				done;
 				let ps, () = result & (cs_p, cs_e) in
 				loop (ps, `wchars_literal (WideString.of_array m)) xs

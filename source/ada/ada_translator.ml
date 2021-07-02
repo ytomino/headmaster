@@ -1727,8 +1727,8 @@ struct
 		end
 	);;
 	
-	let pp_wchar_literal (ff: formatter) (c: WideString.elm): unit = (
-		fprintf ff "wchar_t'Val (%ld)" c
+	let pp_wchar_literal (ff: formatter) (c: WideString.elt): unit = (
+		fprintf ff "wchar_t'Val (%d)" (WideChar.to_int c)
 	);;
 	
 	let rec pp_expression
@@ -1822,12 +1822,13 @@ struct
 			pp_wchar_literal ff value
 		| `wchars_literal value, _ ->
 			let zvalue =
+				let nul = WideChar.of_int 0 in
 				let length = WideString.length value in
-				let z = Array.make (length + 1) 0l in
+				let z = Array.make (length + 1) nul in
 				for i = 0 to length - 1 do
 					z.(i) <- WideString.get value i
 				done;
-				z.(length) <- 0l;
+				z.(length) <- nul;
 				WideString.of_array z
 			in
 			pp_array_literal ff pp_wchar_literal 0

@@ -45,6 +45,7 @@ let env =
 module Literals = struct
 	module Integer = Integer64;;
 	module Real = Real;;
+	module WideChar = Int32;;
 	module WideString = String32;;
 	let integer_of_real = Int64.of_float;;
 	let real_of_integer = Int64.to_float;;

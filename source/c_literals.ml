@@ -74,7 +74,8 @@ type iso646_operator = [
 module type LiteralsType = sig
 	module Integer: IntegerType
 	module Real: RealType
-	module WideString: StringType with type elm = Int32.t
+	module WideChar: CharType
+	module WideString: StringType with type elt = WideChar.t
 	val integer_of_real: Real.t -> Integer.t
 	val real_of_integer: Integer.t -> Real.t
 	val round: prec:int -> Real.t -> Real.t

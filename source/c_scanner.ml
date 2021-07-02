@@ -694,16 +694,22 @@ struct
 					if String.length s <> 1 then (
 						error (p1, p2) (illegal_char_literal s)
 					);
-					let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
+					let s =
+						Array.init (String.length s) (fun i -> WideChar.of_int (int_of_char s.[i]))
+					in
 					let s = WideString.of_array s in
-					let c = (if s = WideString.empty then 0l else WideString.get s 0) in
+					let c =
+						if s = WideString.empty then (WideChar.of_int 0) else WideString.get s 0
+					in
 					`cons ((p1, p2), `wchar_literal c, lazy (process state index))
 				) else if is_L && TextFile.get source index = '\"' then (
 					Buffer.reset buf;
 					let index = read_string_to_buffer p1 ~quote:'\"' buf index in
 					let s = Buffer.contents buf in
 					let p2 = TextFile.prev_position source index in
-					let s = Array.init (String.length s) (fun i -> Int32.of_int (int_of_char s.[i])) in
+					let s =
+						Array.init (String.length s) (fun i -> WideChar.of_int (int_of_char s.[i]))
+					in
 					let s = WideString.of_array s in
 					`cons ((p1, p2), `wchars_literal s, lazy (process state index))
 				) else (

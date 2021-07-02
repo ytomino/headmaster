@@ -120,7 +120,7 @@ module Syntax (Literals: LiteralsType) = struct
 		| `decimal_literal of extended_decimal_prec (* unsupported *)
 		| `char_literal of char
 		| `chars_literal of string
-		| `wchar_literal of WideString.elm
+		| `wchar_literal of WideString.elt
 		| `wchars_literal of WideString.t
 		| `objc_string_literal of string (* @"..." *)
 		| `__FILE__ of string
