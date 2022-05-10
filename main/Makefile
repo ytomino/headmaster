@@ -16,7 +16,9 @@ UNICODE_BUILDDIR=$(BUILDDIR)/unicode$(BUILDSUFFIX)
 
 SOURCEDIR=../source
 BINLN=bin
-ifeq ($(OCAMLMAKE),)
+ifneq ($(OCAMLMAKE),)
+ SOURCELN=
+else
  SOURCELN=source
 endif
 
