@@ -7,9 +7,7 @@ else
  EXEEXT=
 endif
 
-ifneq ($(shell rlwrap --version),)
- RLWRAP=rlwrap
-endif
+RLWRAP?=
 
 BUILDSUFFIX=.noindex
 BUILDDIR=$(TARGET)$(BUILDSUFFIX)
