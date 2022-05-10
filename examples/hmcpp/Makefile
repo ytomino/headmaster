@@ -2,9 +2,9 @@ HOST:=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
 ifneq ($(findstring mingw,$(TARGET)),)
-EXEEXT=.exe
+ EXEEXT=.exe
 else
-EXEEXT=
+ EXEEXT=
 endif
 
 BUILDSUFFIX=.noindex
@@ -15,7 +15,7 @@ UNICODE_BUILDDIR=$(BUILDDIR)/unicode$(BUILDSUFFIX)
 SOURCEDIR=../../source
 BINLN=bin
 ifeq ($(OCAMLMAKE),)
-SOURCELN=source
+ SOURCELN=source
 endif
 
 DESTDIR=
@@ -23,9 +23,9 @@ PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 
 ifneq ($(wildcard ../../.git),)
-HEAD=$(wildcard ../../.git/*HEAD) $(wildcard ../../.git/refs/heads/master)
+ HEAD=$(wildcard ../../.git/*HEAD) $(wildcard ../../.git/refs/heads/master)
 else
-HEAD=
+ HEAD=
 endif
 
 OCAMLCFLAGS=-g -w A-4-9-48

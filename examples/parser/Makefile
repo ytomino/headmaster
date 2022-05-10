@@ -2,13 +2,13 @@ HOST:=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
 ifneq ($(findstring mingw,$(TARGET)),)
-EXEEXT=.exe
+ EXEEXT=.exe
 else
-EXEEXT=
+ EXEEXT=
 endif
 
 ifneq ($(shell rlwrap --version),)
-RLWRAP=rlwrap
+ RLWRAP=rlwrap
 endif
 
 BUILDSUFFIX=.noindex
@@ -17,7 +17,7 @@ BUILDDIR=$(TARGET)$(BUILDSUFFIX)
 SOURCEDIR=../../source
 BINLN=bin
 ifeq ($(OCAMLMAKE),)
-SOURCELN=source
+ SOURCELN=source
 endif
 
 OCAMLCFLAGS=-g -w A-4-9-48
