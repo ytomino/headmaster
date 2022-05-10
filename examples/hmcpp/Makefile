@@ -22,11 +22,8 @@ DESTDIR=
 PREFIX=/usr/local
 BINDIR=$(PREFIX)/bin
 
-ifneq ($(wildcard ../../.git),)
- HEAD=$(wildcard ../../.git/*HEAD) $(wildcard ../../.git/refs/heads/master)
-else
- HEAD=
-endif
+GITDIR=../../.git
+HEAD=$(wildcard $(GITDIR)/HEAD $(GITDIR)/packed-refs $(GITDIR)/refs/heads/*)
 
 OCAMLCFLAGS=-g -w A-4-9-48
 
