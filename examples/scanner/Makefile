@@ -16,7 +16,7 @@ else
  SOURCELN=source
 endif
 
-OCAMLCFLAGS=-g -w A-4-9-48
+OCAMLCFLAGS=-g -w A-4-9-48-70
 
 export OCAMLRUNPARAM=b
 

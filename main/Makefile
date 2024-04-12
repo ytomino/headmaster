@@ -30,7 +30,7 @@ MANDIR=$(PREFIX)/share/man
 GITDIR=../.git
 HEAD=$(wildcard $(GITDIR)/HEAD $(GITDIR)/packed-refs $(GITDIR)/refs/heads/*)
 
-OCAMLCFLAGS=-g -w A-4-9-48
+OCAMLCFLAGS=-g -w A-4-9-48-70
 
 export OCAMLRUNPARAM=b
 
