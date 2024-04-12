@@ -49,7 +49,10 @@ end;;
 
 module Literals_gmp = struct
 	module Integer = Gmp.Z;;
-	module Real = Gmp.F (struct let prec = 64 end);;
+	module Real =
+		Gmp.F.Make (struct
+			let prec = 64;;
+		end);;
 	module WideChar = Unicode.Uint32;;
 	module WideString = Unicode.UTF32;;
 	let integer_of_real = Gmp.z_of_truncated_f;;

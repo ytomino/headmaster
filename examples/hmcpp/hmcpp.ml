@@ -123,8 +123,8 @@ let env = {env with
 module Literals = struct
 	let float_repr, double_repr, long_double_repr = env.en_fp;;
 	module Integer = Gmp.Z;;
-	module Real = Gmp.F (
-		struct
+	module Real =
+		Gmp.F.Make (struct
 			let prec = let `mantissa prec, _ = long_double_repr in prec;;
 		end);;
 	module WideChar = Unicode.Uint32;;
