@@ -13,8 +13,12 @@ GMP
  http://gmplib.org/
 MPFR
  http://www.mpfr.org/
-Objective Caml
+Objective Caml >= 4.11
  http://caml.inria.fr/
+OCamlbuild
+ https://github.com/ocaml/ocamlbuild
+Or ocamlmake
+ https://github.com/ytomino/ocamlmake
 Docutils (optional, only used for the manual page)
  http://docutils.sourceforge.net/
 
