@@ -9,6 +9,7 @@ open Environment_gcc;;
 open Known_errors;;
 open Position;;
 open Version;;
+open! Nonpolymorphic;;
 
 type options = {
 	source_filename: string;
