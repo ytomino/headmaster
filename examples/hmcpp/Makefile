@@ -43,7 +43,9 @@ all: $(EXENAME) $(BINLN)
 
 $(EXENAME): hmcpp.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa ../../main/version.ml version.ml $(SOURCELN)
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -O -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $<
+	$(OCAMLMAKE) $(strip \
+		-O $(OCAMLCFLAGS) \
+		-D $(BUILDDIR) -L $(BUILDDIR) -I $(SOURCEDIR) -lgmp -lunicode -o $@ $<)
 else
 	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -cflags "$(OCAMLCFLAGS)" hmcpp.native
 	cd $(BUILDDIR) && ln -sf hmcpp.native $(notdir $(EXENAME))
@@ -69,7 +71,7 @@ $(BUILDDIR)/gmp.cmxa:
 		-C ../../lib/gmp-ocaml/source install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		WITH=gmp,mpfr)
+		WITH=gmp)
 
 $(BUILDDIR)/unicode.cmxa:
 	$(MAKE) $(strip \

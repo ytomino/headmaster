@@ -41,14 +41,17 @@ $(SOURCELN):
 	ln -s $(SOURCEDIR) $@
 
 test: $(LIBNAME)
-	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --ocaml64
-	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --gmp
+	ocaml $(strip \
+		-I $(BUILDDIR) unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --ocaml64)
+	ocaml -I $(BUILDDIR) unix.cma gmp.cma unicode.cma $(LIBNAME) testcase.ml --gmp
 
 interactive:
 ifneq ($(OCAMLMAKE),)
-	$(RLWRAP) $(OCAMLMAKE) -interact -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $(TEST).ml
+	$(strip $(RLWRAP) $(OCAMLMAKE) \
+		-interact $(OCAMLCFLAGS) \
+		-D $(BUILDDIR) -L $(BUILDDIR) -I $(SOURCEDIR) -lgmp -lunicode $(TEST).ml)
 else
-	ocaml -I $(BUILDDIR) bigarray.cma unix.cma gmp.cma unicode.cma $(LIBNAME)
+	ocaml -I $(BUILDDIR) unix.cma gmp.cma unicode.cma $(LIBNAME)
 endif
 
 $(BUILDDIR)/gmp.cma:
@@ -56,7 +59,7 @@ $(BUILDDIR)/gmp.cma:
 		-C ../../lib/gmp-ocaml/source install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		WITH=gmp,mpfr)
+		WITH=gmp)
 
 $(BUILDDIR)/unicode.cma:
 	$(MAKE) $(strip \

@@ -10,7 +10,6 @@ dispatch begin function
 		"use_mpfr";
 		"use_unicode"];
 	tag_file "test_translator.byte" [
-		"use_bigarray";
 		"use_gmp";
 		"use_mpfr";
 		"use_unicode";

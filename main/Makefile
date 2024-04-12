@@ -42,7 +42,10 @@ all: $(EXENAME) man $(BINLN)
 
 $(EXENAME): main.ml version.ml $(BUILDDIR)/gmp.cmxa $(BUILDDIR)/unicode.cmxa $(SOURCELN)
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -O -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $(OCAMLCFLAGS) $<
+	$(OCAMLMAKE) $(strip \
+		-O $(OCAMLCFLAGS) \
+		-D $(BUILDDIR) -L $(BUILDDIR) -I $(SOURCEDIR) -I $(SOURCEDIR)/ada \
+		-lgmp -lmpfr -lunicode -o $@ $<)
 else
 	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -I $(SOURCELN)/ada -cflags "$(OCAMLCFLAGS)" main.native
 	cd $(BUILDDIR) && ln -sf main.native $(notdir $(EXENAME))

@@ -41,7 +41,10 @@ all: $(EXENAME) $(BINLN)
 
 $(EXENAME): $(TEST).ml $(BUILDDIR)/gmp.cma $(BUILDDIR)/unicode.cma $(SOURCELN)
 ifneq ($(OCAMLMAKE),)
-	$(OCAMLMAKE) -o $@ -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) -I$(SOURCEDIR)/ada $(OCAMLCFLAGS) $<
+	$(OCAMLMAKE) $(strip \
+		$(OCAMLCFLAGS) \
+		-D $(BUILDDIR) -L $(BUILDDIR) -I $(SOURCEDIR) -I $(SOURCEDIR)/ada \
+		-lgmp -lmpfr -lunicode -o $@ $<)
 else
 	ocamlbuild -build-dir $(BUILDDIR) -X $(BUILDDIR) -X bin -I $(SOURCELN) -I $(SOURCELN)/ada -cflags "$(OCAMLCFLAGS)" $(TEST).byte
 endif
@@ -58,7 +61,10 @@ test: $(EXENAME) | $(IMPORTDIR)
 
 interactive:
 ifneq ($(OCAMLMAKE),)
-	$(RLWRAP) $(OCAMLMAKE) -interact -D $(BUILDDIR) -L $(BUILDDIR) -I$(SOURCEDIR) $(OCAMLCFLAGS) $(TEST).ml
+	$(strip $(RLWRAP) $(OCAMLMAKE) \
+		-interact $(OCAMLCFLAGS) \
+		-D $(BUILDDIR) -L $(BUILDDIR) -I $(SOURCEDIR) -I $(SOURCEDIR)/ada \
+		-lgmp -lmpfr -lunicode $(TEST).ml)
 endif
 
 $(BUILDDIR)/gmp.cma:

@@ -10,7 +10,6 @@ dispatch begin function
 		"use_mpfr";
 		"use_unicode"];
 	tag_file "main.native" [
-		"use_bigarray";
 		"use_gmp";
 		"use_mpfr";
 		"use_unicode";
