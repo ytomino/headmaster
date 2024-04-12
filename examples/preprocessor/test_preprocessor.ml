@@ -13,22 +13,24 @@ let gcc_command = ref "gcc";;
 let tab_width = 3;;
 let include_dirs = ref [];;
 
-let rec parse_args i = (
-	if i < Array.length Sys.argv then (
-		begin match Sys.argv.(i) with
-		| "--gcc" ->
-			gcc_command := Sys.argv.(i + 1);
-			parse_args (i + 2)
-		| arg when String.length arg > 2 && arg.[0] = '-' && arg.[1] = 'I' ->
-			include_dirs := (String.sub arg 2 (String.length arg - 2)) :: !include_dirs;
-			parse_args (i + 1)
-		| arg ->
-			source_filename := arg;
-			parse_args (i + 1)
-		end
-	)
-) in
-parse_args 1;;
+if not !Sys.interactive then (
+	let rec parse_args i = (
+		if i < Array.length Sys.argv then (
+			begin match Sys.argv.(i) with
+			| "--gcc" ->
+				gcc_command := Sys.argv.(i + 1);
+				parse_args (i + 2)
+			| arg when String.length arg > 2 && arg.[0] = '-' && arg.[1] = 'I' ->
+				include_dirs := (String.sub arg 2 (String.length arg - 2)) :: !include_dirs;
+				parse_args (i + 1)
+			| arg ->
+				source_filename := arg;
+				parse_args (i + 1)
+			end
+		)
+	) in
+	parse_args 1
+);;
 
 let error (ps: ranged_position) (m: string): unit = (
 	let ((f, _, l, c), _) = ps in

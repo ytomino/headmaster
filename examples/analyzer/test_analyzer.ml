@@ -19,7 +19,7 @@ let gcc_command = ref "gcc";;
 let tab_width = 3;;
 let include_dirs = ref [];;
 
-if Filename.basename Sys.argv.(0) <> "ocaml" then (
+if not !Sys.interactive then (
 	let rec parse_args i = (
 		if i < Array.length Sys.argv then (
 			begin match Sys.argv.(i) with

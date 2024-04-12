@@ -7,21 +7,23 @@ open Value_ocaml;;
 let tab_width = 3;;
 let value_kind: [`ocaml64 | `gmp] ref = ref `ocaml64;;
 
-let rec parse_args i = (
-	if i < Array.length Sys.argv then (
-		begin match Sys.argv.(i) with
-		| "--ocaml64" ->
-			value_kind := `ocaml64;
-			parse_args (i + 1);
-		| "--gmp" ->
-			value_kind := `gmp;
-			parse_args (i + 1);
-		| _ ->
-			parse_args (i + 1)
-		end
-	)
-) in
-parse_args 1;;
+if not !Sys.interactive then (
+	let rec parse_args i = (
+		if i < Array.length Sys.argv then (
+			begin match Sys.argv.(i) with
+			| "--ocaml64" ->
+				value_kind := `ocaml64;
+				parse_args (i + 1);
+			| "--gmp" ->
+				value_kind := `gmp;
+				parse_args (i + 1);
+			| _ ->
+				parse_args (i + 1)
+			end
+		)
+	) in
+	parse_args 1
+);;
 
 let read (s: string): TextFile.t = (
 	TextFile.of_string ~random_access:false ~tab_width "<test>" s
