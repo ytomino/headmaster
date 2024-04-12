@@ -65,15 +65,17 @@ test: $(EXENAME)
 	$(EXENAME) --gcc "$(GCC)" $(HFLAGS) $(H)
 
 $(BUILDDIR)/gmp.cmxa:
-	$(MAKE) -C ../../lib/gmp-ocaml install \
+	$(MAKE) $(strip \
+		-C ../../lib/gmp-ocaml/source install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		WITH=gmp,mpfr
+		WITH=gmp,mpfr)
 
 $(BUILDDIR)/unicode.cmxa:
-	$(MAKE) -C ../../lib/unicode-ocaml install \
+	$(MAKE) $(strip \
+		-C ../../lib/unicode-ocaml/source install \
 		BUILDDIR=$(abspath $(UNICODE_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR))
+		INSTALLDIR=$(abspath $(BUILDDIR)))
 
 clean:
 	-rm -r $(BUILDDIR)

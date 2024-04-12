@@ -52,15 +52,17 @@ version.ml: version.txt version $(HEAD)
 	echo "let version = \"version $(shell ./version)\";;" > version.ml
 
 $(BUILDDIR)/gmp.cmxa:
-	$(MAKE) -C ../lib/gmp-ocaml install \
+	$(MAKE) $(strip \
+		-C ../lib/gmp-ocaml/source install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		WITH=gmp,mpfr
+		WITH=gmp,mpfr)
 
 $(BUILDDIR)/unicode.cmxa:
-	$(MAKE) -C ../lib/unicode-ocaml install \
+	$(MAKE) $(strip \
+		-C ../lib/unicode-ocaml/source install \
 		BUILDDIR=$(abspath $(UNICODE_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR))
+		INSTALLDIR=$(abspath $(BUILDDIR)))
 
 $(BINLN):
 	ln -s $(BUILDDIR) $@

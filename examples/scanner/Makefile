@@ -52,15 +52,17 @@ else
 endif
 
 $(BUILDDIR)/gmp.cma:
-	$(MAKE) -C ../../lib/gmp-ocaml install \
+	$(MAKE) $(strip \
+		-C ../../lib/gmp-ocaml/source install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
 		INSTALLDIR=$(abspath $(BUILDDIR)) \
-		WITH=gmp,mpfr
+		WITH=gmp,mpfr)
 
 $(BUILDDIR)/unicode.cma:
-	$(MAKE) -C ../../lib/unicode-ocaml install \
+	$(MAKE) $(strip \
+		-C ../../lib/unicode-ocaml/source install \
 		BUILDDIR=$(abspath $(GMP_BUILDDIR)) \
-		INSTALLDIR=$(abspath $(BUILDDIR))
+		INSTALLDIR=$(abspath $(BUILDDIR)))
 
 clean:
 	-rm -r $(BUILDDIR)
