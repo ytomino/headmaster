@@ -26,7 +26,7 @@ type t = {
 	tf_contents: big_string;
 	tf_random_access: bool;
 	tf_tab_width: int;
-	mutable tf_length: int;
+	tf_length: int;
 	mutable tf_lines: line_info list;
 	mutable tf_index: int;
 	mutable tf_line: int;
