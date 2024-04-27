@@ -1,7 +1,7 @@
 HOST:=$(shell gcc -dumpmachine)
 TARGET=$(HOST)
 
-RST2MAN=$(firstword $(wildcard /usr/bin/rst2man) rst2man.py)
+RST2MAN=rst2man
 
 ifneq ($(findstring mingw,$(TARGET)),)
  EXEEXT=.exe
